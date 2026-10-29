@@ -1,9 +1,10 @@
-BACKUPDESK 0.3.0 - MASTER E CLIENT - TESTE WINDOWS 10/11 x64
+BACKUPDESK MASTER 0.3.2 / CLIENT 0.3.1 - MASTER E CLIENT - TESTE WINDOWS 10/11 x64
 
 MASTER
 Instale o Master e deixe marcada Abrir master e criar rotinas ao concluir.
 O computador local e cadastrado automaticamente e o agente inicia junto.
-Entre como admin. Senha em %LOCALAPPDATA%\BackupDesk\data\initial-admin.txt.
+O painel local abre direto, sem pedir usuario ou senha.
+A conta admin e preservada para futuros acessos autenticados pela rede.
 Crie as rotinas escolhendo o computador local e os arquivos/pastas.
 Nao precisa configurar token nem iniciar outro agente nesta maquina.
 Mantenha a janela do Master aberta. Nao instala servico nem inicia no boot.

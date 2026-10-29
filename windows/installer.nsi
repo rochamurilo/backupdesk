@@ -4,14 +4,16 @@ Unicode True
 !include "LogicLib.nsh"
 !ifdef CLIENT
   !define PRODUCT "BackupDesk Client"
+  !define VERSION "0.3.1"
   !define KEY "BackupDeskClient"
   !define FOLDER "BackupDeskClient"
   OutFile "../windows/build/BackupDesk-Client-0.3.1-x64.exe"
 !else
   !define PRODUCT "BackupDesk Master"
+  !define VERSION "0.3.2"
   !define KEY "BackupDesk"
   !define FOLDER "BackupDesk"
-  OutFile "../dist/BackupDesk-Master-0.3.1-x64.exe"
+  OutFile "../dist/BackupDesk-Master-0.3.2-x64.exe"
 !endif
 Name "${PRODUCT} (teste local)"
 InstallDir "$LOCALAPPDATA\${FOLDER}"
@@ -94,7 +96,7 @@ Section "${PRODUCT}" Main
  WriteUninstaller "$INSTDIR\Uninstall.exe"
  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${KEY}" "DisplayName" "${PRODUCT} (teste local)"
  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${KEY}" "UninstallString" '"$INSTDIR\Uninstall.exe"'
- WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${KEY}" "DisplayVersion" "0.3.1"
+ WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${KEY}" "DisplayVersion" "${VERSION}"
 SectionEnd
 Section "Uninstall"
  Call un.StopInstalledProcesses

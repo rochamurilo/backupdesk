@@ -15,9 +15,23 @@ const browseRequests=new Map();
 const sessions=new Map(); const token=()=>randomBytes(32).toString('hex');
 const send=(res,status,data)=>{res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify(data))};
 async function body(req){let chunks=[],n=0;for await(const c of req){n+=c.length;if(n>24*1024*1024)throw Error('Corpo excede 24 MB');chunks.push(c)}return JSON.parse(Buffer.concat(chunks).toString()||'{}')}
+let localSessionToken;
+function localRequest(req){
+ const host=req.headers.host||'';
+ const bound=server.address()?.address;
+ return ['127.0.0.1','::1','::ffff:127.0.0.1'].includes(req.socket.remoteAddress)&&['127.0.0.1','::1','::ffff:127.0.0.1'].includes(bound)&&/^(127\.0\.0\.1|localhost|\[::1\])(?::\d+)?$/i.test(host);
+}
 const visible=(user,id)=>user.role==='master'||!!db.prepare('SELECT id FROM devices WHERE id=? AND owner=?').get(id,user.id);
 export const server=http.createServer(async(req,res)=>{try{const url=new URL(req.url,'http://localhost'),p=url.pathname; if(!p.startsWith('/api/')){const file={'/':'index.html','/app.js':'app.js','/style.css':'style.css'}[p];if(!file)return send(res,404,{error:'Não encontrado'});res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':'text/html');return res.end(readFileSync(new URL('./public/'+file,import.meta.url)))}
 if(p==='/api/health')return send(res,200,{ok:true});
+if(p==='/api/local-session'){
+ if(req.method!=='POST')return send(res,405,{error:'Método não permitido'});
+ if(!localMaster||!localRequest(req)||req.headers.origin!=='http://'+req.headers.host)return send(res,403,{error:'Acesso automático disponível apenas no master local'});
+ const user=db.prepare("SELECT id,name,role FROM users WHERE id=? AND role='master'").get(localMaster.owner);
+ if(!user)return send(res,403,{error:'Master local não disponível'});
+ if(!localSessionToken){localSessionToken=token();sessions.set(localSessionToken,{...user,localOnly:true})}
+ return send(res,200,{token:localSessionToken,...user,localOnly:true});
+}
 if(p==='/api/login'&&req.method==='POST'){const b=await body(req),u=db.prepare('SELECT * FROM users WHERE name=?').get(b.name);if(!u||!timingSafeEqual(Buffer.from(u.password,'hex'),Buffer.from(hash(b.password||''),'hex')))return send(res,401,{error:'Credenciais inválidas'});const t=token();sessions.set(t,{id:u.id,name:u.name,role:u.role});return send(res,200,{token:t,role:u.role,name:u.name})}
 const auth=req.headers.authorization?.replace(/^Bearer /,'');const device=db.prepare('SELECT * FROM devices WHERE token=?').get(auth||'');
 if(p.startsWith('/api/agent/')){if(!device)return send(res,401,{error:'Agente não autorizado'});db.prepare('UPDATE devices SET last_seen=? WHERE id=?').run(new Date().toISOString(),device.id);
@@ -27,7 +41,7 @@ if(commandMatch&&req.method==='POST'){const job=browseRequests.get(commandMatch[
 if(p==='/api/agent/config')return send(res,200,{device:device.id,routines:db.prepare('SELECT * FROM routines WHERE device=?').all(device.id)});
 if(p==='/api/agent/runs'&&req.method==='POST'){const id=token();db.prepare('INSERT INTO runs(id,device,started,status) VALUES(?,?,?,?)').run(id,device.id,new Date().toISOString(),'running');return send(res,201,{id})}
 const m=p.match(/^\/api\/agent\/runs\/([a-f0-9]+)\/(files|finish)$/);if(m&&req.method==='POST'){const run=db.prepare('SELECT * FROM runs WHERE id=? AND device=? AND status=?').get(m[1],device.id,'running');if(!run)return send(res,404,{error:'Execução ativa não encontrada'});const b=await body(req);if(m[2]==='files'){if(typeof b.path!=='string'||!b.path||b.path.startsWith('/')||b.path.split(/[\\/]/).includes('..'))throw Error('Caminho inválido');const data=Buffer.from(b.content||'','base64'),h=createHash('sha256').update(data).digest('hex');if(!existsSync(join(root,'blobs',h)))writeFileSync(join(root,'blobs',h),data);db.prepare('INSERT INTO files(run,path,hash,size) VALUES(?,?,?,?)').run(run.id,b.path,h,data.length);return send(res,201,{hash:h})}if(!['success','failed'].includes(b.status))throw Error('Status inválido');db.prepare('UPDATE runs SET finished=?,status=?,error=?,bytes=(SELECT COALESCE(SUM(size),0) FROM files WHERE run=?) WHERE id=?').run(new Date().toISOString(),b.status,String(b.error||'').slice(0,2000),run.id,run.id);return send(res,200,{ok:true})}}
-const user=sessions.get(auth);if(!user)return send(res,401,{error:'Faça login'});
+const user=sessions.get(auth);if(!user||(user.localOnly&&!localRequest(req)))return send(res,401,{error:'Faça login'});
 const browseMatch=p.match(/^\/api\/devices\/([a-f0-9]+)\/browse$/);
 if(browseMatch&&req.method==='POST'){
  const id=browseMatch[1];if(!visible(user,id)||!db.prepare('SELECT id FROM devices WHERE id=?').get(id))return send(res,404,{error:'Computador não encontrado'});
@@ -43,7 +57,7 @@ if(p==='/api/routines'&&req.method==='POST'){const b=await body(req);if(!visible
 const match=p.match(/^\/api\/runs\/([a-f0-9]+)\/files$/);if(match){const r=db.prepare('SELECT * FROM runs WHERE id=?').get(match[1]);if(!r||!visible(user,r.device))return send(res,404,{error:'Execução não encontrada'});if(url.searchParams.has('path')){const f=db.prepare('SELECT * FROM files WHERE run=? AND path=?').get(r.id,url.searchParams.get('path'));if(!f)return send(res,404,{error:'Arquivo não encontrado'});const data=readFileSync(join(root,'blobs',f.hash));if(createHash('sha256').update(data).digest('hex')!==f.hash)throw Error('Integridade inválida');res.setHeader('Content-Type','application/octet-stream');return res.end(data)}return send(res,200,db.prepare('SELECT path,size,hash FROM files WHERE run=?').all(r.id))}
 if(p==='/api/download/client'||p==='/api/download/windows'){
  if(user.role!=='master')return send(res,403,{error:'Somente o master pode baixar instaladores'});
- const name=p.endsWith('/client')?'BackupDesk-Client-0.3.1-x64.exe':'BackupDesk-Master-0.3.1-x64.exe';
+ const name=p.endsWith('/client')?'BackupDesk-Client-0.3.1-x64.exe':'BackupDesk-Master-0.3.2-x64.exe';
  const file=new URL('./dist/'+name,import.meta.url);if(!existsSync(file))return send(res,404,{error:'Instalador não disponível neste servidor'});
  res.setHeader('Content-Type','application/vnd.microsoft.portable-executable');res.setHeader('Content-Disposition','attachment; filename="'+name+'"');return res.end(readFileSync(file));
 }
