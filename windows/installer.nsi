@@ -6,12 +6,12 @@ Unicode True
   !define PRODUCT "BackupDesk Client"
   !define KEY "BackupDeskClient"
   !define FOLDER "BackupDeskClient"
-  OutFile "../windows/build/BackupDesk-Client-0.3.0-x64.exe"
+  OutFile "../windows/build/BackupDesk-Client-0.3.1-x64.exe"
 !else
   !define PRODUCT "BackupDesk Master"
   !define KEY "BackupDesk"
   !define FOLDER "BackupDesk"
-  OutFile "../dist/BackupDesk-Master-0.3.0-x64.exe"
+  OutFile "../dist/BackupDesk-Master-0.3.1-x64.exe"
 !endif
 Name "${PRODUCT} (teste local)"
 InstallDir "$LOCALAPPDATA\${FOLDER}"
@@ -46,7 +46,9 @@ Function .onInit
   Abort
  ${EndIf}
 FunctionEnd
+!include "update.nsh"
 Section "${PRODUCT}" Main
+ Call StopInstalledProcesses
  SetOutPath "$INSTDIR"
  File "build/node.exe"
  File /oname=NODE-LICENSE.txt "build/LICENSE"
@@ -70,7 +72,7 @@ Section "${PRODUCT}" Main
  File "../public/app.js"
  File "../public/style.css"
  SetOutPath "$INSTDIR\dist"
- File "build/BackupDesk-Client-0.3.0-x64.exe"
+ File "build/BackupDesk-Client-0.3.1-x64.exe"
  SetOutPath "$INSTDIR"
  ExecWait '"$INSTDIR\node.exe" "$INSTDIR\server.mjs" --prepare-master' $0
  ${If} $0 != 0
@@ -92,9 +94,10 @@ Section "${PRODUCT}" Main
  WriteUninstaller "$INSTDIR\Uninstall.exe"
  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${KEY}" "DisplayName" "${PRODUCT} (teste local)"
  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${KEY}" "UninstallString" '"$INSTDIR\Uninstall.exe"'
- WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${KEY}" "DisplayVersion" "0.3.0"
+ WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${KEY}" "DisplayVersion" "0.3.1"
 SectionEnd
 Section "Uninstall"
+ Call un.StopInstalledProcesses
 !ifndef CLIENT
  Delete "$DESKTOP\BackupDesk.lnk"
  Delete "$SMPROGRAMS\${FOLDER}\Painel local.lnk"
@@ -106,7 +109,7 @@ Section "Uninstall"
  Delete "$INSTDIR\public\app.js"
  Delete "$INSTDIR\public\style.css"
  RMDir "$INSTDIR\public"
- Delete "$INSTDIR\dist\BackupDesk-Client-0.3.0-x64.exe"
+ Delete "$INSTDIR\dist\BackupDesk-Client-0.3.1-x64.exe"
  RMDir "$INSTDIR\dist"
 !else
  Delete "$DESKTOP\BackupDesk Client.lnk"

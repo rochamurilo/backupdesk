@@ -12,6 +12,6 @@ curl --fail --location "https://nodejs.org/dist/v${version}/SHASUMS256.txt" -o "
 unzip -p "$build_tmp/$archive" "node-v${version}-win-x64/node.exe" > windows/build/node.exe
 unzip -p "$build_tmp/$archive" "node-v${version}-win-x64/LICENSE" > windows/build/LICENSE
 "${MAKENSIS:-makensis}" -DCLIENT windows/installer.nsi
-cp windows/build/BackupDesk-Client-0.3.0-x64.exe dist/
+cp windows/build/BackupDesk-Client-0.3.1-x64.exe dist/
 "${MAKENSIS:-makensis}" windows/installer.nsi
-(cd dist; sha256sum BackupDesk-Master-0.3.0-x64.exe > SHA256SUMS.txt)
+(cd dist; sha256sum BackupDesk-Master-0.3.1-x64.exe > SHA256SUMS.txt)

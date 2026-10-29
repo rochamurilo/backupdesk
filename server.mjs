@@ -43,7 +43,7 @@ if(p==='/api/routines'&&req.method==='POST'){const b=await body(req);if(!visible
 const match=p.match(/^\/api\/runs\/([a-f0-9]+)\/files$/);if(match){const r=db.prepare('SELECT * FROM runs WHERE id=?').get(match[1]);if(!r||!visible(user,r.device))return send(res,404,{error:'Execução não encontrada'});if(url.searchParams.has('path')){const f=db.prepare('SELECT * FROM files WHERE run=? AND path=?').get(r.id,url.searchParams.get('path'));if(!f)return send(res,404,{error:'Arquivo não encontrado'});const data=readFileSync(join(root,'blobs',f.hash));if(createHash('sha256').update(data).digest('hex')!==f.hash)throw Error('Integridade inválida');res.setHeader('Content-Type','application/octet-stream');return res.end(data)}return send(res,200,db.prepare('SELECT path,size,hash FROM files WHERE run=?').all(r.id))}
 if(p==='/api/download/client'||p==='/api/download/windows'){
  if(user.role!=='master')return send(res,403,{error:'Somente o master pode baixar instaladores'});
- const name=p.endsWith('/client')?'BackupDesk-Client-0.3.0-x64.exe':'BackupDesk-Master-0.3.0-x64.exe';
+ const name=p.endsWith('/client')?'BackupDesk-Client-0.3.1-x64.exe':'BackupDesk-Master-0.3.1-x64.exe';
  const file=new URL('./dist/'+name,import.meta.url);if(!existsSync(file))return send(res,404,{error:'Instalador não disponível neste servidor'});
  res.setHeader('Content-Type','application/vnd.microsoft.portable-executable');res.setHeader('Content-Disposition','attachment; filename="'+name+'"');return res.end(readFileSync(file));
 }
@@ -55,6 +55,7 @@ if(!process.argv.includes('--prepare-master')){
  server.listen(Number(process.env.PORT||3000),process.env.HOST||'127.0.0.1',()=>{
   console.log('BackupDesk iniciado. Credenciais iniciais em '+join(root,'initial-admin.txt'));
   if(localMaster){
+   db.prepare("UPDATE runs SET status='failed',finished=?,error='Execução interrompida: o master foi encerrado ou atualizado antes da conclusão',bytes=(SELECT COALESCE(SUM(size),0) FROM files WHERE run=runs.id) WHERE device=? AND status='running'").run(new Date().toISOString(),localMaster.id)
    localAgent=spawn(process.execPath,[fileURLToPath(new URL('./agent.mjs',import.meta.url))],{env:{...process.env,BACKUPDESK_URL:'http://127.0.0.1:'+server.address().port,BACKUPDESK_TOKEN:localMaster.token,BACKUPDESK_AGENT_STATE:join(root,'master-agent-state.json')},stdio:['ignore','inherit','inherit']});
    localAgent.on('error',e=>console.error('Agente local:',e.message));
    localAgent.on('exit',code=>{if(code)console.error('Agente local encerrou com código',code)});

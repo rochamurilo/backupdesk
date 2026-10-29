@@ -1,6 +1,6 @@
-# BackupDesk — versão de teste 0.3.0
+# BackupDesk — versão de teste 0.3.1
 
-[Baixar BackupDesk Master para Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.3.0-x64.exe)
+[Baixar BackupDesk Master para Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.3.1-x64.exe)
 
 ## Master
 
@@ -48,3 +48,10 @@ Em Linux: NSIS, curl, unzip, ripgrep e sha256sum. Execute `bash windows/build.sh
 ## Limites
 
 Use dados de teste. Arquivo individual de até 16 MiB; sem VSS/Outlook, serviço Windows, auto-início no boot, retenção/expurgo, criptografia em repouso, retomada/blocos, alertas de ausência ou revogação de tokens. Arquivos alterados durante a leitura causam falha. Sessões ficam na memória e somem ao reiniciar. Login usa scrypt com salt fixo; precisa de salt aleatório, limitação de tentativas e expiração antes de produção. Sem assinatura digital. Não publicar diretamente na internet nem usar os 4,35 TB planejados antes de implementar essas etapas. Desinstalar preserva dados e configurações locais.
+
+
+## Atualização segura (0.3.1)
+
+Antes de substituir arquivos, o instalador usa o Restart Manager do Windows para identificar processos que usam o `node.exe` da pasta escolhida. Se o BackupDesk estiver aberto, avisa que rotinas em andamento poderão ser interrompidas e solicita confirmação para encerrar esses processos. Não encerra processos Node.js por nome nem afeta outras instalações. Cancelar não substitui arquivos. Se o Windows negar o encerramento ou o executável continuar bloqueado/sem permissão de gravação, a instalação para antes de copiar; permite tentar novamente após fechar as janelas. A desinstalação usa a mesma verificação.
+
+Ao reiniciar o master, execuções locais que ficaram em andamento por um encerramento anterior são marcadas como falha/interrompidas. Execuções de computadores remotos não são alteradas. Banco, credenciais, rotinas e arquivos de backup são preservados. O fluxo nativo de fechamento pelo Restart Manager foi compilado em Linux e ainda exige teste em Windows real; não é possível garantir que nenhum antivírus ou política de permissões bloqueará arquivos.

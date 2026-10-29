@@ -6,7 +6,7 @@ async function download(path,name){try{const r=await fetch('/api/'+path,{headers
 function equipment(){const filter=$('search').value.toLowerCase();const labels={success:'Concluído',failed:'Falha',running:'Em execução'};const localDate=d=>[d.getFullYear(),d.getMonth(),d.getDate()].join('-');$('equipmentRows').innerHTML=state.devices.filter(d=>d.name.toLowerCase().includes(filter)).map(d=>{const runs=state.runs.filter(r=>r.device===d.id),last=runs[0],success=runs.find(r=>r.status==='success');const bars=Array.from({length:28},(_,i)=>{const day=new Date();day.setDate(day.getDate()-27+i);const rs=runs.filter(r=>localDate(new Date(r.started))===localDate(day));const status=rs.some(r=>r.status==='failed')?'failed':rs.some(r=>r.status==='running')?'running':rs.length?'success':'none';return `<span class="bar ${status}" title="${day.toLocaleDateString('pt-BR')}: ${labels[status]||'Sem execução'}"></span>`}).join('');return `<tr><td><b>${esc(d.name)}</b></td><td class="${last?.status||''}">${labels[last?.status]||'Sem backup'}</td><td><div class="bars">${bars}</div></td><td>${success?new Date(success.finished).toLocaleString('pt-BR'):'—'}</td><td>${last?new Intl.NumberFormat('pt-BR',{maximumFractionDigits:2}).format(last.bytes/1048576)+' MiB':'—'}</td></tr>`}).join('')||'<tr><td colspan="5">Nenhum equipamento encontrado.</td></tr>'}
 $('search').oninput=()=>{if(state)equipment()};
 
-$('downloadClient').onclick=()=>download('download/client','BackupDesk-Client-0.3.0-x64.exe');
+$('downloadClient').onclick=()=>download('download/client','BackupDesk-Client-0.3.1-x64.exe');
 
 function displaySources(source){try{return JSON.parse(source).join(' · ')}catch{return source}}
 let pickerDevice='',listing=null,chosen=new Set(),browsing=false;
