@@ -1,4 +1,4 @@
-BACKUPDESK 0.1.0 - INSTALADOR DE TESTE - WINDOWS 10/11 x64
+BACKUPDESK 0.2.0 - INSTALADOR DE TESTE - WINDOWS 10/11 x64
 
 Instala por usuario, sem exigir Node.js separado ou administrador.
 
@@ -9,8 +9,11 @@ TESTE NO MESMO COMPUTADOR
 4. Entre como admin. Cadastre seu computador e copie o token exibido.
 5. Abra Configurar agente no menu Iniciar. Informe a URL local e o token.
 6. Abra Iniciar agente e mantenha a janela aberta.
-7. No painel, cadastre uma rotina com caminho de pasta Windows, por exemplo
-   C:\Users\SeuUsuario\Documents\TesteBackup. Use apenas arquivos de teste.
+7. No painel, selecione seu computador em Nova rotina. Clique em Selecionar
+   arquivos e pastas. Marque arquivos/pastas e clique em Usar selecao.
+   Para rede, informe \\servidor\compartilhamento ou uma unidade mapeada.
+   O agente precisa estar aberto com um usuario que tenha acesso aos caminhos.
+   Tambem pode informar um caminho por linha no campo de origens.
 8. Defina o horario para o minuto atual ou anterior. O agente consulta a cada
    minuto. Veja o resultado no painel e teste Restaurar arquivo.
 
@@ -34,3 +37,8 @@ Token salvo em agent-config.json na pasta do usuario. Nao compartilhe esse
 arquivo. Feche as janelas de painel/agente antes de atualizar ou desinstalar.
 A desinstalacao preserva configuracoes, credenciais e backups em disco.
 Apague-os manualmente somente se nao precisar mais deles.
+
+ATUALIZAR DE 0.1.0
+Feche Painel local e Iniciar agente antes de instalar na mesma pasta.
+Dados e configuracao sao preservados. Reabra ambos e atualize o navegador
+com Ctrl+F5. Painel e agente precisam estar na versao 0.2.0 para navegar.

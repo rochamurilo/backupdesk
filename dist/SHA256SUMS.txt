@@ -1,1 +1,1 @@
-52117bff4ec336bee3bc1cabe7d2b73a24b5420a1d3effa3aefb25c8f516c239  BackupDesk-Setup-0.1.0-x64.exe
+ea4ac34d26b6d2a39694d48a01566b2ab6e860a74f774ee848dd2c292395b04f  BackupDesk-Setup-0.2.0-x64.exe

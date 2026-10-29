@@ -1,5 +1,7 @@
 # BackupDesk — protótipo local
 
+[Baixar instalador Windows x64 0.2.0](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Setup-0.2.0-x64.exe)
+
 Painel e API Node.js 24 com SQLite, sem dependências de terceiros. Interface inspirada na organização de consoles de proteção de dados: indicadores, tabela de equipamentos, histórico de 28 dias, calendário mensal e restauração por arquivo.
 
 ## Executar
@@ -15,7 +17,7 @@ No painel, crie um usuário client e cadastre um computador associado a ele. Gua
 
 ## Testar backup real
 
-Com Node.js 24 instalado no computador de teste, baixe `agent.mjs` no painel e defina `BACKUPDESK_URL` e `BACKUPDESK_TOKEN` no ambiente do processo. Não salve tokens no repositório.
+Com Node.js 24 instalado no computador de teste, baixe e extraia o pacote do agente no painel (mantenha `agent.mjs` e `filesystem.mjs` juntos) e defina `BACKUPDESK_URL` e `BACKUPDESK_TOKEN` no ambiente do processo. Não salve tokens no repositório.
 
 ```sh
 node agent.mjs --once /caminho/da/pasta-de-teste
@@ -43,8 +45,15 @@ O login usa scrypt com salt fixo nesta versão e deve migrar para salt aleatóri
 
 ## Instalador Windows x64
 
-O artefato `dist/BackupDesk-Setup-0.1.0-x64.exe` instala o painel local e o agente por usuário, com runtime Node.js incluído. Windows 10/11 x64. No menu Iniciar: **Painel local**, **Configurar agente**, **Iniciar agente** e **Instruções**. Acesse o painel e cadastre um computador para obter o token antes de configurar o agente. O mesmo pacote pode ser usado só como agente: não abra Painel local nessa máquina.
+O artefato `dist/BackupDesk-Setup-0.2.0-x64.exe` instala o painel local e o agente por usuário, com runtime Node.js incluído. Windows 10/11 x64. No menu Iniciar: **Painel local**, **Configurar agente**, **Iniciar agente** e **Instruções**. Acesse o painel e cadastre um computador para obter o token antes de configurar o agente. O mesmo pacote pode ser usado só como agente: não abra Painel local nessa máquina.
 
 Consulte [as instruções completas](windows/LEIA-ME.txt). O instalador não tem assinatura digital e não foi executado em Windows neste ambiente Linux. Não instala serviço nem inicia com o Windows. Configuração e dados locais são preservados na desinstalação. O script PowerShell respeita a política de execução do computador; políticas corporativas podem exigir aprovação/assinatura do script.
 
 Para recompilar em Linux: instale NSIS, curl, unzip, ripgrep e sha256sum e execute `bash windows/build.sh`. Opcionalmente, defina `MAKENSIS` e `NSISDIR` para um compilador extraído em diretório local. O script baixa Node.js 24.19.0 oficial e confere SHA-256 antes de empacotar. Não inclui credenciais nem dados de desenvolvimento. O instalador pode ser baixado por usuários autenticados no painel quando o artefato estiver presente em `dist/`.
+
+
+## Selecionar discos, arquivos e rede (0.2.0)
+
+O campo Computador em Nova rotina lista os equipamentos cadastrados; sem equipamentos, orienta o cadastro e bloqueia salvar. Depois de configurar e abrir o agente, use **Selecionar arquivos e pastas**. O painel envia a consulta ao agente autorizado; não enumera arquivos do navegador nem do servidor central. Permite selecionar múltiplas pastas e arquivos, listar unidades Windows e abrir caminhos UNC ou unidades mapeadas acessíveis ao usuário do agente. Compartilhamentos exigem autenticação prévia no Windows; não coletamos senha de rede no painel. O seletor limita cada listagem a 1.000 entradas e permite informar caminhos específicos. Links simbólicos não são listados.
+
+O backup usa namespaces numerados quando há múltiplas origens para evitar colisões de nomes. Rotinas antigas de pasta única continuam válidas. Arquivos ainda têm limite de 16 MiB. Para atualizar, feche painel/agente, execute o instalador na mesma pasta, reabra ambos e use Ctrl+F5 no navegador. Dados e tokens são preservados. Testes automatizados em Linux cobrem navegação pelo agente, seleção múltipla, backup e isolamento de usuários; unidades Windows/rede precisam de validação no Windows real.

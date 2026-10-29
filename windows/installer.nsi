@@ -3,7 +3,7 @@ Unicode True
 !include "x64.nsh"
 !include "LogicLib.nsh"
 Name "BackupDesk (teste local)"
-OutFile "../dist/BackupDesk-Setup-0.1.0-x64.exe"
+OutFile "../dist/BackupDesk-Setup-0.2.0-x64.exe"
 InstallDir "$LOCALAPPDATA\BackupDesk"
 RequestExecutionLevel user
 SetCompressor /SOLID lzma
@@ -29,6 +29,7 @@ Section "BackupDesk" Main
   File /oname=NODE-LICENSE.txt "build/LICENSE"
   File "../server.mjs"
   File "../agent.mjs"
+  File "../filesystem.mjs"
   File "launch-agent.mjs"
   File "Configure.ps1"
   File "Painel.cmd"
@@ -49,7 +50,7 @@ Section "BackupDesk" Main
   WriteUninstaller "$INSTDIR\Uninstall.exe"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\BackupDesk" "DisplayName" "BackupDesk (teste local)"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\BackupDesk" "UninstallString" '"$INSTDIR\Uninstall.exe"'
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\BackupDesk" "DisplayVersion" "0.1.0"
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\BackupDesk" "DisplayVersion" "0.2.0"
 SectionEnd
 Section "Uninstall"
   Delete "$DESKTOP\BackupDesk.lnk"
@@ -62,6 +63,7 @@ Section "Uninstall"
   Delete "$INSTDIR\NODE-LICENSE.txt"
   Delete "$INSTDIR\server.mjs"
   Delete "$INSTDIR\agent.mjs"
+  Delete "$INSTDIR\filesystem.mjs"
   Delete "$INSTDIR\launch-agent.mjs"
   Delete "$INSTDIR\Configure.ps1"
   Delete "$INSTDIR\Painel.cmd"
