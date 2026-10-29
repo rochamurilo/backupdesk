@@ -1,67 +1,44 @@
-# BackupDesk — versão de teste 0.3.3
+# BackupDesk 0.4.0 — versão de teste
 
-[Baixar BackupDesk Master para Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.3.3-x64.exe)
+[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.4.0-x64.exe)
 
-## Master
+## Usar
 
-Instale em Windows 10/11 x64. Ao instalar, o programa prepara o banco e cadastra automaticamente o próprio computador, sem duplicá-lo nas próximas inicializações. Ao concluir, deixe marcada a opção **Abrir master e criar rotinas**. O atalho **BackupDesk > Painel local** abre o navegador quando o servidor está disponível e inicia o agente local automaticamente.
+Instale o Master na mesma pasta da versão anterior. O instalador preserva banco, credenciais, rotinas e backups. Se necessário, solicita encerrar os processos da instalação para atualizar. O master abre direto no painel local sem senha, cadastra o computador local e inicia o agente automaticamente.
 
-O master local abre direto no painel, sem usuário ou senha. A conta `admin` é preservada para acesso autenticado pela rede. Em Nova rotina, o computador local já estará disponível. Use Selecionar arquivos e pastas, escolha as origens e salve. Não precisa configurar token nem abrir outro agente no master. O master e o agente local funcionam em segundo plano, sem console. Fechar o navegador não interrompe backups; use **Encerrar BackupDesk** no painel.
+- **Visão geral:** equipamentos, resultados e calendário.
+- **Backup:** computador, arquivos/pastas de origem, frequência diária/semanal/mensal e horário.
+- **Restauração:** selecione computador, versão concluída e arquivo para recuperar pelo navegador. O navegador escolhe a pasta de download; esta versão não sobrescreve automaticamente a origem.
 
-Para atualizar de 0.1/0.2, feche painel e agentes anteriores, instale na mesma pasta e reabra. Use Ctrl+F5 no navegador. Cadastros, tokens, rotinas e backups são preservados.
+Não há botão de encerrar. Fechar o navegador mantém o aplicativo em segundo plano. O instalador registra inicialização automática do master e do client ao entrar na sessão do Windows (HKCU Run), sem abrir navegador no login. Não é um serviço antes do login; o usuário precisa ter iniciado sessão. Isso preserva permissões de unidades mapeadas. Computador desligado ou em suspensão não executa backups. O sistema operacional pode encerrar o aplicativo; o supervisor reinicia o servidor/agente após falhas enquanto estiver ativo.
 
-## Client
+## Clients
 
-No canto inferior esquerdo do painel master há **Baixar client Windows**. O botão só aparece para o perfil master; a API também bloqueia o download para clientes e usuários não autenticados. O master inclui o instalador client, permitindo baixar pelo próprio painel sem acesso ao GitHub. O binário client não é publicado separadamente no repositório.
+Baixe o instalador **Client** pelo botão no canto inferior esquerdo do master (somente perfil master). No diálogo **Vincular client**, cadastre o equipamento e obtenha o token. Configure URL HTTPS do master e token no client; ele inicia em segundo plano e nas próximas sessões Windows. O client não instala painel administrativo. Credenciais de usuários client são gerenciadas no mesmo diálogo, fora da tela principal. Cada usuário/agent só acessa seus equipamentos autorizados. O instalador não contém tokens.
 
-O client instala em `%LOCALAPPDATA%\BackupDeskClient`, sem servidor, painel administrativo ou banco local. No master, cadastre o equipamento e associe-o ao usuário client desejado; informe a URL do master e o token no assistente do client. Ao salvar, o agente inicia. Ele só recebe as rotinas do equipamento vinculado ao seu token. Usuários client acessam o painel central com suas credenciais e só veem seus equipamentos. O instalador não inclui contas ou tokens.
+O endereço 127.0.0.1 é local; computadores diferentes exigem uma URL HTTPS acessível, ainda não configurada pelo instalador. A API escuta somente na interface local por padrão. Ao publicar na rede, a autenticação continua obrigatória; a sessão automática exige master vinculado ao loopback e requisição da mesma origem.
 
-A URL local `127.0.0.1` só funciona no mesmo computador. Para computadores diferentes, o servidor precisa ser acessível por uma URL HTTPS configurada. Hospedagem e HTTPS ainda não são configurados pelo instalador. O servidor escuta somente na interface local por padrão. Clientes ainda exigem a janela do agente aberta.
+## Arquivos e agendamento
 
-O controle de download exige login master. Como qualquer software distribuído, uma cópia do instalador pode ser compartilhada por quem o baixar; isso não concede acesso administrativo ao servidor.
+O seletor consulta o computador do agente, incluindo discos locais, unidades mapeadas e caminhos UNC (`\\servidor\compartilhamento`) acessíveis ao usuário. Credenciais de rede devem estar configuradas no Windows. Permite múltiplas origens e limita a listagem a 1.000 entradas. Links simbólicos são ignorados. Origens múltiplas usam namespaces numerados para evitar colisões.
 
-## Origens e agendamento
+Semanais executam nas segundas; mensais no dia 1. O agente verifica horários a cada minuto e não recupera dias perdidos. Rotinas antigas de pasta única continuam válidas.
 
-Selecione múltiplos arquivos e pastas no computador do agente. O seletor consulta o agente autorizado, não o disco do navegador ou do servidor central. Lista unidades Windows e permite informar caminhos UNC (`\\servidor\compartilhamento`) e unidades mapeadas acessíveis ao usuário do agente. Credenciais de rede devem estar configuradas no Windows. Cada listagem tem limite de 1.000 entradas. Links simbólicos são ignorados.
+## Desenvolvimento e compilação
 
-As rotinas são diárias, semanais às segundas e mensais no dia 1, após o horário local escolhido. O agente verifica horários a cada minuto; o estado local evita repetir a rotina no mesmo dia. Não recupera dias perdidos. Origens múltiplas são armazenadas em namespaces numerados para evitar colisões. Rotinas antigas de pasta única continuam válidas.
-
-## Desenvolvimento
-
-Node.js 24, sem dependências externas:
+Node.js 24, sem dependências de terceiros:
 
 ```sh
 npm start
 npm test
 ```
 
-`npm start` inicia o master com agente local automático. `node server.mjs` executa somente a API, sem preparar um equipamento local. `DATA_DIR`, `HOST`, `PORT` e `ADMIN_PASSWORD` (somente primeira criação de usuário) são opcionais. O banco é SQLite e os arquivos são objetos SHA-256 em `data/blobs`. Credenciais nunca devem ser adicionadas ao Git.
+`npm start` inicia o supervisor do master e agente local. `node server.mjs` executa somente a API. `DATA_DIR`, `HOST`, `PORT`, `ADMIN_PASSWORD` (primeira criação de usuário) são opcionais. `node master.mjs --background` não abre navegador. Logs em `data/startup.log`; no client, `data/agent.log`. O banco SQLite e blobs SHA-256 ficam em `data/`.
 
-Para um agente de desenvolvimento separado, mantenha `agent.mjs` e `filesystem.mjs` juntos, defina `BACKUPDESK_URL`/`BACKUPDESK_TOKEN` no ambiente e execute `node agent.mjs`. Para envio único: `node agent.mjs --once /caminho/absoluto`. `BACKUPDESK_AGENT_STATE` configura o arquivo de estado.
+Para compilar no Linux: NSIS, curl, unzip, ripgrep, sha256sum e `bash windows/build.sh`. O script verifica SHA-256 do Node.js 24.19.0 oficial, compila os launchers GUI, depois client e master com client embutido. `MAKENSIS`/`NSISDIR` podem selecionar compilador extraído localmente. Atualização e desinstalação usam Restart Manager para encerrar somente processos que utilizam o executável da instalação. Desinstalar remove HKCU Run e preserva os dados.
 
-Testes cobrem autenticação, isolamento client, envio/restauração, seleção múltipla, navegação via agente e bootstrap automático/idempotente do master. O seletor também foi validado em Chromium no Linux. Instalação e acesso a unidades de rede precisam de validação no Windows real.
-
-## Compilar instaladores
-
-Em Linux: NSIS, curl, unzip, ripgrep e sha256sum. Execute `bash windows/build.sh`. O script baixa Node.js 24.19.0 oficial e verifica SHA-256. Opcionalmente defina `MAKENSIS` e `NSISDIR` para um compilador local. Compila primeiro o client em `windows/build`, depois o master com o client embutido. O arquivo de checksum do master fica em `dist/SHA256SUMS.txt`.
+Os testes exercitam backup/restauração, isolamento, seleção de arquivos, bootstrap, sessões locais, execução contínua e reinício do servidor. Fluxos de interface são conferidos em Chromium no Linux. Instaladores, registro de início automático e unidades de rede precisam de validação no Windows real.
 
 ## Limites
 
-Use dados de teste. Arquivo individual de até 16 MiB; sem VSS/Outlook, serviço Windows, auto-início no boot, retenção/expurgo, criptografia em repouso, retomada/blocos, alertas de ausência ou revogação de tokens. Arquivos alterados durante a leitura causam falha. Sessões ficam na memória e somem ao reiniciar. Login usa scrypt com salt fixo; precisa de salt aleatório, limitação de tentativas e expiração antes de produção. Sem assinatura digital. Não publicar diretamente na internet nem usar os 4,35 TB planejados antes de implementar essas etapas. Desinstalar preserva dados e configurações locais.
-
-
-## Atualização segura (0.3.3)
-
-Antes de substituir arquivos, o instalador usa o Restart Manager do Windows para identificar processos que usam o `node.exe` da pasta escolhida. Se o BackupDesk estiver aberto, avisa que rotinas em andamento poderão ser interrompidas e solicita confirmação para encerrar esses processos. Não encerra processos Node.js por nome nem afeta outras instalações. Cancelar não substitui arquivos. Se o Windows negar o encerramento ou o executável continuar bloqueado/sem permissão de gravação, a instalação para antes de copiar; permite tentar novamente após fechar as janelas. A desinstalação usa a mesma verificação.
-
-Ao reiniciar o master, execuções locais que ficaram em andamento por um encerramento anterior são marcadas como falha/interrompidas. Execuções de computadores remotos não são alteradas. Banco, credenciais, rotinas e arquivos de backup são preservados. O fluxo nativo de fechamento pelo Restart Manager foi compilado em Linux e ainda exige teste em Windows real; não é possível garantir que nenhum antivírus ou política de permissões bloqueará arquivos.
-
-
-## Abertura local sem senha (master 0.3.3)
-
-Somente o master iniciado pelo atalho ou por `npm start`, vinculado a uma interface de loopback, permite a abertura automática. A sessão local só é emitida por POST da mesma origem com Host local e conexão local. Não usa cabeçalhos encaminhados para decidir acesso. Sessões locais não são aceitas com Host externo e o botão Sair fica oculto nesse modo. A API iniciada sem modo master e acessos de rede continuam exigindo autenticação. O client permanece na versão 0.3.1, sem mudanças.
-
-
-## Inicialização sem console (0.3.3)
-
-O atalho e a conclusão do instalador abrem `BackupDesk.exe`, um launcher GUI nativo que inicia o master com `CREATE_NO_WINDOW`. O preparo do banco durante a instalação usa `nsExec`, sem console selecionável. Servidor e agente são iniciados com janelas ocultas e os logs de inicialização ficam em `data/startup.log`. O navegador só abre após a API responder como master; falhas abrem uma página de diagnóstico. Abrir o atalho novamente reutiliza o master já ativo. O painel local oferece **Encerrar BackupDesk**, com confirmação para interromper backups. O launcher Windows foi compilado em Linux e precisa de validação no Windows real.
+Use dados de teste. Arquivo individual até 16 MiB; sem VSS/Outlook aberto, serviço Windows antes do login, retenção/expurgo, criptografia em repouso, transferências por blocos/retomada, alertas de ausência ou revogação de tokens. Arquivos alterados durante leitura causam falha. Sessões ficam na memória. Login remoto precisa de melhorias antes de produção (salt aleatório, expiração e limitação de tentativas). Instaladores sem assinatura digital. Não usar como única cópia de dados nem publicar diretamente na internet nesta versão.

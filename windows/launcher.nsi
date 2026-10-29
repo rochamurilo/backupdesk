@@ -1,7 +1,12 @@
 Unicode True
 !include "LogicLib.nsh"
+!include "FileFunc.nsh"
 Name "BackupDesk"
-OutFile "build/BackupDesk.exe"
+!ifdef CLIENT
+ OutFile "build/BackupDeskClient.exe"
+!else
+ OutFile "build/BackupDesk.exe"
+!endif
 RequestExecutionLevel user
 SilentInstall silent
 AutoCloseWindow true
@@ -10,7 +15,18 @@ Section
  ; console QuickEdit/selection from pausing the master or its startup.
  System::Call '*(i 68, p 0, p 0, p 0, i 0, i 0, i 0, i 0, i 0, i 0, i 0, i 0, &i2 0, &i2 0, p 0, p 0, p 0, p 0) p.r0'
  System::Call '*(p 0, p 0, i 0, i 0) p.r1'
- StrCpy $3 '"$EXEDIR\node.exe" "$EXEDIR\master.mjs"'
+!ifdef CLIENT
+ StrCpy $3 '"$EXEDIR\node.exe" "$EXEDIR\launch-agent.mjs"'
+ IfFileExists "$EXEDIR\agent-config.json" +2 0
+ Quit
+!else
+ ${GetParameters} $4
+ ${If} $4 == "/background"
+  StrCpy $3 '"$EXEDIR\node.exe" "$EXEDIR\master.mjs" --background'
+ ${Else}
+  StrCpy $3 '"$EXEDIR\node.exe" "$EXEDIR\master.mjs"'
+ ${EndIf}
+!endif
  System::Call '*(&w${NSIS_MAX_STRLEN} r3) p.r2'
  System::Call 'kernel32::CreateProcessW(w "$EXEDIR\node.exe", p r2, p 0, p 0, i 0, i 0x08000000, p 0, w "$EXEDIR", p r0, p r1) i.r3'
  ${If} $3 == 0

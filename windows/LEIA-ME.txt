@@ -1,38 +1,20 @@
-BACKUPDESK MASTER 0.3.3 / CLIENT 0.3.1 - MASTER E CLIENT - TESTE WINDOWS 10/11 x64
+BACKUPDESK MASTER E CLIENT 0.4.0 - TESTE WINDOWS x64
 
-MASTER
-Instale o Master e deixe marcada Abrir master e criar rotinas ao concluir.
-O computador local e cadastrado automaticamente e o agente inicia junto.
-O painel local abre direto, sem pedir usuario ou senha.
-A conta admin e preservada para futuros acessos autenticados pela rede.
-Crie as rotinas escolhendo o computador local e os arquivos/pastas.
-Nao precisa configurar token nem iniciar outro agente nesta maquina.
-O Master funciona em segundo plano, sem janela preta. Fechar o navegador
-nao encerra os backups. Use Encerrar BackupDesk no painel para parar.
-Nao instala servico nem inicia no boot.
+O master abre direto, sem senha local. Use as abas Backup e Restauracao.
+Escolha as origens, frequencia e horario na aba Backup. Na Restauracao,
+selecione computador, versao concluida e arquivo para baixar uma copia.
+O cadastro de outros computadores fica em Vincular client, na Visao geral.
+Baixe o instalador client pelo botao no canto inferior esquerdo do master.
 
-CLIENT
-Baixe pelo botao Baixar client Windows, no canto inferior esquerdo do painel
-Master. Somente usuarios master podem acessar esse download.
-O instalador Client nao instala painel, API ou banco administrativo.
-Cadastre o equipamento no master e informe sua URL e o token no assistente
-do client. Ao salvar, o agente inicia. Mantenha sua janela aberta.
-Para acesso de outro computador, o master precisa de URL HTTPS acessivel;
-127.0.0.1 aponta sempre para o proprio computador.
+Master e client funcionam em segundo plano, sem janela preta. Fechar o
+navegador nao encerra backups. A inicializacao automatica acontece ao entrar
+na sessao do Windows; nao e servico antes do login. O supervisor reinicia
+processos que falharem. O computador precisa estar ligado e fora de suspensao.
+O client so inicia apos configuracao da URL e token fornecidos pelo master.
+A desinstalacao remove a inicializacao automatica e preserva dados locais.
 
-ATUALIZAR
-Feche as janelas de Master e agentes antes de instalar na mesma pasta.
-Dados, configuracoes e rotinas sao preservados. Reabra e use Ctrl+F5 no painel.
-O master antigo pode ter um equipamento cadastrado manualmente; ele e
-preservado. O novo equipamento com nome Master local e vinculado automaticamente.
-
-LIMITES
-Use arquivos de teste, ate 16 MiB cada. Sem VSS/Outlook aberto, servico Windows,
-retencao automatica, criptografia em repouso ou assinatura digital.
-O instalador foi compilado em Linux; valide o funcionamento no seu Windows.
-Rede exige que o usuario do agente tenha acesso as unidades/compartilhamentos.
-A desinstalacao preserva os backups e configuracoes em disco.
-
-SE O PAINEL NAO ABRIR
-Consulte %LOCALAPPDATA%\BackupDesk\data\startup.log. Uma falha ao iniciar
-abre uma pagina com orientacoes. O navegador so abre quando o painel responde.
+A atualizacao pode encerrar os processos desta instalacao, com aviso.
+Nao apague a pasta data. Logs do master: data\startup.log.
+Rede exige permissao do usuario. Teste com arquivos de ate 16 MiB.
+Sem VSS/Outlook aberto e sem assinatura digital. Instaladores compilados em
+Linux; valide a inicializacao automatica e as unidades no Windows real.
