@@ -1,12 +1,12 @@
-# BackupDesk — versão de teste 0.3.2
+# BackupDesk — versão de teste 0.3.3
 
-[Baixar BackupDesk Master para Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.3.2-x64.exe)
+[Baixar BackupDesk Master para Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.3.3-x64.exe)
 
 ## Master
 
 Instale em Windows 10/11 x64. Ao instalar, o programa prepara o banco e cadastra automaticamente o próprio computador, sem duplicá-lo nas próximas inicializações. Ao concluir, deixe marcada a opção **Abrir master e criar rotinas**. O atalho **BackupDesk > Painel local** abre o navegador quando o servidor está disponível e inicia o agente local automaticamente.
 
-O master local abre direto no painel, sem usuário ou senha. A conta `admin` é preservada para acesso autenticado pela rede. Em Nova rotina, o computador local já estará disponível. Use Selecionar arquivos e pastas, escolha as origens e salve. Não precisa configurar token nem abrir outro agente no master. O painel e o agente local funcionam enquanto a janela do master estiver aberta.
+O master local abre direto no painel, sem usuário ou senha. A conta `admin` é preservada para acesso autenticado pela rede. Em Nova rotina, o computador local já estará disponível. Use Selecionar arquivos e pastas, escolha as origens e salve. Não precisa configurar token nem abrir outro agente no master. O master e o agente local funcionam em segundo plano, sem console. Fechar o navegador não interrompe backups; use **Encerrar BackupDesk** no painel.
 
 Para atualizar de 0.1/0.2, feche painel e agentes anteriores, instale na mesma pasta e reabra. Use Ctrl+F5 no navegador. Cadastros, tokens, rotinas e backups são preservados.
 
@@ -50,13 +50,18 @@ Em Linux: NSIS, curl, unzip, ripgrep e sha256sum. Execute `bash windows/build.sh
 Use dados de teste. Arquivo individual de até 16 MiB; sem VSS/Outlook, serviço Windows, auto-início no boot, retenção/expurgo, criptografia em repouso, retomada/blocos, alertas de ausência ou revogação de tokens. Arquivos alterados durante a leitura causam falha. Sessões ficam na memória e somem ao reiniciar. Login usa scrypt com salt fixo; precisa de salt aleatório, limitação de tentativas e expiração antes de produção. Sem assinatura digital. Não publicar diretamente na internet nem usar os 4,35 TB planejados antes de implementar essas etapas. Desinstalar preserva dados e configurações locais.
 
 
-## Atualização segura (0.3.2)
+## Atualização segura (0.3.3)
 
 Antes de substituir arquivos, o instalador usa o Restart Manager do Windows para identificar processos que usam o `node.exe` da pasta escolhida. Se o BackupDesk estiver aberto, avisa que rotinas em andamento poderão ser interrompidas e solicita confirmação para encerrar esses processos. Não encerra processos Node.js por nome nem afeta outras instalações. Cancelar não substitui arquivos. Se o Windows negar o encerramento ou o executável continuar bloqueado/sem permissão de gravação, a instalação para antes de copiar; permite tentar novamente após fechar as janelas. A desinstalação usa a mesma verificação.
 
 Ao reiniciar o master, execuções locais que ficaram em andamento por um encerramento anterior são marcadas como falha/interrompidas. Execuções de computadores remotos não são alteradas. Banco, credenciais, rotinas e arquivos de backup são preservados. O fluxo nativo de fechamento pelo Restart Manager foi compilado em Linux e ainda exige teste em Windows real; não é possível garantir que nenhum antivírus ou política de permissões bloqueará arquivos.
 
 
-## Abertura local sem senha (master 0.3.2)
+## Abertura local sem senha (master 0.3.3)
 
 Somente o master iniciado pelo atalho ou por `npm start`, vinculado a uma interface de loopback, permite a abertura automática. A sessão local só é emitida por POST da mesma origem com Host local e conexão local. Não usa cabeçalhos encaminhados para decidir acesso. Sessões locais não são aceitas com Host externo e o botão Sair fica oculto nesse modo. A API iniciada sem modo master e acessos de rede continuam exigindo autenticação. O client permanece na versão 0.3.1, sem mudanças.
+
+
+## Inicialização sem console (0.3.3)
+
+O atalho e a conclusão do instalador abrem `BackupDesk.exe`, um launcher GUI nativo que inicia o master com `CREATE_NO_WINDOW`. O preparo do banco durante a instalação usa `nsExec`, sem console selecionável. Servidor e agente são iniciados com janelas ocultas e os logs de inicialização ficam em `data/startup.log`. O navegador só abre após a API responder como master; falhas abrem uma página de diagnóstico. Abrir o atalho novamente reutiliza o master já ativo. O painel local oferece **Encerrar BackupDesk**, com confirmação para interromper backups. O launcher Windows foi compilado em Linux e precisa de validação no Windows real.

@@ -10,10 +10,10 @@ Unicode True
   OutFile "../windows/build/BackupDesk-Client-0.3.1-x64.exe"
 !else
   !define PRODUCT "BackupDesk Master"
-  !define VERSION "0.3.2"
+  !define VERSION "0.3.3"
   !define KEY "BackupDesk"
   !define FOLDER "BackupDesk"
-  OutFile "../dist/BackupDesk-Master-0.3.2-x64.exe"
+  OutFile "../dist/BackupDesk-Master-0.3.3-x64.exe"
 !endif
 Name "${PRODUCT} (teste local)"
 InstallDir "$LOCALAPPDATA\${FOLDER}"
@@ -25,7 +25,7 @@ SetCompressor /SOLID lzma
  !define MUI_FINISHPAGE_RUN "$INSTDIR\Configurar.cmd"
  !define MUI_FINISHPAGE_RUN_TEXT "Configurar este client"
 !else
- !define MUI_FINISHPAGE_RUN "$INSTDIR\Painel.cmd"
+ !define MUI_FINISHPAGE_RUN "$INSTDIR\BackupDesk.exe"
  !define MUI_FINISHPAGE_RUN_TEXT "Abrir master e criar rotinas"
 !endif
 !insertmacro MUI_PAGE_WELCOME
@@ -39,7 +39,7 @@ Function LaunchInstalled
 !ifdef CLIENT
  ExecShell "open" "$INSTDIR\Configurar.cmd"
 !else
- ExecShell "open" "$INSTDIR\Painel.cmd"
+ ExecShell "open" "$INSTDIR\BackupDesk.exe"
 !endif
 FunctionEnd
 Function .onInit
@@ -69,6 +69,7 @@ Section "${PRODUCT}" Main
  File "../local-master.mjs"
  File "../master.mjs"
  File "Painel.cmd"
+ File "build/BackupDesk.exe"
  SetOutPath "$INSTDIR\public"
  File "../public/index.html"
  File "../public/app.js"
@@ -76,12 +77,14 @@ Section "${PRODUCT}" Main
  SetOutPath "$INSTDIR\dist"
  File "build/BackupDesk-Client-0.3.1-x64.exe"
  SetOutPath "$INSTDIR"
- ExecWait '"$INSTDIR\node.exe" "$INSTDIR\server.mjs" --prepare-master' $0
+ nsExec::ExecToStack '"$INSTDIR\node.exe" "$INSTDIR\server.mjs" --prepare-master'
+ Pop $0
+ Pop $1
  ${If} $0 != 0
   MessageBox MB_OK "Não foi possível preparar o master. Confira as permissões da pasta e abra Painel local para consultar o erro."
  ${EndIf}
- CreateShortcut "$SMPROGRAMS\${FOLDER}\Painel local.lnk" "$INSTDIR\Painel.cmd"
- CreateShortcut "$DESKTOP\BackupDesk.lnk" "$INSTDIR\Painel.cmd"
+ CreateShortcut "$SMPROGRAMS\${FOLDER}\Painel local.lnk" "$INSTDIR\BackupDesk.exe"
+ CreateShortcut "$DESKTOP\BackupDesk.lnk" "$INSTDIR\BackupDesk.exe"
 !else
  CreateShortcut "$DESKTOP\BackupDesk Client.lnk" "$INSTDIR\Agente.cmd"
 !endif
@@ -107,6 +110,7 @@ Section "Uninstall"
  Delete "$INSTDIR\local-master.mjs"
  Delete "$INSTDIR\master.mjs"
  Delete "$INSTDIR\Painel.cmd"
+ Delete "$INSTDIR\BackupDesk.exe"
  Delete "$INSTDIR\public\index.html"
  Delete "$INSTDIR\public\app.js"
  Delete "$INSTDIR\public\style.css"

@@ -1,4 +1,4 @@
-BACKUPDESK MASTER 0.3.2 / CLIENT 0.3.1 - MASTER E CLIENT - TESTE WINDOWS 10/11 x64
+BACKUPDESK MASTER 0.3.3 / CLIENT 0.3.1 - MASTER E CLIENT - TESTE WINDOWS 10/11 x64
 
 MASTER
 Instale o Master e deixe marcada Abrir master e criar rotinas ao concluir.
@@ -7,7 +7,9 @@ O painel local abre direto, sem pedir usuario ou senha.
 A conta admin e preservada para futuros acessos autenticados pela rede.
 Crie as rotinas escolhendo o computador local e os arquivos/pastas.
 Nao precisa configurar token nem iniciar outro agente nesta maquina.
-Mantenha a janela do Master aberta. Nao instala servico nem inicia no boot.
+O Master funciona em segundo plano, sem janela preta. Fechar o navegador
+nao encerra os backups. Use Encerrar BackupDesk no painel para parar.
+Nao instala servico nem inicia no boot.
 
 CLIENT
 Baixe pelo botao Baixar client Windows, no canto inferior esquerdo do painel
@@ -30,3 +32,7 @@ retencao automatica, criptografia em repouso ou assinatura digital.
 O instalador foi compilado em Linux; valide o funcionamento no seu Windows.
 Rede exige que o usuario do agente tenha acesso as unidades/compartilhamentos.
 A desinstalacao preserva os backups e configuracoes em disco.
+
+SE O PAINEL NAO ABRIR
+Consulte %LOCALAPPDATA%\BackupDesk\data\startup.log. Uma falha ao iniciar
+abre uma pagina com orientacoes. O navegador so abre quando o painel responde.
