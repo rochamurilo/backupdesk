@@ -2,14 +2,30 @@ Unicode True
 !include "MUI2.nsh"
 !include "x64.nsh"
 !include "LogicLib.nsh"
-Name "BackupDesk (teste local)"
-OutFile "../dist/BackupDesk-Setup-0.2.0-x64.exe"
-InstallDir "$LOCALAPPDATA\BackupDesk"
+!ifdef CLIENT
+  !define PRODUCT "BackupDesk Client"
+  !define KEY "BackupDeskClient"
+  !define FOLDER "BackupDeskClient"
+  OutFile "../windows/build/BackupDesk-Client-0.3.0-x64.exe"
+!else
+  !define PRODUCT "BackupDesk Master"
+  !define KEY "BackupDesk"
+  !define FOLDER "BackupDesk"
+  OutFile "../dist/BackupDesk-Master-0.3.0-x64.exe"
+!endif
+Name "${PRODUCT} (teste local)"
+InstallDir "$LOCALAPPDATA\${FOLDER}"
 RequestExecutionLevel user
 SetCompressor /SOLID lzma
 !define MUI_ABORTWARNING
-!define MUI_FINISHPAGE_SHOWREADME "$INSTDIR\LEIA-ME.txt"
-!define MUI_FINISHPAGE_SHOWREADME_TEXT "Ler instruções de teste"
+!define MUI_FINISHPAGE_RUN_FUNCTION LaunchInstalled
+!ifdef CLIENT
+ !define MUI_FINISHPAGE_RUN "$INSTDIR\Configurar.cmd"
+ !define MUI_FINISHPAGE_RUN_TEXT "Configurar este client"
+!else
+ !define MUI_FINISHPAGE_RUN "$INSTDIR\Painel.cmd"
+ !define MUI_FINISHPAGE_RUN_TEXT "Abrir master e criar rotinas"
+!endif
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_INSTFILES
@@ -17,64 +33,98 @@ SetCompressor /SOLID lzma
 !insertmacro MUI_UNPAGE_CONFIRM
 !insertmacro MUI_UNPAGE_INSTFILES
 !insertmacro MUI_LANGUAGE "PortugueseBR"
-Function .onInit
-  ${IfNot} ${RunningX64}
-    MessageBox MB_OK "Este instalador requer Windows x64."
-    Abort
-  ${EndIf}
+Function LaunchInstalled
+!ifdef CLIENT
+ ExecShell "open" "$INSTDIR\Configurar.cmd"
+!else
+ ExecShell "open" "$INSTDIR\Painel.cmd"
+!endif
 FunctionEnd
-Section "BackupDesk" Main
-  SetOutPath "$INSTDIR"
-  File "build/node.exe"
-  File /oname=NODE-LICENSE.txt "build/LICENSE"
-  File "../server.mjs"
-  File "../agent.mjs"
-  File "../filesystem.mjs"
-  File "launch-agent.mjs"
-  File "Configure.ps1"
-  File "Painel.cmd"
-  File "Agente.cmd"
-  File "Configurar.cmd"
-  File "LEIA-ME.txt"
-  SetOutPath "$INSTDIR\public"
-  File "../public/index.html"
-  File "../public/app.js"
-  File "../public/style.css"
-  SetOutPath "$INSTDIR"
-  CreateDirectory "$SMPROGRAMS\BackupDesk"
-  CreateShortcut "$SMPROGRAMS\BackupDesk\Painel local.lnk" "$INSTDIR\Painel.cmd"
-  CreateShortcut "$SMPROGRAMS\BackupDesk\Configurar agente.lnk" "$INSTDIR\Configurar.cmd"
-  CreateShortcut "$SMPROGRAMS\BackupDesk\Iniciar agente.lnk" "$INSTDIR\Agente.cmd"
-  CreateShortcut "$SMPROGRAMS\BackupDesk\Instruções.lnk" "$INSTDIR\LEIA-ME.txt"
-  CreateShortcut "$DESKTOP\BackupDesk.lnk" "$INSTDIR\Painel.cmd"
-  WriteUninstaller "$INSTDIR\Uninstall.exe"
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\BackupDesk" "DisplayName" "BackupDesk (teste local)"
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\BackupDesk" "UninstallString" '"$INSTDIR\Uninstall.exe"'
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\BackupDesk" "DisplayVersion" "0.2.0"
+Function .onInit
+ ${IfNot} ${RunningX64}
+  MessageBox MB_OK "Este instalador requer Windows x64."
+  Abort
+ ${EndIf}
+FunctionEnd
+Section "${PRODUCT}" Main
+ SetOutPath "$INSTDIR"
+ File "build/node.exe"
+ File /oname=NODE-LICENSE.txt "build/LICENSE"
+ File "../agent.mjs"
+ File "../filesystem.mjs"
+!ifdef CLIENT
+ File "launch-agent.mjs"
+ File "Configure.ps1"
+ File "Agente.cmd"
+ File "Configurar.cmd"
+!endif
+ File "LEIA-ME.txt"
+ CreateDirectory "$SMPROGRAMS\${FOLDER}"
+!ifndef CLIENT
+ File "../server.mjs"
+ File "../local-master.mjs"
+ File "../master.mjs"
+ File "Painel.cmd"
+ SetOutPath "$INSTDIR\public"
+ File "../public/index.html"
+ File "../public/app.js"
+ File "../public/style.css"
+ SetOutPath "$INSTDIR\dist"
+ File "build/BackupDesk-Client-0.3.0-x64.exe"
+ SetOutPath "$INSTDIR"
+ ExecWait '"$INSTDIR\node.exe" "$INSTDIR\server.mjs" --prepare-master' $0
+ ${If} $0 != 0
+  MessageBox MB_OK "Não foi possível preparar o master. Confira as permissões da pasta e abra Painel local para consultar o erro."
+ ${EndIf}
+ CreateShortcut "$SMPROGRAMS\${FOLDER}\Painel local.lnk" "$INSTDIR\Painel.cmd"
+ CreateShortcut "$DESKTOP\BackupDesk.lnk" "$INSTDIR\Painel.cmd"
+!else
+ CreateShortcut "$DESKTOP\BackupDesk Client.lnk" "$INSTDIR\Agente.cmd"
+!endif
+!ifdef CLIENT
+ CreateShortcut "$SMPROGRAMS\${FOLDER}\Configurar agente.lnk" "$INSTDIR\Configurar.cmd"
+ CreateShortcut "$SMPROGRAMS\${FOLDER}\Iniciar agente.lnk" "$INSTDIR\Agente.cmd"
+!else
+ Delete "$SMPROGRAMS\${FOLDER}\Configurar agente.lnk"
+ Delete "$SMPROGRAMS\${FOLDER}\Iniciar agente.lnk"
+!endif
+ CreateShortcut "$SMPROGRAMS\${FOLDER}\Instruções.lnk" "$INSTDIR\LEIA-ME.txt"
+ WriteUninstaller "$INSTDIR\Uninstall.exe"
+ WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${KEY}" "DisplayName" "${PRODUCT} (teste local)"
+ WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${KEY}" "UninstallString" '"$INSTDIR\Uninstall.exe"'
+ WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${KEY}" "DisplayVersion" "0.3.0"
 SectionEnd
 Section "Uninstall"
-  Delete "$DESKTOP\BackupDesk.lnk"
-  Delete "$SMPROGRAMS\BackupDesk\Painel local.lnk"
-  Delete "$SMPROGRAMS\BackupDesk\Configurar agente.lnk"
-  Delete "$SMPROGRAMS\BackupDesk\Iniciar agente.lnk"
-  Delete "$SMPROGRAMS\BackupDesk\Instruções.lnk"
-  RMDir "$SMPROGRAMS\BackupDesk"
-  Delete "$INSTDIR\node.exe"
-  Delete "$INSTDIR\NODE-LICENSE.txt"
-  Delete "$INSTDIR\server.mjs"
-  Delete "$INSTDIR\agent.mjs"
-  Delete "$INSTDIR\filesystem.mjs"
-  Delete "$INSTDIR\launch-agent.mjs"
-  Delete "$INSTDIR\Configure.ps1"
-  Delete "$INSTDIR\Painel.cmd"
-  Delete "$INSTDIR\Agente.cmd"
-  Delete "$INSTDIR\Configurar.cmd"
-  Delete "$INSTDIR\LEIA-ME.txt"
-  Delete "$INSTDIR\public\index.html"
-  Delete "$INSTDIR\public\app.js"
-  Delete "$INSTDIR\public\style.css"
-  RMDir "$INSTDIR\public"
-  Delete "$INSTDIR\Uninstall.exe"
-  RMDir "$INSTDIR"
-  DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\BackupDesk"
+!ifndef CLIENT
+ Delete "$DESKTOP\BackupDesk.lnk"
+ Delete "$SMPROGRAMS\${FOLDER}\Painel local.lnk"
+ Delete "$INSTDIR\server.mjs"
+ Delete "$INSTDIR\local-master.mjs"
+ Delete "$INSTDIR\master.mjs"
+ Delete "$INSTDIR\Painel.cmd"
+ Delete "$INSTDIR\public\index.html"
+ Delete "$INSTDIR\public\app.js"
+ Delete "$INSTDIR\public\style.css"
+ RMDir "$INSTDIR\public"
+ Delete "$INSTDIR\dist\BackupDesk-Client-0.3.0-x64.exe"
+ RMDir "$INSTDIR\dist"
+!else
+ Delete "$DESKTOP\BackupDesk Client.lnk"
+!endif
+ Delete "$SMPROGRAMS\${FOLDER}\Configurar agente.lnk"
+ Delete "$SMPROGRAMS\${FOLDER}\Iniciar agente.lnk"
+ Delete "$SMPROGRAMS\${FOLDER}\Instruções.lnk"
+ RMDir "$SMPROGRAMS\${FOLDER}"
+ Delete "$INSTDIR\node.exe"
+ Delete "$INSTDIR\NODE-LICENSE.txt"
+ Delete "$INSTDIR\agent.mjs"
+ Delete "$INSTDIR\filesystem.mjs"
+ Delete "$INSTDIR\launch-agent.mjs"
+ Delete "$INSTDIR\Configure.ps1"
+ Delete "$INSTDIR\Agente.cmd"
+ Delete "$INSTDIR\Configurar.cmd"
+ Delete "$INSTDIR\LEIA-ME.txt"
+ Delete "$INSTDIR\Uninstall.exe"
+ RMDir "$INSTDIR"
+ DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${KEY}"
 SectionEnd

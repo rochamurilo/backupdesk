@@ -1,44 +1,31 @@
-BACKUPDESK 0.2.0 - INSTALADOR DE TESTE - WINDOWS 10/11 x64
+BACKUPDESK 0.3.0 - MASTER E CLIENT - TESTE WINDOWS 10/11 x64
 
-Instala por usuario, sem exigir Node.js separado ou administrador.
+MASTER
+Instale o Master e deixe marcada Abrir master e criar rotinas ao concluir.
+O computador local e cadastrado automaticamente e o agente inicia junto.
+Entre como admin. Senha em %LOCALAPPDATA%\BackupDesk\data\initial-admin.txt.
+Crie as rotinas escolhendo o computador local e os arquivos/pastas.
+Nao precisa configurar token nem iniciar outro agente nesta maquina.
+Mantenha a janela do Master aberta. Nao instala servico nem inicia no boot.
 
-TESTE NO MESMO COMPUTADOR
-1. Abra BackupDesk > Painel local no menu Iniciar.
-2. Acesse http://127.0.0.1:3000. Se abrir antes do servidor, atualize a pagina.
-3. Consulte a senha em %LOCALAPPDATA%\BackupDesk\data\initial-admin.txt.
-4. Entre como admin. Cadastre seu computador e copie o token exibido.
-5. Abra Configurar agente no menu Iniciar. Informe a URL local e o token.
-6. Abra Iniciar agente e mantenha a janela aberta.
-7. No painel, selecione seu computador em Nova rotina. Clique em Selecionar
-   arquivos e pastas. Marque arquivos/pastas e clique em Usar selecao.
-   Para rede, informe \\servidor\compartilhamento ou uma unidade mapeada.
-   O agente precisa estar aberto com um usuario que tenha acesso aos caminhos.
-   Tambem pode informar um caminho por linha no campo de origens.
-8. Defina o horario para o minuto atual ou anterior. O agente consulta a cada
-   minuto. Veja o resultado no painel e teste Restaurar arquivo.
+CLIENT
+Baixe pelo botao Baixar client Windows, no canto inferior esquerdo do painel
+Master. Somente usuarios master podem acessar esse download.
+O instalador Client nao instala painel, API ou banco administrativo.
+Cadastre o equipamento no master e informe sua URL e o token no assistente
+do client. Ao salvar, o agente inicia. Mantenha sua janela aberta.
+Para acesso de outro computador, o master precisa de URL HTTPS acessivel;
+127.0.0.1 aponta sempre para o proprio computador.
 
-COMPUTADOR CLIENT
-Instale o mesmo pacote, configure o agente com a URL HTTPS do servidor e um
-novo token cadastrado para esse computador. Nao inicie o painel local no client.
-O painel do ambiente de desenvolvimento nao fica acessivel pelo endereco
-127.0.0.1 de outro computador. Esta versao nao configura HTTPS nem hospedagem.
+ATUALIZAR
+Feche as janelas de Master e agentes antes de instalar na mesma pasta.
+Dados, configuracoes e rotinas sao preservados. Reabra e use Ctrl+F5 no painel.
+O master antigo pode ter um equipamento cadastrado manualmente; ele e
+preservado. O novo equipamento com nome Master local e vinculado automaticamente.
 
 LIMITES
-Arquivos ate 16 MiB. Sem VSS, backup consistente de Outlook aberto, servico
-Windows, auto-inicio, criptografia em repouso ou retencao automatica. Nao e uma
-versao de producao nem substitui seu backup atual. O agente roda com permissoes
-do usuario conectado. Sem promessa de execucao com usuario desconectado.
-Sem assinatura digital: a identidade do editor nao esta validada pelo Windows.
-O instalador foi compilado em Linux; instalacao e interface Windows ainda
-precisam de validacao em uma maquina Windows real.
-
-SEGURANCA E DESINSTALACAO
-Token salvo em agent-config.json na pasta do usuario. Nao compartilhe esse
-arquivo. Feche as janelas de painel/agente antes de atualizar ou desinstalar.
-A desinstalacao preserva configuracoes, credenciais e backups em disco.
-Apague-os manualmente somente se nao precisar mais deles.
-
-ATUALIZAR DE 0.1.0
-Feche Painel local e Iniciar agente antes de instalar na mesma pasta.
-Dados e configuracao sao preservados. Reabra ambos e atualize o navegador
-com Ctrl+F5. Painel e agente precisam estar na versao 0.2.0 para navegar.
+Use arquivos de teste, ate 16 MiB cada. Sem VSS/Outlook aberto, servico Windows,
+retencao automatica, criptografia em repouso ou assinatura digital.
+O instalador foi compilado em Linux; valide o funcionamento no seu Windows.
+Rede exige que o usuario do agente tenha acesso as unidades/compartilhamentos.
+A desinstalacao preserva os backups e configuracoes em disco.

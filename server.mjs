@@ -1,18 +1,23 @@
 import http from 'node:http';
+import {spawn} from 'node:child_process';
+import {prepareLocalMaster} from './local-master.mjs';
 import {DatabaseSync} from 'node:sqlite';
 import {randomBytes, scryptSync, timingSafeEqual, createHash} from 'node:crypto';
 import {mkdirSync,readFileSync,writeFileSync,existsSync} from 'node:fs';
 import {join,resolve} from 'node:path';
+import {fileURLToPath} from 'node:url';
 const root=resolve(process.env.DATA_DIR||'data'); mkdirSync(join(root,'blobs'),{recursive:true});
 const db=new DatabaseSync(join(root,'backupdesk.sqlite')); db.exec(`PRAGMA foreign_keys=ON; CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY,name TEXT UNIQUE,password TEXT,role TEXT); CREATE TABLE IF NOT EXISTS devices(id TEXT PRIMARY KEY,name TEXT,owner INTEGER REFERENCES users(id),token TEXT UNIQUE,last_seen TEXT); CREATE TABLE IF NOT EXISTS routines(id INTEGER PRIMARY KEY,device TEXT REFERENCES devices(id),name TEXT,cadence TEXT,hour TEXT,source TEXT); CREATE TABLE IF NOT EXISTS runs(id TEXT PRIMARY KEY,device TEXT REFERENCES devices(id),started TEXT,finished TEXT,status TEXT,bytes INTEGER DEFAULT 0,error TEXT); CREATE TABLE IF NOT EXISTS files(run TEXT REFERENCES runs(id),path TEXT,hash TEXT,size INTEGER,PRIMARY KEY(run,path));`);
 function hash(p){return scryptSync(p,'backupdesk-local-v1',32).toString('hex')}
 if(!db.prepare('SELECT id FROM users LIMIT 1').get()){const password=process.env.ADMIN_PASSWORD||randomBytes(16).toString('hex');db.prepare('INSERT INTO users(name,password,role) VALUES(?,?,?)').run('admin',hash(password),'master');writeFileSync(join(root,'initial-admin.txt'),`Usuário: admin\nSenha: ${password}\n`,{mode:0o600});}
+const localMaster=(process.env.BACKUPDESK_LOCAL_MASTER==='1'||process.argv.includes('--prepare-master'))?prepareLocalMaster(db):null;
 const browseRequests=new Map();
 const sessions=new Map(); const token=()=>randomBytes(32).toString('hex');
 const send=(res,status,data)=>{res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify(data))};
 async function body(req){let chunks=[],n=0;for await(const c of req){n+=c.length;if(n>24*1024*1024)throw Error('Corpo excede 24 MB');chunks.push(c)}return JSON.parse(Buffer.concat(chunks).toString()||'{}')}
 const visible=(user,id)=>user.role==='master'||!!db.prepare('SELECT id FROM devices WHERE id=? AND owner=?').get(id,user.id);
 export const server=http.createServer(async(req,res)=>{try{const url=new URL(req.url,'http://localhost'),p=url.pathname; if(!p.startsWith('/api/')){const file={'/':'index.html','/app.js':'app.js','/style.css':'style.css'}[p];if(!file)return send(res,404,{error:'Não encontrado'});res.setHeader('Content-Type',file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':'text/html');return res.end(readFileSync(new URL('./public/'+file,import.meta.url)))}
+if(p==='/api/health')return send(res,200,{ok:true});
 if(p==='/api/login'&&req.method==='POST'){const b=await body(req),u=db.prepare('SELECT * FROM users WHERE name=?').get(b.name);if(!u||!timingSafeEqual(Buffer.from(u.password,'hex'),Buffer.from(hash(b.password||''),'hex')))return send(res,401,{error:'Credenciais inválidas'});const t=token();sessions.set(t,{id:u.id,name:u.name,role:u.role});return send(res,200,{token:t,role:u.role,name:u.name})}
 const auth=req.headers.authorization?.replace(/^Bearer /,'');const device=db.prepare('SELECT * FROM devices WHERE token=?').get(auth||'');
 if(p.startsWith('/api/agent/')){if(!device)return send(res,401,{error:'Agente não autorizado'});db.prepare('UPDATE devices SET last_seen=? WHERE id=?').run(new Date().toISOString(),device.id);
@@ -36,7 +41,25 @@ if(p==='/api/users'&&req.method==='POST'){if(user.role!=='master')return send(re
 if(p==='/api/devices'&&req.method==='POST'){if(user.role!=='master')return send(res,403,{error:'Acesso restrito'});const b=await body(req);if(!b.name)throw Error('Nome obrigatório');const id=token(),t=token();db.prepare('INSERT INTO devices(id,name,owner,token) VALUES(?,?,?,?)').run(id,b.name,Number(b.owner)||user.id,t);return send(res,201,{id,token:t})}
 if(p==='/api/routines'&&req.method==='POST'){const b=await body(req);if(!visible(user,b.device))return send(res,403,{error:'Acesso restrito'});if(!['daily','weekly','monthly'].includes(b.cadence)||!/^([01]\d|2[0-3]):[0-5]\d$/.test(b.hour)||!b.source||!b.name)throw Error('Rotina inválida');let sources;try{sources=JSON.parse(b.source)}catch{sources=[b.source]}if(!Array.isArray(sources)||!sources.length||sources.length>100||sources.some(p=>typeof p!=='string'||!p.trim()||p.length>4096||!(/^(?:[A-Za-z]:[\\/]|\\\\[^\\]+\\[^\\]+|\/)/.test(p))))throw Error('Informe arquivos ou pastas com caminho absoluto');db.prepare('INSERT INTO routines(device,name,cadence,hour,source) VALUES(?,?,?,?,?)').run(b.device,b.name,b.cadence,b.hour,JSON.stringify([...new Set(sources)]));return send(res,201,{ok:true})}
 const match=p.match(/^\/api\/runs\/([a-f0-9]+)\/files$/);if(match){const r=db.prepare('SELECT * FROM runs WHERE id=?').get(match[1]);if(!r||!visible(user,r.device))return send(res,404,{error:'Execução não encontrada'});if(url.searchParams.has('path')){const f=db.prepare('SELECT * FROM files WHERE run=? AND path=?').get(r.id,url.searchParams.get('path'));if(!f)return send(res,404,{error:'Arquivo não encontrado'});const data=readFileSync(join(root,'blobs',f.hash));if(createHash('sha256').update(data).digest('hex')!==f.hash)throw Error('Integridade inválida');res.setHeader('Content-Type','application/octet-stream');return res.end(data)}return send(res,200,db.prepare('SELECT path,size,hash FROM files WHERE run=?').all(r.id))}
-if(p==='/api/download/windows'){const file=new URL('./dist/BackupDesk-Setup-0.2.0-x64.exe',import.meta.url);if(!existsSync(file))return send(res,404,{error:'Instalador não disponível neste servidor'});res.setHeader('Content-Type','application/vnd.microsoft.portable-executable');res.setHeader('Content-Disposition','attachment; filename=\"BackupDesk-Setup-0.2.0-x64.exe\"');return res.end(readFileSync(file))}
-if(p==='/api/download/agent'){const file=new URL('./dist/BackupDesk-Agent-0.2.0.zip',import.meta.url);if(!existsSync(file))return send(res,404,{error:'Pacote do agente indisponível; use o instalador Windows'});res.setHeader('Content-Type','application/zip');res.setHeader('Content-Disposition','attachment; filename="BackupDesk-Agent-0.2.0.zip"');return res.end(readFileSync(file))}return send(res,404,{error:'Não encontrado'});
+if(p==='/api/download/client'||p==='/api/download/windows'){
+ if(user.role!=='master')return send(res,403,{error:'Somente o master pode baixar instaladores'});
+ const name=p.endsWith('/client')?'BackupDesk-Client-0.3.0-x64.exe':'BackupDesk-Master-0.3.0-x64.exe';
+ const file=new URL('./dist/'+name,import.meta.url);if(!existsSync(file))return send(res,404,{error:'Instalador não disponível neste servidor'});
+ res.setHeader('Content-Type','application/vnd.microsoft.portable-executable');res.setHeader('Content-Disposition','attachment; filename="'+name+'"');return res.end(readFileSync(file));
+}
+if(p==='/api/download/agent')return send(res,410,{error:'Use Baixar client no painel master'});
+return send(res,404,{error:'Não encontrado'});
 }catch(e){send(res,400,{error:e.message})}});
-server.listen(Number(process.env.PORT||3000),process.env.HOST||'127.0.0.1',()=>console.log('BackupDesk iniciado. Credenciais iniciais em '+join(root,'initial-admin.txt')));
+let localAgent;
+if(!process.argv.includes('--prepare-master')){
+ server.listen(Number(process.env.PORT||3000),process.env.HOST||'127.0.0.1',()=>{
+  console.log('BackupDesk iniciado. Credenciais iniciais em '+join(root,'initial-admin.txt'));
+  if(localMaster){
+   localAgent=spawn(process.execPath,[fileURLToPath(new URL('./agent.mjs',import.meta.url))],{env:{...process.env,BACKUPDESK_URL:'http://127.0.0.1:'+server.address().port,BACKUPDESK_TOKEN:localMaster.token,BACKUPDESK_AGENT_STATE:join(root,'master-agent-state.json')},stdio:['ignore','inherit','inherit']});
+   localAgent.on('error',e=>console.error('Agente local:',e.message));
+   localAgent.on('exit',code=>{if(code)console.error('Agente local encerrou com código',code)});
+  }
+ });
+ server.on('close',()=>localAgent?.kill());
+ for(const signal of ['SIGINT','SIGTERM'])process.on(signal,()=>{localAgent?.kill();server.close(()=>process.exit(0));setTimeout(()=>process.exit(0),1000).unref()});
+}else{db.close();console.log('Master preparado: computador local cadastrado e pronto para criar rotinas.')}

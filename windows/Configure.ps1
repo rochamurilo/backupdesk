@@ -39,7 +39,8 @@ $button.Add_Click({
         if ($token.Text.Trim() -notmatch '^[a-f0-9]{64}$') { throw 'Informe o token de 64 caracteres exibido no painel.' }
         $configPath = Join-Path $PSScriptRoot 'agent-config.json'
         @{url=$url.Text.Trim().TrimEnd('/');token=$token.Text.Trim()} | ConvertTo-Json | Set-Content -LiteralPath $configPath -Encoding UTF8
-        [System.Windows.Forms.MessageBox]::Show('Configuração salva. Abra o atalho Iniciar agente. Reinicie o agente se ele já estiver aberto.', 'BackupDesk') | Out-Null
+        Start-Process -FilePath (Join-Path $PSScriptRoot 'node.exe') -ArgumentList ('"' + (Join-Path $PSScriptRoot 'launch-agent.mjs') + '"') -WorkingDirectory $PSScriptRoot
+        [System.Windows.Forms.MessageBox]::Show('Configuração salva. O agente foi iniciado. Mantenha a janela do agente aberta.', 'BackupDesk') | Out-Null
         $form.Close()
     } catch { [System.Windows.Forms.MessageBox]::Show($_.Exception.Message,'BackupDesk') | Out-Null }
 })
