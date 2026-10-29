@@ -1,0 +1,14 @@
+import {readFile} from 'node:fs/promises';
+import {join,dirname} from 'node:path';
+import {fileURLToPath} from 'node:url';
+const dir=dirname(fileURLToPath(import.meta.url));
+process.chdir(dir);
+const config=JSON.parse((await readFile(join(dir,'agent-config.json'),'utf8')).replace(/^\uFEFF/,''));
+const url=new URL(config.url);
+if(!['http:','https:'].includes(url.protocol)||url.username||url.password)throw Error('URL inválida');
+if(!config.token)throw Error('Configure o token antes de iniciar');
+process.env.BACKUPDESK_URL=url.href.replace(/\/$/,'');
+process.env.BACKUPDESK_TOKEN=config.token;
+process.env.BACKUPDESK_AGENT_STATE=join(dir,'agent-state.json');
+console.log('BackupDesk: agente iniciado. Mantenha esta janela aberta. Ctrl+C para parar.');
+await import('./agent.mjs');

@@ -1,0 +1,36 @@
+BACKUPDESK 0.1.0 - INSTALADOR DE TESTE - WINDOWS 10/11 x64
+
+Instala por usuario, sem exigir Node.js separado ou administrador.
+
+TESTE NO MESMO COMPUTADOR
+1. Abra BackupDesk > Painel local no menu Iniciar.
+2. Acesse http://127.0.0.1:3000. Se abrir antes do servidor, atualize a pagina.
+3. Consulte a senha em %LOCALAPPDATA%\BackupDesk\data\initial-admin.txt.
+4. Entre como admin. Cadastre seu computador e copie o token exibido.
+5. Abra Configurar agente no menu Iniciar. Informe a URL local e o token.
+6. Abra Iniciar agente e mantenha a janela aberta.
+7. No painel, cadastre uma rotina com caminho de pasta Windows, por exemplo
+   C:\Users\SeuUsuario\Documents\TesteBackup. Use apenas arquivos de teste.
+8. Defina o horario para o minuto atual ou anterior. O agente consulta a cada
+   minuto. Veja o resultado no painel e teste Restaurar arquivo.
+
+COMPUTADOR CLIENT
+Instale o mesmo pacote, configure o agente com a URL HTTPS do servidor e um
+novo token cadastrado para esse computador. Nao inicie o painel local no client.
+O painel do ambiente de desenvolvimento nao fica acessivel pelo endereco
+127.0.0.1 de outro computador. Esta versao nao configura HTTPS nem hospedagem.
+
+LIMITES
+Arquivos ate 16 MiB. Sem VSS, backup consistente de Outlook aberto, servico
+Windows, auto-inicio, criptografia em repouso ou retencao automatica. Nao e uma
+versao de producao nem substitui seu backup atual. O agente roda com permissoes
+do usuario conectado. Sem promessa de execucao com usuario desconectado.
+Sem assinatura digital: a identidade do editor nao esta validada pelo Windows.
+O instalador foi compilado em Linux; instalacao e interface Windows ainda
+precisam de validacao em uma maquina Windows real.
+
+SEGURANCA E DESINSTALACAO
+Token salvo em agent-config.json na pasta do usuario. Nao compartilhe esse
+arquivo. Feche as janelas de painel/agente antes de atualizar ou desinstalar.
+A desinstalacao preserva configuracoes, credenciais e backups em disco.
+Apague-os manualmente somente se nao precisar mais deles.
