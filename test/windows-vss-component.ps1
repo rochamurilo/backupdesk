@@ -59,7 +59,7 @@ try{
   if(Test-Path -LiteralPath $resultFile){break}
   if($i -gt 10 -and (Get-ScheduledTask -TaskName $testTask).State -ne 'Running'){
    $info=Get-ScheduledTaskInfo -TaskName $testTask
-   if($info.LastTaskResult -ne 0){throw ('O teste do usuário comum encerrou com código Windows: '+$info.LastTaskResult)}
+   if($info.LastTaskResult -ne 0 -and ($info.LastTaskResult -lt 267008 -or $info.LastTaskResult -gt 267263)){throw ('O teste do usuário comum encerrou com código Windows: '+$info.LastTaskResult)}
   };Start-Sleep -Milliseconds 500
  }
  if(-not (Test-Path -LiteralPath $resultFile)){throw 'O cliente de teste não concluiu dentro do prazo.'}
