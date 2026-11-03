@@ -54,4 +54,6 @@ Function ${Prefix}StopInstalledProcesses
 FunctionEnd
 !macroend
 !insertmacro UPDATE_GUARD ""
+!ifndef UPDATE_GUARD_NO_UNINSTALL
 !insertmacro UPDATE_GUARD "un."
+!endif

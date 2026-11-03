@@ -4,16 +4,16 @@ Unicode True
 !include "LogicLib.nsh"
 !ifdef CLIENT
   !define PRODUCT "BackupDesk Client"
-  !define VERSION "0.5.0"
+  !define VERSION "0.6.0"
   !define KEY "BackupDeskClient"
   !define FOLDER "BackupDeskClient"
-  OutFile "../windows/build/BackupDesk-Client-0.5.0-x64.exe"
+  OutFile "../windows/build/BackupDesk-Client-0.6.0-x64.exe"
 !else
   !define PRODUCT "BackupDesk Master"
-  !define VERSION "0.5.0"
+  !define VERSION "0.6.0"
   !define KEY "BackupDesk"
   !define FOLDER "BackupDesk"
-  OutFile "../dist/BackupDesk-Master-0.5.0-x64.exe"
+  OutFile "../dist/BackupDesk-Master-0.6.0-x64.exe"
 !endif
 Name "${PRODUCT} (teste local)"
 InstallDir "$LOCALAPPDATA\${FOLDER}"
@@ -59,6 +59,10 @@ Section "${PRODUCT}" Main
  File "../schedule.mjs"
  File "../filesystem.mjs"
  File "../disk-backup.mjs"
+ File "../vss.mjs"
+ SetOutPath "$INSTDIR\windows"
+ File "vss.ps1"
+ SetOutPath "$INSTDIR"
  File "../background.mjs"
 !ifdef CLIENT
  File "launch-agent.mjs"
@@ -66,6 +70,7 @@ Section "${PRODUCT}" Main
  File "Agente.cmd"
  File "Configurar.cmd"
  File "build/BackupDeskClient.exe"
+ File "build/BackupDeskClientVSS.exe"
 !endif
  File "LEIA-ME.txt"
  CreateDirectory "$SMPROGRAMS\${FOLDER}"
@@ -79,12 +84,13 @@ Section "${PRODUCT}" Main
  File "../master.mjs"
  File "Painel.cmd"
  File "build/BackupDesk.exe"
+ File "build/BackupDeskVSS.exe"
  SetOutPath "$INSTDIR\public"
  File "../public/index.html"
  File "../public/app.js"
  File "../public/style.css"
  SetOutPath "$INSTDIR\dist"
- File "build/BackupDesk-Client-0.5.0-x64.exe"
+ File "build/BackupDesk-Client-0.6.0-x64.exe"
  SetOutPath "$INSTDIR"
  nsExec::ExecToStack '"$INSTDIR\node.exe" "$INSTDIR\server.mjs" --prepare-master'
  Pop $0
@@ -97,8 +103,10 @@ Section "${PRODUCT}" Main
  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\App Paths\BackupDesk.exe" "" "$INSTDIR\BackupDesk.exe"
  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\App Paths\BackupDesk.exe" "Path" "$INSTDIR"
  System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, p 0, p 0)'
+ CreateShortcut "$SMPROGRAMS\BackupDesk VSS (administrador).lnk" "$INSTDIR\BackupDeskVSS.exe"
  CreateShortcut "$DESKTOP\BackupDesk.lnk" "$INSTDIR\BackupDesk.exe"
 !else
+ CreateShortcut "$SMPROGRAMS\${FOLDER}\Client VSS (administrador).lnk" "$INSTDIR\BackupDeskClientVSS.exe"
  CreateShortcut "$DESKTOP\BackupDesk Client.lnk" "$INSTDIR\BackupDeskClient.exe"
 !endif
 !ifdef CLIENT
@@ -146,7 +154,7 @@ Section "Uninstall"
  Delete "$INSTDIR\public\app.js"
  Delete "$INSTDIR\public\style.css"
  RMDir "$INSTDIR\public"
- Delete "$INSTDIR\dist\BackupDesk-Client-0.5.0-x64.exe"
+ Delete "$INSTDIR\dist\BackupDesk-Client-0.6.0-x64.exe"
  RMDir "$INSTDIR\dist"
 !else
  Delete "$DESKTOP\BackupDesk Client.lnk"
@@ -161,6 +169,15 @@ Section "Uninstall"
  Delete "$INSTDIR\schedule.mjs"
  Delete "$INSTDIR\filesystem.mjs"
  Delete "$INSTDIR\disk-backup.mjs"
+ Delete "$INSTDIR\vss.mjs"
+ Delete "$INSTDIR\windows\vss.ps1"
+ RMDir "$INSTDIR\windows"
+ Delete "$INSTDIR\BackupDeskVSS.exe"
+ Delete "$INSTDIR\BackupDeskClientVSS.exe"
+!ifndef CLIENT
+ Delete "$SMPROGRAMS\BackupDesk VSS (administrador).lnk"
+!endif
+ Delete "$SMPROGRAMS\${FOLDER}\Client VSS (administrador).lnk"
  Delete "$INSTDIR\background.mjs"
  Delete "$INSTDIR\BackupDeskClient.exe"
  Delete "$INSTDIR\launch-agent.mjs"

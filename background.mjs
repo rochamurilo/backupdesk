@@ -8,7 +8,7 @@ export async function instanceLock(key){
  // Windows named pipes are released by the OS when a process exits.
  const address=process.platform==='win32'?'\\\\.\\pipe\\backupdesk-'+id:join(tmpdir(),'backupdesk-'+id+'.sock');
  const server=createServer(s=>s.end());
- return new Promise((resolve,reject)=>{server.once('error',e=>e.code==='EADDRINUSE'?resolve(null):reject(e));server.listen(address,()=>resolve(server))});
+ return new Promise((resolve,reject)=>{server.once('error',e=>(e.code==='EADDRINUSE'||(process.platform==='win32'&&e.code==='EACCES'))?resolve(null):reject(e));server.listen(address,()=>resolve(server))});
 }
 export function supervise(command,args,options={},onEvent=()=>{}){
  let child,timer,stopping=false;

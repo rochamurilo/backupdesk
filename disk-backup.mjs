@@ -3,6 +3,7 @@ import {createReadStream,createWriteStream} from 'node:fs';
 import {Transform} from 'node:stream';import {pipeline} from 'node:stream/promises';
 import {createHash,randomUUID} from 'node:crypto';import path from 'node:path';import {execFile} from 'node:child_process';import {promisify} from 'node:util';
 import {parseSources} from './filesystem.mjs';
+import {withVssSources} from './vss.mjs';
 const execute=promisify(execFile);
 function contained(parent,child){const relative=path.relative(parent,child);return relative===''||(!relative.startsWith('..'+path.sep)&&relative!=='..'&&!path.isAbsolute(relative))}
 function safeRelative(name){return typeof name==='string'&&name.length>0&&!path.isAbsolute(name)&&!name.split(/[\\/]/).some(p=>p==='..'||p==='')&&!/^[A-Za-z]:/.test(name)}
@@ -18,7 +19,7 @@ async function plan(source){const roots=parseSources(source),files=[],directorie
  async function visit(file,info){if(info.isSymbolicLink())throw Error('Link simbólico encontrado; selecione o destino real: '+file);if(info.isDirectory()){directories.push({absolute:file,mtime:info.mtimeNs});for(const e of await readdir(file,{withFileTypes:true}))await visit(path.join(file,e.name),await lstat(path.join(file,e.name),{bigint:true}))}else if(info.isFile()){const relative=path.relative(root,file)||path.basename(root);files.push({absolute:file,path:prefix+relative.split(path.sep).join('/'),size:info.size,mtime:info.mtimeNs})}else throw Error('Arquivo especial não suportado: '+file)}
  await visit(root,rootInfo);
  }return {roots,files,directories}}
-export async function validateDestination(source,destination){
+export async function validateDestination(source,destination,{useVss=false}={}){
  if(typeof destination!=='string'||!path.isAbsolute(destination))throw Error('Selecione uma pasta de destino com caminho absoluto.');
  const target=await realpath(destination);if(!(await stat(target)).isDirectory())throw Error('O destino não é uma pasta.');
  const {roots,files,directories}=await plan(source);
@@ -29,7 +30,7 @@ export async function validateDestination(source,destination){
  if(available<estimated)throw Error('Espaço insuficiente no destino para esta versão do backup.');
  const probe=path.join(target,'.backupdesk-check-'+randomUUID());let handle;
  try{handle=await open(probe,'wx');await handle.writeFile('BackupDesk');await handle.sync()}finally{await handle?.close();if(handle)await unlink(probe)}
- await outlookCheck(files);
+ if(!useVss)await outlookCheck(files);
  return {target,files,directories,requiredBytes:estimated.toString(),availableBytes:available.toString()};
 }
 async function copyVerified(source,destination,expected){
@@ -41,17 +42,35 @@ async function copyVerified(source,destination,expected){
  const after=await lstat(source,{bigint:true});if(before.size!==after.size||before.mtimeNs!==after.mtimeNs)throw Error('Arquivo alterado durante a cópia: '+source);
  const digest=hash.digest('hex');if(await fileHash(destination)!==digest)throw Error('Falha de integridade ao verificar a cópia.');return digest;
 }
-export async function backupToDisk({source,destination,device,routine,run,onFile=()=>{}}){
- const checked=await validateDestination(source,destination);
+async function vssPreflight(source,destination){
+ if(typeof destination!=='string'||!path.isAbsolute(destination))throw Error('Selecione a pasta de destino.');
+ const target=await realpath(destination);if(!(await stat(target)).isDirectory())throw Error('O destino não é uma pasta.');
+ const original=parseSources(source),canonical=[];
+ for(const root of original){let resolved;try{resolved=await realpath(root)}catch(e){if(!['EACCES','EPERM','EBUSY'].includes(e.code))throw e;resolved=path.join(await realpath(path.dirname(root)),path.basename(root))}
+  if(contained(resolved,target))throw Error('O destino não pode ficar dentro da origem.');canonical.push(resolved);
+ }
+ return {original,canonical};
+}
+export async function validateVssDestination(source,destination){
+ const checked=await vssPreflight(source,destination);
+ return withVssSources(checked.canonical,async(mapped)=>{const result=await validateDestination(JSON.stringify(mapped),destination,{useVss:true});return {target:result.target,requiredBytes:result.requiredBytes,availableBytes:result.availableBytes}});
+}
+export async function backupToDisk(options){
+ const {source,destination,useVss=false}=options;
+ if(useVss){const checked=await vssPreflight(source,destination);return withVssSources(checked.canonical,async(mapped,snapshots)=>copyToDisk({...options,source:JSON.stringify(mapped),originalSources:checked.original,snapshots,useVss:true}))}
+ return copyToDisk(options);
+}
+async function copyToDisk({source,destination,device,routine,run,onFile=()=>{},useVss=false,originalSources,snapshots=[]}){
+ const checked=await validateDestination(source,destination,{useVss});
  if(!/^[a-zA-Z0-9_-]+$/.test(device)||!/^\d+$/.test(String(routine))||!/^[a-zA-Z0-9_-]+$/.test(run))throw Error('Identificação de backup inválida.');
  const parent=path.join(checked.target,'BackupDesk',device,String(routine));await mkdir(parent,{recursive:true});const canonicalParent=await realpath(parent);if(!contained(checked.target,canonicalParent))throw Error('O repositório aponta para fora do destino.');
  const partial=path.join(parent,'.partial-'+run),snapshot=path.join(parent,run);await mkdir(partial,{recursive:false});
- const manifest={format:'backupdesk-files-v1',device,routine,run,created:new Date().toISOString(),sources:parseSources(source),files:[],status:'running'};
+ const manifest={format:'backupdesk-files-v1',device,routine,run,created:new Date().toISOString(),sources:originalSources||parseSources(source),consistency:useVss?'vss-crash-consistent-no-writers':'closed-file-copy',vss:snapshots.map(s=>({id:s.id,volume:s.volume})),warning:useVss?'PST requer validação de recuperação no Outlook; VSS sem writers não garante consistência da aplicação.':null,files:[],status:'running'};
  try{for(const file of checked.files){if(!safeRelative(file.path))throw Error('Nome de arquivo inválido.');const hash=await copyVerified(file.absolute,path.join(partial,'files',...file.path.split('/')),file);const record={path:file.path,hash,size:Number(file.size)};manifest.files.push(record);await onFile(record)}
   for(const file of checked.files){const current=await lstat(file.absolute,{bigint:true});if(current.isSymbolicLink()||current.size!==file.size||current.mtimeNs!==file.mtime)throw Error('Origem alterada antes de concluir: '+file.absolute)}
   for(const folder of checked.directories){const current=await lstat(folder.absolute,{bigint:true});if(current.isSymbolicLink()||current.mtimeNs!==folder.mtime)throw Error('A pasta de origem mudou durante o backup: '+folder.absolute)}
-  await outlookCheck(checked.files);
-  manifest.status='success';manifest.finished=new Date().toISOString();await writeFile(path.join(partial,'manifest.json'),JSON.stringify(manifest,null,2),{flag:'wx',flush:true});await rename(partial,snapshot);return {snapshot,files:manifest.files};
+  if(!useVss)await outlookCheck(checked.files);
+  manifest.status='success';manifest.finished=new Date().toISOString();await writeFile(path.join(partial,'manifest.json'),JSON.stringify(manifest,null,2),{flag:'wx',flush:true});await rename(partial,snapshot);return {snapshot,files:manifest.files,consistency:manifest.consistency,warning:manifest.warning};
  }catch(e){manifest.status='failed';manifest.error=e.message;await writeFile(path.join(partial,'manifest.failed.json'),JSON.stringify(manifest,null,2)).catch(()=>{});throw e}
 }
 export async function restoreFromDisk({snapshot,files,target,job}){

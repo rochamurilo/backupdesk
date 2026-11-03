@@ -27,6 +27,8 @@ Section
  ${GetParameters} $4
  ${If} $4 == "/background"
   StrCpy $3 '"$EXEDIR\node.exe" "$EXEDIR\master.mjs" --background'
+ ${ElseIf} $4 == "/vss-admin"
+  StrCpy $3 '"$EXEDIR\node.exe" "$EXEDIR\master.mjs" --vss-admin'
  ${Else}
   StrCpy $3 '"$EXEDIR\node.exe" "$EXEDIR\master.mjs"'
  ${EndIf}

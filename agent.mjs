@@ -1,15 +1,15 @@
 import {readFile,writeFile} from 'node:fs/promises';import {resolve} from 'node:path';
 import {isScheduledDay} from './schedule.mjs';import {browseFiles,collectFiles} from './filesystem.mjs';
-import {backupToDisk,validateDestination,restoreFromDisk} from './disk-backup.mjs';
+import {backupToDisk,validateDestination,validateVssDestination,restoreFromDisk} from './disk-backup.mjs';
 const base=process.env.BACKUPDESK_URL||'http://127.0.0.1:3000',token=process.env.BACKUPDESK_TOKEN;
 if(!token)throw Error('Defina BACKUPDESK_TOKEN');
-async function api(path,data){const r=await fetch(base+'/api/agent/'+path,{method:data?'POST':'GET',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json','X-BackupDesk-Version':'0.5.0'},body:data?JSON.stringify(data):undefined,signal:AbortSignal.timeout(30000)});const b=await r.json();if(!r.ok)throw Error(b.error);return b}
+async function api(path,data){const r=await fetch(base+'/api/agent/'+path,{method:data?'POST':'GET',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json','X-BackupDesk-Version':'0.6.0'},body:data?JSON.stringify(data):undefined,signal:AbortSignal.timeout(30000)});const b=await r.json();if(!r.ok)throw Error(b.error);return b}
 async function backup(routine){const run=await api('runs',routine.id?{routine_id:routine.id,storage_type:routine.destination_type}:{});try{
- let snapshot;
+ let snapshot,consistency,warning;
  if(routine.destination_type&&routine.destination_type!=='server'){
-  const copied=await backupToDisk({source:routine.source,destination:routine.destination,device:run.device,routine:routine.id,run:run.id,onFile:file=>api('runs/'+run.id+'/files',file)});snapshot=copied.snapshot;
+  const copied=await backupToDisk({source:routine.source,destination:routine.destination,device:run.device,routine:routine.id,run:run.id,useVss:!!routine.use_vss,onFile:file=>api('runs/'+run.id+'/files',file)});snapshot=copied.snapshot;consistency=copied.consistency;warning=copied.warning;
  }else await collectFiles(routine.source,async(path,content)=>api('runs/'+run.id+'/files',{path,content:content.toString('base64')}));
- await api('runs/'+run.id+'/finish',{status:'success',snapshot});console.log('Backup concluído:',run.id);return {run:run.id,snapshot};
+ await api('runs/'+run.id+'/finish',{status:'success',snapshot,consistency,warning});console.log('Backup concluído:',run.id);return {run:run.id,snapshot,consistency,warning};
  }catch(e){await api('runs/'+run.id+'/finish',{status:'failed',error:e.message}).catch(()=>{});throw e}}
 if(process.argv[2]==='--once'){if(!process.argv[3])throw Error('Uso: node agent.mjs --once CAMINHO');await backup({source:process.argv[3],destination_type:'server'})}
 else{
@@ -17,7 +17,7 @@ else{
  await api('hello',{});
  async function tick(){const {routines}=await api('config');const now=new Date(),date=[now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')].join('-');for(const r of routines){const eligible=isScheduledDay(r.cadence,now);const time=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');if(eligible&&time>=r.hour&&state[r.id]!==date){await backup(r);state[r.id]=date;await writeFile(statePath,JSON.stringify(state))}}}
  let busy=false,lastTick=0;
- async function job(command){try{let result;if(command.kind==='backup')result=await backup(command.payload.routine);else if(command.kind==='validate'){const v=await validateDestination(command.payload.source,command.payload.destination);result={destination:v.target,requiredBytes:v.requiredBytes,availableBytes:v.availableBytes}}else if(command.kind==='restore')result=await restoreFromDisk({...command.payload,job:command.id});else throw Error('Tarefa desconhecida');await api('jobs/'+command.id,{status:'success',result})}catch(e){await api('jobs/'+command.id,{status:'failed',error:e.message}).catch(()=>{});console.error(e.message)}finally{busy=false}}
+ async function job(command){try{let result;if(command.kind==='backup')result=await backup(command.payload.routine);else if(command.kind==='validate'){const v=command.payload.useVss?await validateVssDestination(command.payload.source,command.payload.destination):await validateDestination(command.payload.source,command.payload.destination);result={destination:v.target,requiredBytes:v.requiredBytes,availableBytes:v.availableBytes}}else if(command.kind==='restore')result={...await restoreFromDisk({...command.payload,job:command.id}),warning:command.payload.warning};else throw Error('Tarefa desconhecida');await api('jobs/'+command.id,{status:'success',result})}catch(e){await api('jobs/'+command.id,{status:'failed',error:e.message}).catch(()=>{});console.error(e.message)}finally{busy=false}}
  while(true){try{
   const {commands}=await api('commands?busy='+(busy?'1':'0'));
   for(const command of commands){if(command.kind){busy=true;job(command)}else{let result;try{result={result:await browseFiles(command.path)}}catch(e){result={error:e.message}}await api('commands/'+command.id,result)}}
