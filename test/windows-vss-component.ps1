@@ -20,7 +20,8 @@ foreach($bad in @(
  if(-not $rejected){throw 'Pedido privilegiado indevido foi aceito.'}
 }
 $userName='bkd'+[guid]::NewGuid().ToString('N').Substring(0,12)
-$password=ConvertTo-SecureString ('A7!'+[guid]::NewGuid().ToString('N')) -AsPlainText -Force
+$passwordText='A7!'+[guid]::NewGuid().ToString('N')
+$password=ConvertTo-SecureString $passwordText -AsPlainText -Force
 $env:BACKUPDESK_TEST_STAGE='create-user'
 $user=New-LocalUser -Name $userName -Password $password -PasswordNeverExpires -AccountNeverExpires
 $sid=$user.SID.Value
@@ -47,9 +48,9 @@ try{
  $acl.AddAccessRule((New-Object Security.AccessControl.FileSystemAccessRule($user.SID,'Modify','ContainerInherit,ObjectInherit','None','Allow')))
  Set-Acl -LiteralPath $testRoot -AclObject $acl
  $action=New-ScheduledTaskAction -Execute $powerShell -Argument ('-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "'+(Join-Path $testRoot 'run.ps1')+'"')
- $principal=New-ScheduledTaskPrincipal -UserId $sid -LogonType S4U -RunLevel Limited
  $env:BACKUPDESK_TEST_STAGE='register-user-test'
- Register-ScheduledTask -TaskName $testTask -Action $action -Principal $principal -Force | Out-Null
+ Register-ScheduledTask -TaskName $testTask -Action $action -User ($env:COMPUTERNAME+'\'+$userName) -Password $passwordText -RunLevel Limited -Force | Out-Null
+ $passwordText=$null
  $env:BACKUPDESK_TEST_STAGE='start-user-test'
  Start-ScheduledTask -TaskName $testTask
  $env:BACKUPDESK_TEST_STAGE='wait-user-result'
