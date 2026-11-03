@@ -1,20 +1,29 @@
-BACKUPDESK MASTER E CLIENT 0.4.1 - TESTE WINDOWS x64
+BACKUPDESK 0.5.0 - TESTE WINDOWS x64
 
-O master abre direto, sem senha local. Use as abas Backup e Restauracao.
-Escolha as origens, frequencia e horario na aba Backup. Na Restauracao,
-selecione computador, versao concluida e arquivo para baixar uma copia.
-O cadastro de outros computadores fica em Vincular client, na Visao geral.
-Baixe o instalador client pelo botao no canto inferior esquerdo do master.
+Pesquise BackupDesk no menu Iniciar para abrir. Nao precisa digitar URL.
+O master local nao pede senha. Funciona em segundo plano e inicia ao entrar
+na sessao Windows. Ainda nao e servico antes do login.
 
-Master e client funcionam em segundo plano, sem janela preta. Fechar o
-navegador nao encerra backups. A inicializacao automatica acontece ao entrar
-na sessao do Windows; nao e servico antes do login. O supervisor reinicia
-processos que falharem. O computador precisa estar ligado e fora de suspensao.
-O client so inicia apos configuracao da URL e token fornecidos pelo master.
-A desinstalacao remove a inicializacao automatica e preserva dados locais.
+BACKUP
+Escolha origem e, em Onde salvar o backup, selecione Pasta local, HD externo
+ou Unidade de rede. Escolha a pasta de destino no computador que fara o backup.
+Use Testar destino, salve e clique em Fazer backup agora.
+Para ajustar uma rotina antiga, use Editar. Ela nao muda de destino sozinha.
+Clients precisam ser atualizados para 0.5.0 pelo botao no master.
 
-A atualizacao pode encerrar os processos desta instalacao, com aviso.
-Nao apague a pasta data. Logs do master: data\startup.log.
-Rede exige permissao do usuario. Teste com arquivos de ate 16 MiB.
-Sem VSS/Outlook aberto e sem assinatura digital. Instaladores compilados em
-Linux; valide a inicializacao automatica e as unidades no Windows real.
+Cada execucao cria uma versao em DESTINO\BackupDesk, com manifest.json e
+arquivos verificados por SHA-256. Versoes anteriores nao sao apagadas.
+O destino precisa estar conectado e com espaco. Nao pode ficar na origem.
+Arquivos grandes usam copia em fluxo. Feche o Outlook para copiar PST/OST;
+backup consistente com Outlook aberto ainda nao foi implementado (sem VSS).
+
+RESTAURACAO
+Escolha versao, pasta de recuperacao e arquivo. Copias em disco sao recuperadas
+pelo agente em BackupDesk-Restaurado, sem sobrescrever os originais.
+Backups antigos no armazenamento interno continuam como download no navegador.
+
+LIMITES
+Sem retencao automatica, criptografia, assinatura digital ou garantia de
+consistencia de aplicacoes abertas. Use dados de teste e mantenha seu backup
+atual. USB/SMB e instalacao nativa precisam ser validados no Windows real.
+Logs: data\startup.log e data\launcher.log.

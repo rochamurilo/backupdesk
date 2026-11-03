@@ -13,7 +13,7 @@ unzip -p "$build_tmp/$archive" "node-v${version}-win-x64/node.exe" > windows/bui
 unzip -p "$build_tmp/$archive" "node-v${version}-win-x64/LICENSE" > windows/build/LICENSE
 "${MAKENSIS:-makensis}" -DCLIENT windows/launcher.nsi
 "${MAKENSIS:-makensis}" -DCLIENT windows/installer.nsi
-cp windows/build/BackupDesk-Client-0.4.1-x64.exe dist/
+cp windows/build/BackupDesk-Client-0.5.0-x64.exe dist/
 "${MAKENSIS:-makensis}" windows/launcher.nsi
 "${MAKENSIS:-makensis}" windows/installer.nsi
-(cd dist; sha256sum BackupDesk-Master-0.4.2-x64.exe > SHA256SUMS.txt)
+(cd dist; sha256sum BackupDesk-Master-0.5.0-x64.exe > SHA256SUMS.txt)

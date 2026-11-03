@@ -48,7 +48,7 @@ public static class BackupDeskFolderPicker {
   try {
    IFileOpenDialog dialog=(IFileOpenDialog)instance; uint options;dialog.GetOptions(out options);
    dialog.SetOptions(options | 0x20u | 0x40u | 0x800u | 0x02000000u);
-   dialog.SetTitle("Selecione uma pasta para backup"); dialog.SetOkButtonLabel("Selecionar pasta");
+   dialog.SetTitle(Environment.GetEnvironmentVariable("BACKUPDESK_PICKER_TITLE") ?? "Selecione uma pasta"); dialog.SetOkButtonLabel("Selecionar pasta");
    int result=dialog.Show(GetForegroundWindow());
    if(result==unchecked((int)0x800704C7))return null;
    Marshal.ThrowExceptionForHR(result);dialog.GetResult(out item);item.GetDisplayName(0x80058000u,out text);
