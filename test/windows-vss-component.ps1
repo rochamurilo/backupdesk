@@ -54,7 +54,13 @@ try{
  Start-ScheduledTask -TaskName $testTask
  $env:BACKUPDESK_TEST_STAGE='wait-user-result'
  $resultFile=Join-Path $testRoot 'result.json'
- for($i=0;$i -lt 900;$i++){if(Test-Path -LiteralPath $resultFile){break};Start-Sleep -Milliseconds 500}
+ for($i=0;$i -lt 900;$i++){
+  if(Test-Path -LiteralPath $resultFile){break}
+  if($i -gt 10 -and (Get-ScheduledTask -TaskName $testTask).State -ne 'Running'){
+   $info=Get-ScheduledTaskInfo -TaskName $testTask
+   if($info.LastTaskResult -ne 0){throw ('O teste do usuário comum encerrou com código Windows: '+$info.LastTaskResult)}
+  };Start-Sleep -Milliseconds 500
+ }
  if(-not (Test-Path -LiteralPath $resultFile)){throw 'O cliente de teste não concluiu dentro do prazo.'}
  $result=Get-Content -Raw -LiteralPath $resultFile | ConvertFrom-Json
  if(-not $result.success){throw ($result.error+' '+$result.stack)}
