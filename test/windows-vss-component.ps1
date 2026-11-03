@@ -47,21 +47,21 @@ try{
  $acl=Get-Acl -LiteralPath $testRoot
  $acl.AddAccessRule((New-Object Security.AccessControl.FileSystemAccessRule($user.SID,'Modify','ContainerInherit,ObjectInherit','None','Allow')))
  Set-Acl -LiteralPath $testRoot -AclObject $acl
- $action=New-ScheduledTaskAction -Execute $powerShell -Argument ('-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "'+(Join-Path $testRoot 'run.ps1')+'"')
- $env:BACKUPDESK_TEST_STAGE='register-user-test'
- Register-ScheduledTask -TaskName $testTask -Action $action -User ($env:COMPUTERNAME+'\'+$userName) -Password $passwordText -RunLevel Limited -Force | Out-Null
- $passwordText=$null
- $env:BACKUPDESK_TEST_STAGE='start-user-test'
- Start-ScheduledTask -TaskName $testTask
- $env:BACKUPDESK_TEST_STAGE='wait-user-result'
- $resultFile=Join-Path $testRoot 'result.json'
- for($i=0;$i -lt 900;$i++){
-  if(Test-Path -LiteralPath $resultFile){break}
-  if($i -gt 10 -and (Get-ScheduledTask -TaskName $testTask).State -ne 'Running'){
-   $info=Get-ScheduledTaskInfo -TaskName $testTask
-   if($info.LastTaskResult -ne 0 -and ($info.LastTaskResult -lt 267008 -or $info.LastTaskResult -gt 267263)){throw ('O teste do usuário comum encerrou com código Windows: '+$info.LastTaskResult)}
-  };Start-Sleep -Milliseconds 500
- }
+ $env:BACKUPDESK_TEST_STAGE='launch-standard-user'
+ Start-Service seclogon
+ $info=New-Object System.Diagnostics.ProcessStartInfo
+ $info.FileName=$powerShell;$info.Arguments='-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "'+(Join-Path $testRoot 'run.ps1')+'"'
+ $info.UserName=$userName;$info.Domain=$env:COMPUTERNAME;$info.Password=$password;$info.LoadUserProfile=$true
+ $info.UseShellExecute=$false;$info.CreateNoWindow=$true;$info.WorkingDirectory=$testRoot
+ $info.RedirectStandardOutput=$true;$info.RedirectStandardError=$true
+ $child=New-Object System.Diagnostics.Process;$child.StartInfo=$info
+ try{
+  [void]$child.Start();$output=$child.StandardOutput.ReadToEndAsync();$errors=$child.StandardError.ReadToEndAsync()
+  if(-not $child.WaitForExit(240000)){$child.Kill();throw 'O teste do usuário comum excedeu o prazo.'}
+  $resultFile=Join-Path $testRoot 'result.json'
+  if(-not (Test-Path -LiteralPath $resultFile)){throw ('O cliente de teste não iniciou: '+$errors.GetAwaiter().GetResult()+' '+$output.GetAwaiter().GetResult())}
+ }finally{$child.Dispose()}
+ $env:BACKUPDESK_TEST_STAGE='read-user-result'
  if(-not (Test-Path -LiteralPath $resultFile)){throw 'O cliente de teste não concluiu dentro do prazo.'}
  $result=Get-Content -Raw -LiteralPath $resultFile | ConvertFrom-Json
  if(-not $result.success){throw ($result.error+' '+$result.stack)}
