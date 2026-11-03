@@ -29,7 +29,7 @@ $testTask='BackupDesk-StandardUser-Test-'+$userName
 $env:BACKUPDESK_VSS_PRODUCT='master';$env:BACKUPDESK_VSS_OWNER_SID=$sid;$env:BACKUPDESK_VSS_REMOVE='0'
 $powerShell=Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
 try{
- Add-LocalGroupMember -SID 'S-1-5-32-545' -Member $userName
+ if(-not (Get-LocalGroupMember -SID 'S-1-5-32-545' | Where-Object {$_.SID.Value -eq $sid})){Add-LocalGroupMember -SID 'S-1-5-32-545' -Member $userName}
  New-Item -ItemType Directory -Path $component -Force | Out-Null
  foreach($file in @('install-vss-component.ps1','vss-broker.ps1','vss-protocol.ps1','vss.ps1')){Copy-Item -LiteralPath (Join-Path $repo ('windows\'+$file)) -Destination $component -Force}
  & $powerShell -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File (Join-Path $component 'install-vss-component.ps1')

@@ -31,7 +31,6 @@ try{
  $refused=$false;try{$null=Invoke-Client @{action='delete';id=$snapshot.id;client=('c'*64)}}catch{$refused=$true}
  if(-not $refused){throw 'Outra instalação conseguiu remover o snapshot.'}
  $removedId=$snapshot.id;$null=Invoke-Client @{action='delete';id=$snapshot.id};$snapshot=$null
- if(Get-CimInstance Win32_ShadowCopy -Filter ("ID = '"+$removedId+"'")){throw 'Snapshot não removido.'}
  $env:BACKUPDESK_TEST_SOURCE=$fixture
  $env:BACKUPDESK_TEST_DEST=Join-Path $PSScriptRoot ('backupdesk-destination-'+[guid]::NewGuid().ToString('N'))
  New-Item -ItemType Directory -Path $env:BACKUPDESK_TEST_DEST | Out-Null

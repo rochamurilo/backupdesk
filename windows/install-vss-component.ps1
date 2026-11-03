@@ -45,5 +45,6 @@ try{
  Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Principal $account -Settings $settings -Description 'Componente VSS do BackupDesk. Permite snapshots sem elevar o painel ou o agente.' -Force | Out-Null
  Start-ScheduledTask -TaskName $taskName
  for($i=0;$i -lt 60;$i++){if(Test-Path -LiteralPath $ready){exit 0};Start-Sleep -Milliseconds 250}
- throw 'O componente VSS foi registrado, mas não iniciou. Confira broker.log na pasta protegida do componente.'
+ $log=Join-Path $state 'broker.log';$details='';if(Test-Path -LiteralPath $log){$details=(Get-Content -LiteralPath $log -Tail 4) -join '; '}
+ throw ('O componente VSS foi registrado, mas não iniciou. '+$details)
 }catch{[Console]::Error.WriteLine($_.Exception.Message);exit 1}

@@ -21,4 +21,10 @@ jobs:
           node-version: '24'
       - name: Test protected automatic component and locked file snapshot
         shell: powershell
-        run: ./test/windows-vss-component.ps1
+        run: |
+          try { ./test/windows-vss-component.ps1 }
+          catch {
+            $detail=($_.Exception.Message+' '+$_.ScriptStackTrace).Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
+            Write-Output "::error title=Windows VSS diagnostic::$detail"
+            throw
+          }
