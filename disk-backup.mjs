@@ -11,7 +11,7 @@ export async function fileHash(file,onBytes=()=>{}){const hash=createHash('sha25
 async function outlookCheck(files){
  if(process.platform!=='win32'||!files.some(f=>/\.(pst|ost)$/i.test(f.absolute)))return;
  const {stdout}=await execute('tasklist.exe',['/FI','IMAGENAME eq OUTLOOK.EXE','/FO','CSV','/NH'],{windowsHide:true,timeout:15000});
- if(/"OUTLOOK\.EXE"/i.test(stdout))throw Error('Esta rotina está sem VSS. Para copiar PST/OST, feche o Outlook ou edite a rotina, marque Usar VSS, salve e abra BackupDesk VSS (administrador). O VSS continua experimental e exige validar a restauração do PST.');
+ if(/"OUTLOOK\.EXE"/i.test(stdout))throw Error('Esta rotina está sem VSS. Para copiar PST/OST, feche o Outlook ou edite a rotina, marque Usar VSS e salve. O componente automático utiliza a autorização concedida na instalação. O VSS continua experimental e exige validar a restauração do PST.');
 }
 async function plan(source,onProgress=()=>{}){onProgress({stage:'scanning',currentFile:'',processedBytes:0,totalBytes:null,filesDone:0,totalFiles:null});const roots=parseSources(source),files=[],directories=[];for(let i=0;i<roots.length;i++){
  const root=path.resolve(roots[i]),rootInfo=await lstat(root,{bigint:true});if(rootInfo.isSymbolicLink())throw Error('Selecione a pasta real, não um link: '+root);

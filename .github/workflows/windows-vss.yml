@@ -1,0 +1,24 @@
+name: Windows VSS component
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'windows/vss*.ps1'
+      - 'windows/install-vss-component.ps1'
+      - 'test/windows-vss-component.ps1'
+      - '.github/workflows/windows-vss.yml'
+permissions:
+  contents: read
+jobs:
+  native-vss:
+    runs-on: windows-2022
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Test protected automatic component and locked file snapshot
+        shell: powershell
+        run: ./test/windows-vss-component.ps1

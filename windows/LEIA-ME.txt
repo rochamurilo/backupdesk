@@ -1,53 +1,41 @@
-BACKUPDESK 0.7.1 - TESTE WINDOWS x64
+BACKUPDESK 0.8.0 - TESTE WINDOWS x64
 
-Pesquise BackupDesk no menu Iniciar para abrir. Nao precisa digitar URL.
-O master local nao pede senha. Funciona em segundo plano e inicia ao entrar
-na sessao Windows. Ainda nao e servico antes do login.
+INSTALACAO
+Instale na mesma pasta para preservar cadastros e backups.
+Autorize uma vez a instalacao do componente VSS quando o Windows solicitar.
+O componente inicia com o Windows; os backups nao pedem mais administrador.
+O painel e agente continuam no usuario normal e iniciam ao entrar no Windows.
+Pesquise BackupDesk no menu Iniciar para abrir. Fechar o navegador nao encerra.
 
 BACKUP
-Escolha origem e, em Onde salvar o backup, selecione Pasta local, HD externo
-ou Unidade de rede. Escolha a pasta de destino no computador que fara o backup.
-Use Testar destino, salve e clique em Fazer backup agora.
-Para ajustar uma rotina antiga, use Editar. Ela nao muda de destino sozinha.
-Clients precisam ser atualizados para 0.7.1 pelo botao no master.
-
-Cada execucao cria uma versao em DESTINO\BackupDesk, com manifest.json e
-arquivos verificados por SHA-256. Versoes anteriores nao sao apagadas.
-O destino precisa estar conectado e com espaco. Nao pode ficar na origem.
-Arquivos grandes usam copia em fluxo. Feche o Outlook para copiar PST/OST;
-no modo normal. Para Outlook aberto, consulte VSS EXPERIMENTAL abaixo.
+Escolha origem, destino local/USB/rede, dias e horario na aba Backup.
+Use Testar destino, salve e clique Fazer backup agora.
+Para Outlook aberto, marque Usar VSS e salve. Nao abra atalhos administrativos.
+O painel mostra se o componente VSS automatico esta disponivel.
+Clients devem ser atualizados pelo botao no master para usar o VSS automatico.
+Cada versao fica em DESTINO\BackupDesk, com arquivos verificados por SHA-256.
+As versoes anteriores sao preservadas. O destino nao pode ficar na origem.
+O andamento aparece no topo, inclusive falha, copia e verificacao.
+A tentativa agendada ocorre uma vez por dia elegivel, inclusive em caso de falha.
+Para tentar novamente no mesmo dia, use Fazer backup agora.
 
 RESTAURACAO
-Escolha versao, pasta de recuperacao e arquivo. Copias em disco sao recuperadas
-pelo agente em BackupDesk-Restaurado, sem sobrescrever os originais.
-Backups antigos no armazenamento interno continuam como download no navegador.
+Escolha versao, pasta de recuperacao e arquivo na aba Restauracao.
+A recuperacao cria BackupDesk-Restaurado e nao sobrescreve os originais.
+Excluir/desativar uma rotina preserva seus backups anteriores.
+
+VSS E PST
+O VSS automatico cria snapshots locais NTFS em segundo plano.
+Nao precisa elevar ou reiniciar o painel. A autorizacao e dada na instalacao.
+O componente aceita somente operacoes VSS e remove apenas snapshots proprios.
+O painel e a copia de dados nao rodam como SYSTEM.
+O teste nativo usa arquivo bloqueado, nao um PST real com Outlook aberto.
+VSS sem writers garante consistencia de volume, nao integridade logica do PST.
+Valide uma copia restaurada no Outlook e mantenha seu backup atual.
+Sem VSS, feche o Outlook para copiar PST/OST.
 
 LIMITES
-Sem retencao automatica, criptografia, assinatura digital ou garantia de
-consistencia de aplicacoes abertas. Use dados de teste e mantenha seu backup
-atual. USB/SMB e instalacao nativa precisam ser validados no Windows real.
-Logs: data\startup.log e data\launcher.log.
-
-ROTINAS
-Ativar/Desativar controla novas execucoes; nao interrompe uma copia iniciada.
-Excluir remove a rotina da tela e preserva os backups para restauracao.
-
-VSS EXPERIMENTAL - PST COM OUTLOOK ABERTO
-Marque Usar VSS na rotina, escolha destino em disco e abra BackupDesk VSS
-(administrador) no menu Iniciar. Confirme o UAC e o reinicio do aplicativo.
-No client, abra Client VSS (administrador). Nao fecha o Outlook.
-O inicio automatico normal nao e elevado: repita o modo VSS a cada sessao.
-Requer origem local NTFS. Para destino de rede, prefira caminho UNC.
-
-VSS aqui usa snapshot sem writers: copia consistente do volume, sem garantir
-integridade logica do PST. O manifesto/historico exibem essa ressalva.
-Valide um PST restaurado no Outlook e mantenha outra copia antes de confiar.
-A execucao nativa VSS nao foi testada neste ambiente Linux. Se falhar, nao
-faz copia comum silenciosa do arquivo aberto. Limpa apenas snapshots proprios.
-Para atualizar um programa em modo elevado, pode ser necessario executar o
-instalador como administrador na mesma pasta.
-
-A versão 0.7.1 mostra o andamento no topo: fila, preparação, VSS, cópia, verificação e resultado. O percentual mede os bytes processados na cópia e verificação; a conclusão só aparece após finalizar. Durante a leitura das pastas e criação do VSS a barra é indeterminada. A fila aguarda um agente conectado. O estado é mantido ao atualizar a página.
-
-0.7.1: a falha de PST em modo comum oferece Ativar VSS e abrir modo administrador. A ação salva VSS na rotina e abre o inicializador instalado, com confirmação UAC do Windows. Aguarde reabrir o painel e clique Fazer backup agora. Cancelar UAC não ativa privilégios. O modo VSS precisa ser aberto novamente a cada sessão; o início automático permanece no modo comum. O atalho também pode ser aberto pelo menu Iniciar. VSS mantém as limitações experimentais descritas acima.
-Cada rotina tem uma tentativa automática por dia elegível, mesmo se falhar ou o agente reiniciar. Outras rotinas continuam sendo processadas. Após corrigir uma falha, use Fazer backup agora para uma nova tentativa manual. Falhas anteriores permanecem no histórico.
+Versao de teste, sem retencao automatica, criptografia ou assinatura digital.
+USB/SMB reais, PST com Outlook e recuperacao precisam ser validados no seu ambiente.
+Logs do aplicativo: data\startup.log e data\agent.log (client).
+A desinstalacao remove a tarefa automatica com autorizacao do Windows.

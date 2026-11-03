@@ -2,18 +2,20 @@ Unicode True
 !include "MUI2.nsh"
 !include "x64.nsh"
 !include "LogicLib.nsh"
+!include "FileFunc.nsh"
+Var VssOwnerSid
 !ifdef CLIENT
   !define PRODUCT "BackupDesk Client"
-  !define VERSION "0.7.1"
+  !define VERSION "0.8.0"
   !define KEY "BackupDeskClient"
   !define FOLDER "BackupDeskClient"
-  OutFile "../windows/build/BackupDesk-Client-0.7.1-x64.exe"
+  OutFile "../windows/build/BackupDesk-Client-0.8.0-x64.exe"
 !else
   !define PRODUCT "BackupDesk Master"
-  !define VERSION "0.7.1"
+  !define VERSION "0.8.0"
   !define KEY "BackupDesk"
   !define FOLDER "BackupDesk"
-  OutFile "../dist/BackupDesk-Master-0.7.1-x64.exe"
+  OutFile "../dist/BackupDesk-Master-0.8.0-x64.exe"
 !endif
 Name "${PRODUCT} (teste local)"
 InstallDir "$LOCALAPPDATA\${FOLDER}"
@@ -62,7 +64,7 @@ Section "${PRODUCT}" Main
  File "../progress.mjs"
  File "../vss.mjs"
  SetOutPath "$INSTDIR\windows"
- File "vss.ps1"
+ File "vss-client.ps1"
  SetOutPath "$INSTDIR"
  File "../background.mjs"
 !ifdef CLIENT
@@ -71,14 +73,13 @@ Section "${PRODUCT}" Main
  File "Agente.cmd"
  File "Configurar.cmd"
  File "build/BackupDeskClient.exe"
- File "build/BackupDeskClientVSS.exe"
+ File /oname=VSSComponentSetup.exe "build/BackupDeskClientVSSComponent.exe"
 !endif
  File "LEIA-ME.txt"
  CreateDirectory "$SMPROGRAMS\${FOLDER}"
 !ifndef CLIENT
  File "../server.mjs"
  File "../native-picker.mjs"
- File "../native-admin.mjs"
  SetOutPath "$INSTDIR\windows"
  File "folder-picker.ps1"
  SetOutPath "$INSTDIR"
@@ -86,13 +87,13 @@ Section "${PRODUCT}" Main
  File "../master.mjs"
  File "Painel.cmd"
  File "build/BackupDesk.exe"
- File "build/BackupDeskVSS.exe"
+ File /oname=VSSComponentSetup.exe "build/BackupDeskVSSComponent.exe"
  SetOutPath "$INSTDIR\public"
  File "../public/index.html"
  File "../public/app.js"
  File "../public/style.css"
  SetOutPath "$INSTDIR\dist"
- File "build/BackupDesk-Client-0.7.1-x64.exe"
+ File "build/BackupDesk-Client-0.8.0-x64.exe"
  SetOutPath "$INSTDIR"
  nsExec::ExecToStack '"$INSTDIR\node.exe" "$INSTDIR\server.mjs" --prepare-master'
  Pop $0
@@ -105,12 +106,35 @@ Section "${PRODUCT}" Main
  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\App Paths\BackupDesk.exe" "" "$INSTDIR\BackupDesk.exe"
  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\App Paths\BackupDesk.exe" "Path" "$INSTDIR"
  System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, p 0, p 0)'
- CreateShortcut "$SMPROGRAMS\BackupDesk VSS (administrador).lnk" "$INSTDIR\BackupDeskVSS.exe"
+ Delete "$SMPROGRAMS\BackupDesk VSS (administrador).lnk"
+ Delete "$INSTDIR\BackupDeskVSS.exe"
  CreateShortcut "$DESKTOP\BackupDesk.lnk" "$INSTDIR\BackupDesk.exe"
 !else
- CreateShortcut "$SMPROGRAMS\${FOLDER}\Client VSS (administrador).lnk" "$INSTDIR\BackupDeskClientVSS.exe"
+ Delete "$SMPROGRAMS\${FOLDER}\Client VSS (administrador).lnk"
+ Delete "$INSTDIR\BackupDeskClientVSS.exe"
  CreateShortcut "$DESKTOP\BackupDesk Client.lnk" "$INSTDIR\BackupDeskClient.exe"
 !endif
+ ; Capture the installing user's SID before launching the privileged setup.
+ nsExec::ExecToStack '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoLogo -NoProfile -NonInteractive -Command "[Security.Principal.WindowsIdentity]::GetCurrent().User.Value"'
+ Pop $0
+ Pop $1
+ ${TrimNewLines} "$1" $VssOwnerSid
+ ${If} $0 != 0
+  MessageBox MB_OK|MB_ICONSTOP "Não foi possível identificar o usuário para instalar o VSS automático."
+  Abort
+ ${EndIf}
+ ClearErrors
+ ExecShellWait "runas" "$INSTDIR\VSSComponentSetup.exe" "/SID=$VssOwnerSid" SW_HIDE $0
+ ${If} ${Errors}
+  MessageBox MB_OK|MB_ICONSTOP "A instalação do componente VSS não foi autorizada. Execute o instalador novamente e autorize uma vez. Backups não pedirão administrador depois da instalação."
+  Abort
+ ${EndIf}
+ ${If} $0 != 0
+  MessageBox MB_OK|MB_ICONSTOP "O componente VSS não foi instalado. Corrija o erro informado e execute este instalador novamente."
+  Abort
+ ${EndIf}
+ WriteRegStr HKCU "Software\BackupDeskVSS" "${KEY}" "$VssOwnerSid"
+
 !ifdef CLIENT
  CreateShortcut "$SMPROGRAMS\${FOLDER}\Configurar agente.lnk" "$INSTDIR\Configurar.cmd"
  CreateShortcut "$SMPROGRAMS\${FOLDER}\Iniciar agente.lnk" "$INSTDIR\BackupDeskClient.exe"
@@ -134,6 +158,19 @@ Section "${PRODUCT}" Main
 SectionEnd
 Section "Uninstall"
  Call un.StopInstalledProcesses
+ ReadRegStr $VssOwnerSid HKCU "Software\BackupDeskVSS" "${KEY}"
+ ${If} $VssOwnerSid != ""
+  ClearErrors
+  ExecShellWait "runas" "$INSTDIR\VSSComponentSetup.exe" "/SID=$VssOwnerSid /REMOVE" SW_HIDE $0
+  ${If} ${Errors}
+   MessageBox MB_OK|MB_ICONSTOP "Autorize uma vez a remoção do componente VSS para desinstalar."
+   Abort
+  ${EndIf}
+  ${If} $0 != 0
+   Abort
+  ${EndIf}
+  DeleteRegValue HKCU "Software\BackupDeskVSS" "${KEY}"
+ ${EndIf}
 !ifdef CLIENT
  DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "BackupDeskClient"
 !else
@@ -157,7 +194,7 @@ Section "Uninstall"
  Delete "$INSTDIR\public\app.js"
  Delete "$INSTDIR\public\style.css"
  RMDir "$INSTDIR\public"
- Delete "$INSTDIR\dist\BackupDesk-Client-0.7.1-x64.exe"
+ Delete "$INSTDIR\dist\BackupDesk-Client-0.8.0-x64.exe"
  RMDir "$INSTDIR\dist"
 !else
  Delete "$DESKTOP\BackupDesk Client.lnk"
@@ -175,6 +212,8 @@ Section "Uninstall"
  Delete "$INSTDIR\progress.mjs"
  Delete "$INSTDIR\vss.mjs"
  Delete "$INSTDIR\windows\vss.ps1"
+ Delete "$INSTDIR\windows\vss-client.ps1"
+ Delete "$INSTDIR\VSSComponentSetup.exe"
  RMDir "$INSTDIR\windows"
  Delete "$INSTDIR\BackupDeskVSS.exe"
  Delete "$INSTDIR\BackupDeskClientVSS.exe"

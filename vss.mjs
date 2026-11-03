@@ -1,4 +1,5 @@
-import {execFile} from 'node:child_process';import {promisify} from 'node:util';import {readFile,mkdir} from 'node:fs/promises';import path from 'node:path';
+import {createHash} from 'node:crypto';
+import {execFile} from 'node:child_process';import {promisify} from 'node:util';import {readFile} from 'node:fs/promises';import path from 'node:path';
 const execute=promisify(execFile);
 export function mapSnapshotPaths(sources,snapshots){return sources.map(source=>{
  const absolute=path.win32.resolve(source),volume=path.win32.parse(absolute).root;
@@ -8,9 +9,19 @@ export function mapSnapshotPaths(sources,snapshots){return sources.map(source=>{
 })}
 async function requestVss(request){
  if(process.platform!=='win32')throw Error('VSS está disponível apenas no Windows.');
- const ledger=path.join(path.dirname(path.resolve(process.env.BACKUPDESK_AGENT_STATE||'data/agent-state.json')),'vss-owned.json');await mkdir(path.dirname(ledger),{recursive:true});
- const script=await readFile(new URL('./windows/vss.ps1',import.meta.url),'utf8');
- try{const {stdout}=await execute('powershell.exe',['-NoLogo','-NoProfile','-NonInteractive','-STA','-EncodedCommand',Buffer.from(script,'utf16le').toString('base64')],{windowsHide:true,env:{...process.env,BACKUPDESK_VSS_REQUEST:JSON.stringify(request),BACKUPDESK_VSS_LEDGER:ledger},encoding:'utf8',timeout:180000,maxBuffer:1048576});return JSON.parse(stdout.replace(/^\uFEFF/,'').trim())}catch(e){throw Error((e.stderr||e.message).trim())}
+ const script=(await readFile(new URL('./windows/vss-client.ps1',import.meta.url),'utf8')).replace(/^\uFEFF/,'');
+ const client=createHash('sha256').update(new URL('.',import.meta.url).href.toLowerCase()).digest('hex');
+ const product=process.env.BACKUPDESK_VSS_PRODUCT||'master';
+ try{const {stdout}=await execute('powershell.exe',['-NoLogo','-NoProfile','-NonInteractive','-EncodedCommand',Buffer.from(script,'utf16le').toString('base64')],{windowsHide:true,env:{...process.env,BACKUPDESK_VSS_REQUEST:JSON.stringify({...request,protocol:1,client}),BACKUPDESK_VSS_PRODUCT:product},encoding:'utf8',timeout:195000,maxBuffer:1048576});return JSON.parse(stdout.replace(/^\uFEFF/,'').trim())}catch(e){throw Error((e.stderr||e.message).trim())}
+}
+let cachedStatus=null,statusAt=0,statusPending=null;
+export async function automaticVssStatus(){
+ if(cachedStatus&&Date.now()-statusAt<15000)return cachedStatus;
+ if(statusPending)return statusPending;
+ statusPending=(async()=>{try{const result=await requestVss({action:'probe'});cachedStatus={available:result.protocol===1&&result.automatic===true,automatic:true};}
+ catch(e){cachedStatus={available:false,automatic:true,error:e.message}}
+ statusAt=Date.now();return cachedStatus;})();
+ try{return await statusPending}finally{statusPending=null}
 }
 export async function withVssSources(sources,operation,backend=requestVss,onProgress=()=>{}){
  const volumes=[...new Set(sources.map(p=>{if(!/^[A-Za-z]:[\\/]/.test(p))throw Error('VSS requer origem em disco local NTFS.');return path.win32.parse(path.win32.resolve(p)).root.toUpperCase()}))];const snapshots=[];
