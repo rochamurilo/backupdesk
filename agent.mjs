@@ -1,10 +1,10 @@
 import {createProgressReporter} from './progress.mjs';
 import {readFile,writeFile} from 'node:fs/promises';import {resolve} from 'node:path';
-import {isScheduledDay} from './schedule.mjs';import {browseFiles,collectFiles} from './filesystem.mjs';
+import {runScheduledRoutine} from './schedule.mjs';import {browseFiles,collectFiles} from './filesystem.mjs';
 import {backupToDisk,validateDestination,validateVssDestination,restoreFromDisk} from './disk-backup.mjs';
 const base=process.env.BACKUPDESK_URL||'http://127.0.0.1:3000',token=process.env.BACKUPDESK_TOKEN;
 if(!token)throw Error('Defina BACKUPDESK_TOKEN');
-async function api(path,data){const r=await fetch(base+'/api/agent/'+path,{method:data?'POST':'GET',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json','X-BackupDesk-Version':'0.7.0'},body:data?JSON.stringify(data):undefined,signal:AbortSignal.timeout(path.endsWith('/progress')?5000:30000)});const b=await r.json();if(!r.ok)throw Error(b.error);return b}
+async function api(path,data){const r=await fetch(base+'/api/agent/'+path,{method:data?'POST':'GET',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json','X-BackupDesk-Version':'0.7.1'},body:data?JSON.stringify(data):undefined,signal:AbortSignal.timeout(path.endsWith('/progress')?5000:30000)});const b=await r.json();if(!r.ok)throw Error(b.error);return b}
 async function backup(routine,jobId){const run=await api('runs',routine.id?{routine_id:routine.id,storage_type:routine.destination_type,job_id:jobId}:{});const reporter=createProgressReporter(p=>api('runs/'+run.id+'/progress',p));try{
  let snapshot,consistency,warning;
  if(routine.destination_type&&routine.destination_type!=='server'){
@@ -16,7 +16,8 @@ if(process.argv[2]==='--once'){if(!process.argv[3])throw Error('Uso: node agent.
 else{
  const statePath=resolve(process.env.BACKUPDESK_AGENT_STATE||'.backupdesk-agent-state.json');let state={};try{state=JSON.parse(await readFile(statePath,'utf8'))}catch(e){if(e.code!=='ENOENT')throw e}
  await api('hello',{});
- async function tick(){const {routines}=await api('config');const now=new Date(),date=[now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')].join('-');for(const r of routines){const eligible=isScheduledDay(r.cadence,now);const time=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');if(eligible&&time>=r.hour&&state[r.id]!==date){await backup(r);state[r.id]=date;await writeFile(statePath,JSON.stringify(state))}}}
+ async function tick(){const {routines}=await api('config');for(const r of routines){try{await runScheduledRoutine(r,new Date(),state,value=>writeFile(statePath,JSON.stringify(value)),backup)}catch(e){console.error('Rotina '+r.name+': '+e.message)}}}
+
  let busy=false,lastTick=0;
  async function job(command){const reporter=createProgressReporter(p=>api('jobs/'+command.id+'/progress',p));if(command.kind!=='backup')reporter.report({stage:'preparing'});try{let result;if(command.kind==='backup')result=await backup(command.payload.routine,command.id);else if(command.kind==='validate'){const v=command.payload.useVss?await validateVssDestination(command.payload.source,command.payload.destination,{onProgress:reporter.report}):await validateDestination(command.payload.source,command.payload.destination,{onProgress:reporter.report});result={destination:v.target,requiredBytes:v.requiredBytes,availableBytes:v.availableBytes}}else if(command.kind==='restore')result={...await restoreFromDisk({...command.payload,job:command.id,onProgress:reporter.report}),warning:command.payload.warning};else throw Error('Tarefa desconhecida');await reporter.close();await api('jobs/'+command.id,{status:'success',result})}catch(e){await reporter.close();await api('jobs/'+command.id,{status:'failed',error:e.message}).catch(()=>{});console.error(e.message)}finally{busy=false}}
  while(true){try{

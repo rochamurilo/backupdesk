@@ -1,4 +1,4 @@
-BACKUPDESK 0.7.0 - TESTE WINDOWS x64
+BACKUPDESK 0.7.1 - TESTE WINDOWS x64
 
 Pesquise BackupDesk no menu Iniciar para abrir. Nao precisa digitar URL.
 O master local nao pede senha. Funciona em segundo plano e inicia ao entrar
@@ -9,7 +9,7 @@ Escolha origem e, em Onde salvar o backup, selecione Pasta local, HD externo
 ou Unidade de rede. Escolha a pasta de destino no computador que fara o backup.
 Use Testar destino, salve e clique em Fazer backup agora.
 Para ajustar uma rotina antiga, use Editar. Ela nao muda de destino sozinha.
-Clients precisam ser atualizados para 0.7.0 pelo botao no master.
+Clients precisam ser atualizados para 0.7.1 pelo botao no master.
 
 Cada execucao cria uma versao em DESTINO\BackupDesk, com manifest.json e
 arquivos verificados por SHA-256. Versoes anteriores nao sao apagadas.
@@ -47,4 +47,7 @@ faz copia comum silenciosa do arquivo aberto. Limpa apenas snapshots proprios.
 Para atualizar um programa em modo elevado, pode ser necessario executar o
 instalador como administrador na mesma pasta.
 
-A versão 0.7.0 mostra o andamento no topo: fila, preparação, VSS, cópia, verificação e resultado. O percentual mede os bytes processados na cópia e verificação; a conclusão só aparece após finalizar. Durante a leitura das pastas e criação do VSS a barra é indeterminada. A fila aguarda um agente conectado. O estado é mantido ao atualizar a página.
+A versão 0.7.1 mostra o andamento no topo: fila, preparação, VSS, cópia, verificação e resultado. O percentual mede os bytes processados na cópia e verificação; a conclusão só aparece após finalizar. Durante a leitura das pastas e criação do VSS a barra é indeterminada. A fila aguarda um agente conectado. O estado é mantido ao atualizar a página.
+
+0.7.1: a falha de PST em modo comum oferece Ativar VSS e abrir modo administrador. A ação salva VSS na rotina e abre o inicializador instalado, com confirmação UAC do Windows. Aguarde reabrir o painel e clique Fazer backup agora. Cancelar UAC não ativa privilégios. O modo VSS precisa ser aberto novamente a cada sessão; o início automático permanece no modo comum. O atalho também pode ser aberto pelo menu Iniciar. VSS mantém as limitações experimentais descritas acima.
+Cada rotina tem uma tentativa automática por dia elegível, mesmo se falhar ou o agente reiniciar. Outras rotinas continuam sendo processadas. Após corrigir uma falha, use Fazer backup agora para uma nova tentativa manual. Falhas anteriores permanecem no histórico.
