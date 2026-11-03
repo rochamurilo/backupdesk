@@ -1,6 +1,6 @@
-# BackupDesk 0.4.1 — versão de teste
+# BackupDesk 0.4.2 — versão de teste
 
-[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.4.1-x64.exe)
+[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.4.2-x64.exe)
 
 ## Usar
 
@@ -47,3 +47,8 @@ Use dados de teste. Arquivo individual até 16 MiB; sem VSS/Outlook aberto, serv
 ## Atualização 0.4.1
 
 O quadro Computadores e os campos Nome do computador/responsável foram removidos. O master continua sendo cadastrado automaticamente. Novos clients podem receber um token pelo botão Gerar token de vínculo, sem o formulário antigo. Dias de execução permite Todos os dias, Segunda a sexta, Somente sábado e Somente domingo. As opções Semanal (segunda-feira) e Mensal (dia 1) foram preservadas para compatibilidade. O agente considera o calendário e o horário local do computador e continua executando no máximo uma vez por dia por rotina.
+
+
+## Selecionar pasta no Windows (master 0.4.2)
+
+Selecionar pasta abre o diálogo nativo do Windows (IFileOpenDialog em modo pastas), com discos locais, unidades mapeadas e rede. Não há mais navegador de arquivos próprio no painel. Cancelar mantém as origens atuais e cliques adicionais acrescentam pastas sem duplicar caminhos. O comando só é permitido na sessão local do master, pela mesma origem. Para clients remotos, informe o caminho da pasta do client no campo de origens; o painel não abre uma janela de arquivos em outra máquina. A seleção nativa foi implementada e empacotada em Linux e precisa ser validada no Windows real. O client permanece 0.4.1.

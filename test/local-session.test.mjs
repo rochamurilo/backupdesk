@@ -16,7 +16,7 @@ for(const [name,master,host,port,enabled] of [['master local',true,'127.0.0.1',3
     const data=await session.json();assert.equal(data.role,'master');assert.equal(data.localOnly,true);assert.ok(data.token);
     const state=await fetch(origin+'/api/state',{headers:{Authorization:'Bearer '+data.token}});assert.equal(state.status,200);assert.equal((await state.json()).devices.length,1);
     const replay=await raw('/api/state',{Authorization:'Bearer '+data.token,Host:'outro-site.example'});assert.equal(replay.status,401);
-    const again=await request({Origin:origin});assert.equal((await again.json()).token,data.token);
+    const again=await request({Origin:origin});assert.equal((await again.json()).token,data.token);assert.equal((await raw('/api/pick-folder',{Authorization:'Bearer '+data.token,Origin:'https://outro-site.example'},'POST')).status,403);if(process.platform!=='win32'){const picker=await raw('/api/pick-folder',{Authorization:'Bearer '+data.token,Origin:origin},'POST');assert.equal(picker.status,400);assert.ok((await picker.json()).error.includes('Windows'))}
    }
   }finally{child.kill();await once(child,'exit');await rm(dir,{recursive:true,force:true})}
  });

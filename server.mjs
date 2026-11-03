@@ -1,4 +1,5 @@
 import http from 'node:http';
+import {pickFolder} from './native-picker.mjs';
 import {cadenceLabels} from './schedule.mjs';
 import {supervise} from './background.mjs';
 import {prepareLocalMaster} from './local-master.mjs';
@@ -17,6 +18,7 @@ const sessions=new Map(); const token=()=>randomBytes(32).toString('hex');
 const send=(res,status,data)=>{res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify(data))};
 async function body(req){let chunks=[],n=0;for await(const c of req){n+=c.length;if(n>24*1024*1024)throw Error('Corpo excede 24 MB');chunks.push(c)}return JSON.parse(Buffer.concat(chunks).toString()||'{}')}
 let localSessionToken;
+let choosingFolder=false;
 function localRequest(req){
  const host=req.headers.host||'';
  const bound=server.address()?.address;
@@ -43,6 +45,11 @@ if(p==='/api/agent/config')return send(res,200,{device:device.id,routines:db.pre
 if(p==='/api/agent/runs'&&req.method==='POST'){const id=token();db.prepare('INSERT INTO runs(id,device,started,status) VALUES(?,?,?,?)').run(id,device.id,new Date().toISOString(),'running');return send(res,201,{id})}
 const m=p.match(/^\/api\/agent\/runs\/([a-f0-9]+)\/(files|finish)$/);if(m&&req.method==='POST'){const run=db.prepare('SELECT * FROM runs WHERE id=? AND device=? AND status=?').get(m[1],device.id,'running');if(!run)return send(res,404,{error:'Execução ativa não encontrada'});const b=await body(req);if(m[2]==='files'){if(typeof b.path!=='string'||!b.path||b.path.startsWith('/')||b.path.split(/[\\/]/).includes('..'))throw Error('Caminho inválido');const data=Buffer.from(b.content||'','base64'),h=createHash('sha256').update(data).digest('hex');if(!existsSync(join(root,'blobs',h)))writeFileSync(join(root,'blobs',h),data);db.prepare('INSERT INTO files(run,path,hash,size) VALUES(?,?,?,?)').run(run.id,b.path,h,data.length);return send(res,201,{hash:h})}if(!['success','failed'].includes(b.status))throw Error('Status inválido');db.prepare('UPDATE runs SET finished=?,status=?,error=?,bytes=(SELECT COALESCE(SUM(size),0) FROM files WHERE run=?) WHERE id=?').run(new Date().toISOString(),b.status,String(b.error||'').slice(0,2000),run.id,run.id);return send(res,200,{ok:true})}}
 const user=sessions.get(auth);if(!user||(user.localOnly&&!localRequest(req)))return send(res,401,{error:'Faça login'});
+if(p==='/api/pick-folder'&&req.method==='POST'){
+ if(!user.localOnly||!localMaster||!localRequest(req)||req.headers.origin!=='http://'+req.headers.host)return send(res,403,{error:'Abra o painel no computador master para selecionar a pasta no Windows.'});
+ if(choosingFolder)return send(res,409,{error:'A janela de seleção já está aberta.'});
+ choosingFolder=true;try{return send(res,200,await pickFolder())}finally{choosingFolder=false}
+}
 const browseMatch=p.match(/^\/api\/devices\/([a-f0-9]+)\/browse$/);
 if(browseMatch&&req.method==='POST'){
  const id=browseMatch[1];if(!visible(user,id)||!db.prepare('SELECT id FROM devices WHERE id=?').get(id))return send(res,404,{error:'Computador não encontrado'});
@@ -51,14 +58,14 @@ if(browseMatch&&req.method==='POST'){
  const result=await new Promise(resolve=>{const jobId=token();const timer=setTimeout(()=>finish({error:'O agente não respondeu. Abra Iniciar agente e confirme a configuração e a versão 0.2.0.'}),15000);function finish(value){if(!browseRequests.has(jobId))return;clearTimeout(timer);browseRequests.delete(jobId);resolve(value)}browseRequests.set(jobId,{id:jobId,device:id,path:b.path,finish,delivered:false})});
  return send(res,result.error?400:200,result.error?{error:result.error}:result.result);
 }
-if(p==='/api/state'){const devices=db.prepare(user.role==='master'?'SELECT id,name,owner,last_seen FROM devices':'SELECT id,name,owner,last_seen FROM devices WHERE owner=?').all(...(user.role==='master'?[]:[user.id]));const ids=new Set(devices.map(d=>d.id));return send(res,200,{user,devices,users:user.role==='master'?db.prepare('SELECT id,name,role FROM users').all():[],routines:db.prepare('SELECT * FROM routines').all().filter(r=>ids.has(r.device)),runs:db.prepare('SELECT * FROM runs ORDER BY started DESC').all().filter(r=>ids.has(r.device))})}
+if(p==='/api/state'){const devices=db.prepare(user.role==='master'?'SELECT id,name,owner,last_seen FROM devices':'SELECT id,name,owner,last_seen FROM devices WHERE owner=?').all(...(user.role==='master'?[]:[user.id]));const ids=new Set(devices.map(d=>d.id));return send(res,200,{user,devices,localDeviceId:user.localOnly?localMaster?.id:null,users:user.role==='master'?db.prepare('SELECT id,name,role FROM users').all():[],routines:db.prepare('SELECT * FROM routines').all().filter(r=>ids.has(r.device)),runs:db.prepare('SELECT * FROM runs ORDER BY started DESC').all().filter(r=>ids.has(r.device))})}
 if(p==='/api/users'&&req.method==='POST'){if(user.role!=='master')return send(res,403,{error:'Acesso restrito'});const b=await body(req);if(!b.name||typeof b.password!=='string'||b.password.length<10)throw Error('Informe nome e senha com pelo menos 10 caracteres');db.prepare('INSERT INTO users(name,password,role) VALUES(?,?,?)').run(b.name,hash(b.password),'client');return send(res,201,{ok:true})}
 if(p==='/api/devices'&&req.method==='POST'){if(user.role!=='master')return send(res,403,{error:'Acesso restrito'});const b=await body(req);if(!b.name)throw Error('Nome obrigatório');const id=token(),t=token();db.prepare('INSERT INTO devices(id,name,owner,token) VALUES(?,?,?,?)').run(id,b.name,Number(b.owner)||user.id,t);return send(res,201,{id,token:t})}
 if(p==='/api/routines'&&req.method==='POST'){const b=await body(req);if(!visible(user,b.device))return send(res,403,{error:'Acesso restrito'});if(!Object.hasOwn(cadenceLabels,b.cadence)||!/^([01]\d|2[0-3]):[0-5]\d$/.test(b.hour)||!b.source||!b.name)throw Error('Rotina inválida');let sources;try{sources=JSON.parse(b.source)}catch{sources=[b.source]}if(!Array.isArray(sources)||!sources.length||sources.length>100||sources.some(p=>typeof p!=='string'||!p.trim()||p.length>4096||!(/^(?:[A-Za-z]:[\\/]|\\\\[^\\]+\\[^\\]+|\/)/.test(p))))throw Error('Informe arquivos ou pastas com caminho absoluto');db.prepare('INSERT INTO routines(device,name,cadence,hour,source) VALUES(?,?,?,?,?)').run(b.device,b.name,b.cadence,b.hour,JSON.stringify([...new Set(sources)]));return send(res,201,{ok:true})}
 const match=p.match(/^\/api\/runs\/([a-f0-9]+)\/files$/);if(match){const r=db.prepare('SELECT * FROM runs WHERE id=?').get(match[1]);if(!r||!visible(user,r.device))return send(res,404,{error:'Execução não encontrada'});if(url.searchParams.has('path')){const f=db.prepare('SELECT * FROM files WHERE run=? AND path=?').get(r.id,url.searchParams.get('path'));if(!f)return send(res,404,{error:'Arquivo não encontrado'});const data=readFileSync(join(root,'blobs',f.hash));if(createHash('sha256').update(data).digest('hex')!==f.hash)throw Error('Integridade inválida');res.setHeader('Content-Type','application/octet-stream');return res.end(data)}return send(res,200,db.prepare('SELECT path,size,hash FROM files WHERE run=?').all(r.id))}
 if(p==='/api/download/client'||p==='/api/download/windows'){
  if(user.role!=='master')return send(res,403,{error:'Somente o master pode baixar instaladores'});
- const name=p.endsWith('/client')?'BackupDesk-Client-0.4.1-x64.exe':'BackupDesk-Master-0.4.1-x64.exe';
+ const name=p.endsWith('/client')?'BackupDesk-Client-0.4.1-x64.exe':'BackupDesk-Master-0.4.2-x64.exe';
  const file=new URL('./dist/'+name,import.meta.url);if(!existsSync(file))return send(res,404,{error:'Instalador não disponível neste servidor'});
  res.setHeader('Content-Type','application/vnd.microsoft.portable-executable');res.setHeader('Content-Disposition','attachment; filename="'+name+'"');return res.end(readFileSync(file));
 }
