@@ -58,13 +58,14 @@ try{
  try{
   [void]$child.Start();$output=$child.StandardOutput.ReadToEndAsync();$errors=$child.StandardError.ReadToEndAsync()
   if(-not $child.WaitForExit(240000)){$child.Kill();throw 'O teste do usuário comum excedeu o prazo.'}
+  $clientOutput=$output.GetAwaiter().GetResult();$clientErrors=$errors.GetAwaiter().GetResult()
   $resultFile=Join-Path $testRoot 'result.json'
   if(-not (Test-Path -LiteralPath $resultFile)){throw ('O cliente de teste não iniciou: '+$errors.GetAwaiter().GetResult()+' '+$output.GetAwaiter().GetResult())}
  }finally{$child.Dispose()}
  $env:BACKUPDESK_TEST_STAGE='read-user-result'
  if(-not (Test-Path -LiteralPath $resultFile)){throw 'O cliente de teste não concluiu dentro do prazo.'}
  $result=Get-Content -Raw -LiteralPath $resultFile | ConvertFrom-Json
- if(-not $result.success){throw ($result.error+' '+$result.stack)}
+ if(-not $result.success){throw ($result.error+' '+$result.stack+' '+$clientErrors+' '+$clientOutput)}
  if(-not $result.nonAdministrator){throw 'O cliente de teste não comprovou execução sem administrador.'}
  'Windows: usuário comum, tarefa SYSTEM, pipe autenticado, arquivo bloqueado, motor VSS e limpeza: OK.'
  'PST real com Outlook aberto não foi validado.'

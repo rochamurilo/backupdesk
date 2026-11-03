@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
     paths:
+      - 'disk-backup.mjs'
+      - 'vss.mjs'
+      - 'filesystem.mjs'
       - 'windows/vss*.ps1'
       - 'windows/install-vss-component.ps1'
       - 'test/windows-vss*.ps1'

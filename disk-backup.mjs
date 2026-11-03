@@ -23,7 +23,12 @@ export async function validateDestination(source,destination,{useVss=false,onPro
  if(typeof destination!=='string'||!path.isAbsolute(destination))throw Error('Selecione uma pasta de destino com caminho absoluto.');
  const target=await realpath(destination);if(!(await stat(target)).isDirectory())throw Error('O destino não é uma pasta.');
  const {roots,files,directories}=await plan(source,onProgress);onProgress({stage:'checking_destination',currentFile:'',totalFiles:files.length});
- for(const root of roots){const real=await realpath(root);if((await stat(real)).isDirectory()&&contained(real,target))throw Error('O destino não pode ser a origem nem ficar dentro dela.');}
+ // Shadow devices have no DOS mount point; realpath() may fail even though files are readable.
+ // Live source containment was checked in vssPreflight before creating this snapshot.
+ for(const root of roots){
+  if(useVss){if(!/^\\\\\?\\GLOBALROOT\\Device\\HarddiskVolumeShadowCopy\d+(?:\\|$)/i.test(root))throw Error('Origem VSS não pertence a um snapshot válido.');continue}
+  const real=await realpath(root);if((await stat(real)).isDirectory()&&contained(real,target))throw Error('O destino não pode ser a origem nem ficar dentro dela.');
+ }
  if(!files.length)throw Error('A origem não contém arquivos para copiar.');
  const bytes=files.reduce((n,f)=>n+f.size,0n);const space=await statfs(target,{bigint:true});const available=space.bavail*space.bsize;
  const estimated=bytes+BigInt(files.length*2+directories.length+10)*space.bsize+1048576n;
