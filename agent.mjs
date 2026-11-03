@@ -1,5 +1,6 @@
 import {readFile,writeFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
+import {isScheduledDay} from './schedule.mjs';
 import {browseFiles,collectFiles} from './filesystem.mjs';
 const base=process.env.BACKUPDESK_URL||'http://127.0.0.1:3000',token=process.env.BACKUPDESK_TOKEN;
 if(!token)throw Error('Defina BACKUPDESK_TOKEN');
@@ -10,7 +11,7 @@ if(process.argv[2]==='--once'){
 }else{
  const statePath=resolve(process.env.BACKUPDESK_AGENT_STATE||'.backupdesk-agent-state.json');let state={};
  try{state=JSON.parse(await readFile(statePath,'utf8'))}catch(e){if(e.code!=='ENOENT')throw e}
- async function tick(){const {routines}=await api('config');const now=new Date(),date=[now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')].join('-');for(const r of routines){const eligible=r.cadence==='daily'||r.cadence==='weekly'&&now.getDay()===1||r.cadence==='monthly'&&now.getDate()===1;const time=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');if(eligible&&time>=r.hour&&state[r.id]!==date){await backup(r.source);state[r.id]=date;await writeFile(statePath,JSON.stringify(state))}}}
+ async function tick(){const {routines}=await api('config');const now=new Date(),date=[now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')].join('-');for(const r of routines){const eligible=isScheduledDay(r.cadence,now);const time=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');if(eligible&&time>=r.hour&&state[r.id]!==date){await backup(r.source);state[r.id]=date;await writeFile(statePath,JSON.stringify(state))}}}
  let busy=false,lastTick=0;
  // A consulta de arquivos continua respondendo enquanto um backup está em execução.
  while(true){try{

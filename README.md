@@ -1,6 +1,6 @@
-# BackupDesk 0.4.0 — versão de teste
+# BackupDesk 0.4.1 — versão de teste
 
-[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.4.0-x64.exe)
+[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.4.1-x64.exe)
 
 ## Usar
 
@@ -14,7 +14,7 @@ Não há botão de encerrar. Fechar o navegador mantém o aplicativo em segundo 
 
 ## Clients
 
-Baixe o instalador **Client** pelo botão no canto inferior esquerdo do master (somente perfil master). No diálogo **Vincular client**, cadastre o equipamento e obtenha o token. Configure URL HTTPS do master e token no client; ele inicia em segundo plano e nas próximas sessões Windows. O client não instala painel administrativo. Credenciais de usuários client são gerenciadas no mesmo diálogo, fora da tela principal. Cada usuário/agent só acessa seus equipamentos autorizados. O instalador não contém tokens.
+Baixe o instalador **Client** pelo botão no canto inferior esquerdo do master (somente perfil master). No diálogo **Vincular client**, use **Gerar token de vínculo** para configurar o novo client. Configure URL HTTPS do master e token no client; ele inicia em segundo plano e nas próximas sessões Windows. O client não instala painel administrativo. Credenciais de usuários client são gerenciadas no mesmo diálogo, fora da tela principal. Cada usuário/agent só acessa seus equipamentos autorizados. O instalador não contém tokens.
 
 O endereço 127.0.0.1 é local; computadores diferentes exigem uma URL HTTPS acessível, ainda não configurada pelo instalador. A API escuta somente na interface local por padrão. Ao publicar na rede, a autenticação continua obrigatória; a sessão automática exige master vinculado ao loopback e requisição da mesma origem.
 
@@ -42,3 +42,8 @@ Os testes exercitam backup/restauração, isolamento, seleção de arquivos, boo
 ## Limites
 
 Use dados de teste. Arquivo individual até 16 MiB; sem VSS/Outlook aberto, serviço Windows antes do login, retenção/expurgo, criptografia em repouso, transferências por blocos/retomada, alertas de ausência ou revogação de tokens. Arquivos alterados durante leitura causam falha. Sessões ficam na memória. Login remoto precisa de melhorias antes de produção (salt aleatório, expiração e limitação de tentativas). Instaladores sem assinatura digital. Não usar como única cópia de dados nem publicar diretamente na internet nesta versão.
+
+
+## Atualização 0.4.1
+
+O quadro Computadores e os campos Nome do computador/responsável foram removidos. O master continua sendo cadastrado automaticamente. Novos clients podem receber um token pelo botão Gerar token de vínculo, sem o formulário antigo. Dias de execução permite Todos os dias, Segunda a sexta, Somente sábado e Somente domingo. As opções Semanal (segunda-feira) e Mensal (dia 1) foram preservadas para compatibilidade. O agente considera o calendário e o horário local do computador e continua executando no máximo uma vez por dia por rotina.

@@ -1,4 +1,4 @@
-BACKUPDESK MASTER E CLIENT 0.4.0 - TESTE WINDOWS x64
+BACKUPDESK MASTER E CLIENT 0.4.1 - TESTE WINDOWS x64
 
 O master abre direto, sem senha local. Use as abas Backup e Restauracao.
 Escolha as origens, frequencia e horario na aba Backup. Na Restauracao,
