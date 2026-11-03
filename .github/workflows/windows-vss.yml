@@ -6,7 +6,7 @@ on:
     paths:
       - 'windows/vss*.ps1'
       - 'windows/install-vss-component.ps1'
-      - 'test/windows-vss-component.ps1'
+      - 'test/windows-vss*.ps1'
       - '.github/workflows/windows-vss.yml'
 permissions:
   contents: read

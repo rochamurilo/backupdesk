@@ -7,7 +7,9 @@ try{
  $sid=[Security.Principal.WindowsIdentity]::GetCurrent().User.Value
  $pipeName='BackupDeskVSS-v1-'+$product+'-'+$sid
  $pipe=New-Object System.IO.Pipes.NamedPipeClientStream('.',$pipeName,[System.IO.Pipes.PipeDirection]::InOut,[System.IO.Pipes.PipeOptions]::Asynchronous)
- try{$pipe.Connect(2000)}catch{throw 'Componente automático VSS indisponível. Reinstale a versão atual e autorize o componente durante a instalação. Não é necessário abrir o painel como administrador.'}
+ $request=$env:BACKUPDESK_VSS_REQUEST | ConvertFrom-Json
+ $connectTimeout=20000;if($request.action -eq 'probe'){$connectTimeout=2000}
+ try{$pipe.Connect($connectTimeout)}catch{throw 'Componente automático VSS indisponível. Reinstale a versão atual e autorize o componente durante a instalação. Não é necessário abrir o painel como administrador.'}
  # Prevent another user from impersonating the privileged component with a pipe of the same name.
  if($pipe.GetAccessControl().GetOwner([System.Security.Principal.SecurityIdentifier]).Value -ne 'S-1-5-18'){throw 'A identidade do componente VSS não é confiável.'}
  $writer=New-Object System.IO.StreamWriter($pipe,(New-Object System.Text.UTF8Encoding($false)),1024,$true);$writer.AutoFlush=$true

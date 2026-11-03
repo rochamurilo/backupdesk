@@ -12,7 +12,7 @@ async function requestVss(request){
  const script=(await readFile(new URL('./windows/vss-client.ps1',import.meta.url),'utf8')).replace(/^\uFEFF/,'');
  const client=createHash('sha256').update(new URL('.',import.meta.url).href.toLowerCase()).digest('hex');
  const product=process.env.BACKUPDESK_VSS_PRODUCT||'master';
- try{const {stdout}=await execute('powershell.exe',['-NoLogo','-NoProfile','-NonInteractive','-EncodedCommand',Buffer.from(script,'utf16le').toString('base64')],{windowsHide:true,env:{...process.env,BACKUPDESK_VSS_REQUEST:JSON.stringify({...request,protocol:1,client}),BACKUPDESK_VSS_PRODUCT:product},encoding:'utf8',timeout:195000,maxBuffer:1048576});return JSON.parse(stdout.replace(/^\uFEFF/,'').trim())}catch(e){throw Error((e.stderr||e.message).trim())}
+ try{const {stdout}=await execute('powershell.exe',['-NoLogo','-NoProfile','-NonInteractive','-EncodedCommand',Buffer.from(script,'utf16le').toString('base64')],{windowsHide:true,env:{...process.env,BACKUPDESK_VSS_REQUEST:JSON.stringify({...request,protocol:1,client}),BACKUPDESK_VSS_PRODUCT:product},encoding:'utf8',timeout:220000,maxBuffer:1048576});return JSON.parse(stdout.replace(/^\uFEFF/,'').trim())}catch(e){throw Error((e.stderr||e.message).trim())}
 }
 let cachedStatus=null,statusAt=0,statusPending=null;
 export async function automaticVssStatus(){
