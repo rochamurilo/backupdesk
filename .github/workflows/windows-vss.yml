@@ -24,7 +24,7 @@ jobs:
         run: |
           try { ./test/windows-vss-component.ps1 }
           catch {
-            $detail=($_.Exception.Message+' '+$_.ScriptStackTrace).Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
+            $detail=($env:BACKUPDESK_TEST_FAILURE_STAGE+' '+$env:BACKUPDESK_TEST_STAGE+' '+$_.Exception.Message+' '+$_.ScriptStackTrace+' '+$_.InvocationInfo.PositionMessage).Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
             Write-Output "::error title=Windows VSS diagnostic::$detail"
             throw
           }

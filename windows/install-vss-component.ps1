@@ -1,11 +1,13 @@
 ﻿$ErrorActionPreference='Stop'
 try{
+ $phase='identity'
  $sid=$env:BACKUPDESK_VSS_OWNER_SID;$product=$env:BACKUPDESK_VSS_PRODUCT
  if($sid -notmatch '^S-1-(?:\d+-)+\d+$' -or $product -notin @('master','client')){throw 'Identificação da instalação VSS inválida.'}
  $null=New-Object System.Security.Principal.SecurityIdentifier($sid)
  $principal=New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
  if(-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)){throw 'Autorize a instalação do componente VSS como administrador.'}
  $taskName='BackupDeskVSS-'+$product+'-'+$sid
+ $phase='stop-existing'
  $existing=Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
  if($existing){
   Stop-ScheduledTask -TaskName $taskName -ErrorAction Stop
@@ -26,6 +28,7 @@ try{
   exit 0
  }
  # The SYSTEM task only executes these protected files, never scripts in AppData.
+ $phase='protect-files'
  $acl=New-Object System.Security.AccessControl.DirectorySecurity
  $admins=New-Object System.Security.Principal.SecurityIdentifier('S-1-5-32-544')
  $system=New-Object System.Security.Principal.SecurityIdentifier('S-1-5-18')
@@ -34,6 +37,7 @@ try{
   $acl.AddAccessRule((New-Object System.Security.AccessControl.FileSystemAccessRule($identity,'FullControl','ContainerInherit,ObjectInherit','None','Allow')))
  }
  Set-Acl -LiteralPath $PSScriptRoot -AclObject $acl
+ $phase='create-state'
  New-Item -ItemType Directory -Path $state -Force | Out-Null
  $ready=Join-Path $state 'ready.json';Remove-Item -LiteralPath $ready -Force -ErrorAction SilentlyContinue
  $exe=Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
@@ -42,9 +46,11 @@ try{
  $trigger=@((New-ScheduledTaskTrigger -AtStartup),(New-ScheduledTaskTrigger -AtLogOn -User $sid))
  $account=New-ScheduledTaskPrincipal -UserId 'S-1-5-18' -LogonType ServiceAccount -RunLevel Highest
  $settings=New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::Zero) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1) -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -MultipleInstances IgnoreNew -StartWhenAvailable
+ $phase='register-task'
  Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Principal $account -Settings $settings -Description 'Componente VSS do BackupDesk. Permite snapshots sem elevar o painel ou o agente.' -Force | Out-Null
+ $phase='start-task'
  Start-ScheduledTask -TaskName $taskName
  for($i=0;$i -lt 60;$i++){if(Test-Path -LiteralPath $ready){exit 0};Start-Sleep -Milliseconds 250}
  $log=Join-Path $state 'broker.log';$details='';if(Test-Path -LiteralPath $log){$details=(Get-Content -LiteralPath $log -Tail 4) -join '; '}
  throw ('O componente VSS foi registrado, mas não iniciou. '+$details)
-}catch{[Console]::Error.WriteLine($_.Exception.Message);exit 1}
+}catch{[Console]::Error.WriteLine(('VSS setup ['+$phase+']: '+$_.Exception.Message+' '+$_.ScriptStackTrace));exit 1}

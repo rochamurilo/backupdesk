@@ -21,6 +21,7 @@ foreach($bad in @(
 }
 $userName='bkd'+[guid]::NewGuid().ToString('N').Substring(0,12)
 $password=ConvertTo-SecureString ('A7!'+[guid]::NewGuid().ToString('N')) -AsPlainText -Force
+$env:BACKUPDESK_TEST_STAGE='create-user'
 $user=New-LocalUser -Name $userName -Password $password -PasswordNeverExpires -AccountNeverExpires
 $sid=$user.SID.Value
 $component=Join-Path ([Environment]::GetFolderPath('ProgramFiles')) 'BackupDesk VSS\master'
@@ -32,6 +33,7 @@ try{
  if(-not (Get-LocalGroupMember -SID 'S-1-5-32-545' | Where-Object {$_.SID.Value -eq $sid})){Add-LocalGroupMember -SID 'S-1-5-32-545' -Member $userName}
  New-Item -ItemType Directory -Path $component -Force | Out-Null
  foreach($file in @('install-vss-component.ps1','vss-broker.ps1','vss-protocol.ps1','vss.ps1')){Copy-Item -LiteralPath (Join-Path $repo ('windows\'+$file)) -Destination $component -Force}
+ $env:BACKUPDESK_TEST_STAGE='install-component'
  & $powerShell -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File (Join-Path $component 'install-vss-component.ps1')
  if($LASTEXITCODE -ne 0){throw 'Instalação do componente falhou.'}
  $task=Get-ScheduledTask -TaskName ('BackupDeskVSS-master-'+$sid)
@@ -46,8 +48,11 @@ try{
  Set-Acl -LiteralPath $testRoot -AclObject $acl
  $action=New-ScheduledTaskAction -Execute $powerShell -Argument ('-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "'+(Join-Path $testRoot 'run.ps1')+'"')
  $principal=New-ScheduledTaskPrincipal -UserId $sid -LogonType S4U -RunLevel Limited
+ $env:BACKUPDESK_TEST_STAGE='register-user-test'
  Register-ScheduledTask -TaskName $testTask -Action $action -Principal $principal -Force | Out-Null
+ $env:BACKUPDESK_TEST_STAGE='start-user-test'
  Start-ScheduledTask -TaskName $testTask
+ $env:BACKUPDESK_TEST_STAGE='wait-user-result'
  $resultFile=Join-Path $testRoot 'result.json'
  for($i=0;$i -lt 900;$i++){if(Test-Path -LiteralPath $resultFile){break};Start-Sleep -Milliseconds 500}
  if(-not (Test-Path -LiteralPath $resultFile)){throw 'O cliente de teste não concluiu dentro do prazo.'}
@@ -56,7 +61,8 @@ try{
  if(-not $result.nonAdministrator){throw 'O cliente de teste não comprovou execução sem administrador.'}
  'Windows: usuário comum, tarefa SYSTEM, pipe autenticado, arquivo bloqueado, motor VSS e limpeza: OK.'
  'PST real com Outlook aberto não foi validado.'
-}finally{
+}catch{$env:BACKUPDESK_TEST_FAILURE_STAGE=$env:BACKUPDESK_TEST_STAGE;throw}
+finally{
  if(Get-ScheduledTask -TaskName $testTask -ErrorAction SilentlyContinue){Stop-ScheduledTask -TaskName $testTask;Unregister-ScheduledTask -TaskName $testTask -Confirm:$false}
  if(Test-Path -LiteralPath (Join-Path $component 'install-vss-component.ps1')){
   $env:BACKUPDESK_VSS_REMOVE='1'
