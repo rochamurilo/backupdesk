@@ -1,1 +1,1 @@
-533fc74a189d3efef2170cbc89ee62159a8e87d6cb00524f0a3cd70d42967345  BackupDesk-Master-0.6.0-x64.exe
+3ca97186efcbad8770221cb7be7245c7c4c0f3a9884677b7d948cae6288d68b5  BackupDesk-Master-0.7.0-x64.exe
