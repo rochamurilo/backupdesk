@@ -47,3 +47,24 @@ jobs:
             Write-Output "::error title=Windows update diagnostic::$detail"
             throw
           }
+  native-update:
+    runs-on: windows-2025
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            windows
+            test
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Test update shutdown and normal-user logon task
+        shell: powershell
+        run: |
+          try { ./test/windows-update.ps1 }
+          catch {
+            $detail=($_.Exception.Message+' '+$_.ScriptStackTrace+' '+$_.InvocationInfo.PositionMessage).Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
+            Write-Output "::error title=Windows update diagnostic::$detail"
+            throw
+          }
