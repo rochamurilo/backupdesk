@@ -34,3 +34,7 @@ test('catálogo vazio registra exclusões; origem ausente nunca vira backup vazi
 test('completo v1 continua reutilizável e restaurável',()=>fixture(async({source,target,copy})=>{
  await writeFile(path.join(source,'a'),'antigo');const full=await copy();const file=path.join(full.snapshot,'manifest.json'),m=JSON.parse(await readFile(file,'utf8'));m.format='backupdesk-files-v1';delete m.backup_type;delete m.scope_key;for(const f of m.files)delete f.source_run;await writeFile(file,JSON.stringify(m));const diff=await copy();assert.equal(diff.base_run,'run1');assert.equal(diff.changed_files,0);const restored=await restoreFromDisk({snapshot:diff.snapshot,files:diff.files,target,job:'legacy'});assert.equal(await readFile(path.join(restored.destination,'a'),'utf8'),'antigo');
 }));
+test('restauração exige correspondência com o catálogo completo e nunca grava no repositório',()=>fixture(async({source,target,copy})=>{
+ await writeFile(path.join(source,'a'),'abc');const full=await copy(),diff=await copy();await assert.rejects(restoreFromDisk({snapshot:diff.snapshot,files:diff.files,target:full.snapshot,job:'nested'}),/fora do repositório/);
+ const manifestFile=path.join(full.snapshot,'manifest.json'),manifest=JSON.parse(await readFile(manifestFile,'utf8'));manifest.files[0].hash='a'.repeat(64);await writeFile(manifestFile,JSON.stringify(manifest));await assert.rejects(restoreFromDisk({snapshot:diff.snapshot,files:diff.files,target,job:'tampered'}),/catálogo da base/);
+}));
