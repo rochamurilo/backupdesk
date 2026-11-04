@@ -1,12 +1,12 @@
-# BackupDesk 0.8.2 — versão de teste
+# BackupDesk 0.8.3 — versão de teste
 
-[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.8.2-x64.exe)
+[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.8.3-x64.exe)
 
 ## Criar ou ajustar uma rotina
 
 Na aba Backup, escolha computador, dias, horário e pastas/arquivos de origem. Em **Onde salvar o backup**, escolha Pasta local, HD externo/USB ou Unidade de rede/NAS, selecione a pasta e use **Testar destino e espaço disponível**. O caminho pertence ao computador selecionado, não ao navegador ou necessariamente ao master. No master local, o seletor abre a janela nativa do Windows; nos clients remotos, informe um caminho acessível naquele computador.
 
-Salve e use **Fazer backup agora** para testar. O agendador usa o horário local do computador e executa cada rotina no máximo uma vez por dia agendado; dias perdidos com o computador desligado ainda não são recuperados automaticamente. Rotinas antigas podem ser ajustadas em **Editar**. Elas conservam o armazenamento legado até serem alteradas; não são movidas automaticamente. Atualize os clients para 0.8.2 pelo botão no canto inferior esquerdo do master antes de usar destinos em disco. Agentes antigos não recebem rotinas com esses destinos.
+Salve e use **Fazer backup agora** para testar. O agendador usa o horário local do computador e executa cada rotina no máximo uma vez por dia agendado; dias perdidos com o computador desligado ainda não são recuperados automaticamente. Rotinas antigas podem ser ajustadas em **Editar**. Elas conservam o armazenamento legado até serem alteradas; não são movidas automaticamente. Atualize os clients para 0.8.3 pelo botão no canto inferior esquerdo do master antes de usar destinos em disco. Agentes antigos não recebem rotinas com esses destinos.
 
 O motor em disco grava versões completas em `DESTINO/BackupDesk/ID-COMPUTADOR/ID-ROTINA/ID-EXECUÇÃO`. Cada versão tem arquivos e manifest.json com hashes SHA-256. Diretórios .partial-* são execuções incompletas e não são apresentados como backups válidos. O catálogo e os status continuam no master; os conteúdos desses backups ficam somente no destino escolhido.
 
@@ -71,3 +71,8 @@ Somente o andamento ativo permanece fixado no topo. Uma falha de cópia comum, q
 Verificação de interface: `npm run test:browser` (Chromium instalado; CHROMIUM_BIN permite escolher o executável).
 
 Validação 0.8.2: 30 testes locais e a checagem Chromium passaram. O [workflow Windows 41870736621](https://github.com/rochamurilo/backupdesk/actions/runs/41870736621) também passou, incluindo o encerramento por caminho exato, preservação de outros Node.js, tarefa de logon no usuário normal e o componente VSS. A falha anterior do teste de inicialização foi corrigida comparando os caminhos após a mesma normalização usada no registro da tarefa.
+
+## VSS obrigatório no Windows — 0.8.3
+Não há caixa de seleção nem opção de desativação. Rotinas de disco existentes no Windows são migradas, a API ignora pedidos de desativação e comandos antigos em fila recebem a política atual. O agente e o motor também impõem VSS no Windows, mesmo com um payload antigo falso. Falha de VSS não usa cópia do arquivo vivo como alternativa. Origens precisam de snapshot local NTFS; destino continua podendo ser local, USB ou rede. O armazenamento legado por upload continua disponível para restauração, mas novas execuções Windows exigem escolher uma pasta de destino em disco. Linux não dispõe de VSS do Windows e conserva sua cópia verificada.
+
+O formulário de rotinas mostra somente campos, rótulos e ações; os textos explicativos da área de origem/destino/VSS foram removidos. Erros reais, integridade e observações de recuperação continuam registrados no resultado e no histórico. Snapshots sem writers ainda não comprovam integridade lógica do PST: valide a cópia restaurada no Outlook.

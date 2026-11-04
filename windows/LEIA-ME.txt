@@ -1,4 +1,4 @@
-BACKUPDESK 0.8.2 - TESTE WINDOWS x64
+BACKUPDESK 0.8.3 - TESTE WINDOWS x64
 
 INSTALACAO
 Instale na mesma pasta para preservar cadastros e backups.
@@ -14,8 +14,8 @@ Pesquise BackupDesk no menu Iniciar para abrir. Fechar o navegador nao encerra.
 BACKUP
 Escolha origem, destino local/USB/rede, dias e horario na aba Backup.
 Use Testar destino, salve e clique Fazer backup agora.
-Para Outlook aberto, marque Usar VSS e salve. Nao abra atalhos administrativos.
-O painel mostra se o componente VSS automatico esta disponivel.
+VSS e obrigatorio nos backups em disco do Windows. Nao ha opcao de desativar.
+O componente VSS trabalha automaticamente em segundo plano.
 Clients devem ser atualizados pelo botao no master para usar o VSS automatico.
 Cada versao fica em DESTINO\BackupDesk, com arquivos verificados por SHA-256.
 As versoes anteriores sao preservadas. O destino nao pode ficar na origem.
@@ -36,7 +36,7 @@ O painel e a copia de dados nao rodam como SYSTEM.
 O teste nativo usa arquivo bloqueado, nao um PST real com Outlook aberto.
 VSS sem writers garante consistencia de volume, nao integridade logica do PST.
 Valide uma copia restaurada no Outlook e mantenha seu backup atual.
-Sem VSS, feche o Outlook para copiar PST/OST.
+Se o VSS falhar, o backup para e registra o erro; nao copia o arquivo vivo.
 
 LIMITES
 Versao de teste, sem retencao automatica, criptografia ou assinatura digital.

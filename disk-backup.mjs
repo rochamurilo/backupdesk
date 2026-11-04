@@ -61,7 +61,7 @@ export async function validateVssDestination(source,destination,{onProgress=()=>
  return withVssSources(checked.canonical,async(mapped)=>{const result=await validateDestination(JSON.stringify(mapped),destination,{useVss:true,onProgress});return {target:result.target,requiredBytes:result.requiredBytes,availableBytes:result.availableBytes}},undefined,onProgress);
 }
 export async function backupToDisk(options){
- const {source,destination,useVss=false,onProgress=()=>{}}=options;onProgress({stage:'preparing',processedBytes:0,totalBytes:null});
+ const {source,destination,onProgress=()=>{}}=options;const useVss=process.platform==='win32'||!!options.useVss;onProgress({stage:'preparing',processedBytes:0,totalBytes:null});
  if(useVss){const checked=await vssPreflight(source,destination);return withVssSources(checked.canonical,async(mapped,snapshots)=>copyToDisk({...options,source:JSON.stringify(mapped),originalSources:checked.original,snapshots,useVss:true}),undefined,onProgress)}
  return copyToDisk(options);
 }

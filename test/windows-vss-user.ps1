@@ -34,7 +34,7 @@ try{
  $env:BACKUPDESK_TEST_SOURCE=$fixture
  $env:BACKUPDESK_TEST_DEST=Join-Path $PSScriptRoot ('backupdesk-destination-'+[guid]::NewGuid().ToString('N'))
  New-Item -ItemType Directory -Path $env:BACKUPDESK_TEST_DEST | Out-Null
- & (Join-Path $PSScriptRoot 'node.exe') --input-type=module -e "import {backupToDisk} from './disk-backup.mjs';import {readFile} from 'node:fs/promises';import assert from 'node:assert/strict';const result=await backupToDisk({source:process.env.BACKUPDESK_TEST_SOURCE,destination:process.env.BACKUPDESK_TEST_DEST,device:'native',routine:1,run:'native',useVss:true});assert.equal(result.consistency,'vss-crash-consistent-no-writers');assert.equal((await readFile(result.snapshot+'/files/'+result.files[0].path)).toString('base64'),process.env.BACKUPDESK_TEST_CONTENT);console.log('Motor de backup real com VSS automático e arquivo bloqueado: OK');"
+ & (Join-Path $PSScriptRoot 'node.exe') --input-type=module -e "import {backupToDisk} from './disk-backup.mjs';import {readFile} from 'node:fs/promises';import assert from 'node:assert/strict';const result=await backupToDisk({source:process.env.BACKUPDESK_TEST_SOURCE,destination:process.env.BACKUPDESK_TEST_DEST,device:'native',routine:1,run:'native',useVss:false});assert.equal(result.consistency,'vss-crash-consistent-no-writers');assert.equal((await readFile(result.snapshot+'/files/'+result.files[0].path)).toString('base64'),process.env.BACKUPDESK_TEST_CONTENT);console.log('Motor de backup real com VSS automático e arquivo bloqueado: OK');"
  if($LASTEXITCODE -ne 0){throw 'O motor de backup VSS falhou.'}
  $null=Invoke-Client @{action='cleanup'}
  'Windows: tarefa SYSTEM, pipe autenticado, snapshot de arquivo bloqueado, isolamento e limpeza: OK.'
