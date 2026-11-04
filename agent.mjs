@@ -4,7 +4,7 @@ import {runScheduledRoutine} from './schedule.mjs';import {browseFiles,collectFi
 import {backupToDisk,validateDestination,validateVssDestination,restoreFromDisk} from './disk-backup.mjs';
 const base=process.env.BACKUPDESK_URL||'http://127.0.0.1:3000',token=process.env.BACKUPDESK_TOKEN;
 if(!token)throw Error('Defina BACKUPDESK_TOKEN');
-async function api(path,data){const r=await fetch(base+'/api/agent/'+path,{method:data?'POST':'GET',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json','X-BackupDesk-Version':'0.8.0'},body:data?JSON.stringify(data):undefined,signal:AbortSignal.timeout(path.endsWith('/progress')?5000:30000)});const b=await r.json();if(!r.ok)throw Error(b.error);return b}
+async function api(path,data){const r=await fetch(base+'/api/agent/'+path,{method:data?'POST':'GET',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json','X-BackupDesk-Version':'0.8.1'},body:data?JSON.stringify(data):undefined,signal:AbortSignal.timeout(path.endsWith('/progress')?5000:30000)});const b=await r.json();if(!r.ok)throw Error(b.error);return b}
 async function backup(routine,jobId){const run=await api('runs',routine.id?{routine_id:routine.id,storage_type:routine.destination_type,job_id:jobId}:{});const reporter=createProgressReporter(p=>api('runs/'+run.id+'/progress',p));try{
  let snapshot,consistency,warning;
  if(routine.destination_type&&routine.destination_type!=='server'){

@@ -1,10 +1,11 @@
 import {spawn} from 'node:child_process';
 import {randomBytes} from 'node:crypto';
-import {instanceLock,supervise} from './background.mjs';
+import {instanceLock,supervise,isUpdating} from './background.mjs';
 import {dirname,join,resolve} from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {mkdirSync,openSync,closeSync,appendFileSync,writeFileSync} from 'node:fs';
 const cwd=dirname(fileURLToPath(import.meta.url));process.chdir(cwd);
+if(isUpdating(cwd))process.exit(0);
 const data=resolve(process.env.DATA_DIR||'data');mkdirSync(data,{recursive:true});
 const logfile=join(data,'startup.log');
 const log=text=>appendFileSync(logfile,new Date().toISOString()+' '+text+'\n');

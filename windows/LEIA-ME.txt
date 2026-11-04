@@ -1,10 +1,14 @@
-BACKUPDESK 0.8.0 - TESTE WINDOWS x64
+BACKUPDESK 0.8.1 - TESTE WINDOWS x64
 
 INSTALACAO
 Instale na mesma pasta para preservar cadastros e backups.
+O instalador encerra automaticamente o BackupDesk dessa pasta, inclusive
+processos elevados, antes de substituir arquivos. Outras aplicacoes nao sao encerradas.
 Autorize uma vez a instalacao do componente VSS quando o Windows solicitar.
 O componente inicia com o Windows; os backups nao pedem mais administrador.
-O painel e agente continuam no usuario normal e iniciam ao entrar no Windows.
+O painel e agente continuam no usuario normal e iniciam sempre ao entrar no
+Windows, por tarefa de logon e entrada Run. O componente VSS inicia no boot.
+Ao terminar a atualizacao, o aplicativo inicia em segundo plano automaticamente.
 Pesquise BackupDesk no menu Iniciar para abrir. Fechar o navegador nao encerra.
 
 BACKUP

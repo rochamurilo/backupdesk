@@ -7,6 +7,9 @@ on:
       - 'disk-backup.mjs'
       - 'vss.mjs'
       - 'filesystem.mjs'
+      - 'windows/update-application.ps1'
+      - 'background.mjs'
+      - 'test/windows-update.ps1'
       - 'windows/vss*.ps1'
       - 'windows/install-vss-component.ps1'
       - 'test/windows-vss*.ps1'
@@ -33,5 +36,14 @@ jobs:
           catch {
             $detail=($env:BACKUPDESK_TEST_FAILURE_STAGE+' '+$env:BACKUPDESK_TEST_STAGE+' '+$_.Exception.Message+' '+$_.ScriptStackTrace+' '+$_.InvocationInfo.PositionMessage).Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
             Write-Output "::error title=Windows VSS diagnostic::$detail"
+            throw
+          }
+      - name: Test scoped update shutdown and automatic user startup
+        shell: powershell
+        run: |
+          try { ./test/windows-update.ps1 }
+          catch {
+            $detail=($_.Exception.Message+' '+$_.ScriptStackTrace+' '+$_.InvocationInfo.PositionMessage).Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
+            Write-Output "::error title=Windows update diagnostic::$detail"
             throw
           }

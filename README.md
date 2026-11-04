@@ -1,12 +1,12 @@
-# BackupDesk 0.8.0 — versão de teste
+# BackupDesk 0.8.1 — versão de teste
 
-[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.8.0-x64.exe)
+[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.8.1-x64.exe)
 
 ## Criar ou ajustar uma rotina
 
 Na aba Backup, escolha computador, dias, horário e pastas/arquivos de origem. Em **Onde salvar o backup**, escolha Pasta local, HD externo/USB ou Unidade de rede/NAS, selecione a pasta e use **Testar destino e espaço disponível**. O caminho pertence ao computador selecionado, não ao navegador ou necessariamente ao master. No master local, o seletor abre a janela nativa do Windows; nos clients remotos, informe um caminho acessível naquele computador.
 
-Salve e use **Fazer backup agora** para testar. O agendador usa o horário local do computador e executa cada rotina no máximo uma vez por dia agendado; dias perdidos com o computador desligado ainda não são recuperados automaticamente. Rotinas antigas podem ser ajustadas em **Editar**. Elas conservam o armazenamento legado até serem alteradas; não são movidas automaticamente. Atualize os clients para 0.8.0 pelo botão no canto inferior esquerdo do master antes de usar destinos em disco. Agentes antigos não recebem rotinas com esses destinos.
+Salve e use **Fazer backup agora** para testar. O agendador usa o horário local do computador e executa cada rotina no máximo uma vez por dia agendado; dias perdidos com o computador desligado ainda não são recuperados automaticamente. Rotinas antigas podem ser ajustadas em **Editar**. Elas conservam o armazenamento legado até serem alteradas; não são movidas automaticamente. Atualize os clients para 0.8.1 pelo botão no canto inferior esquerdo do master antes de usar destinos em disco. Agentes antigos não recebem rotinas com esses destinos.
 
 O motor em disco grava versões completas em `DESTINO/BackupDesk/ID-COMPUTADOR/ID-ROTINA/ID-EXECUÇÃO`. Cada versão tem arquivos e manifest.json com hashes SHA-256. Diretórios .partial-* são execuções incompletas e não são apresentados como backups válidos. O catálogo e os status continuam no master; os conteúdos desses backups ficam somente no destino escolhido.
 
@@ -24,9 +24,9 @@ Use dados de teste. Não há criptografia em repouso, instalador assinado, servi
 
 ## Instalar e abrir
 
-Instale na mesma pasta para preservar dados e configurações. O instalador encerra com aviso apenas os processos da instalação que impedem a atualização. Pesquise **BackupDesk** no menu Iniciar; o atalho inicia o aplicativo e aguarda o painel antes de abrir o navegador. Também pode usar Win+R: `%LOCALAPPDATA%\BackupDesk\BackupDesk.exe`.
+Instale na mesma pasta para preservar dados e configurações. O instalador pede sua autorização Windows uma vez antes da atualização e encerra automaticamente apenas os processos que usam o node.exe daquela pasta, inclusive versões elevadas. Supervisores são encerrados antes dos agentes; nenhum arquivo do aplicativo é substituído se a liberação falhar. Um backup em execução pode ser interrompido; versões concluídas e cadastros são preservados. Pesquise **BackupDesk** no menu Iniciar; o atalho inicia o aplicativo e aguarda o painel antes de abrir o navegador. Também pode usar Win+R: `%LOCALAPPDATA%\BackupDesk\BackupDesk.exe`.
 
-O painel local abre sem senha. Master e client funcionam em segundo plano e iniciam ao entrar na sessão Windows (HKCU Run), não antes do login. Fechar o navegador não encerra o trabalho. O supervisor tenta reiniciar processos que falharem. Logs em `data/startup.log` e `data/launcher.log`; no client, `data/agent.log`. A desinstalação remove a inicialização automática e preserva dados e destinos externos.
+O painel local abre sem senha. Master e client funcionam em segundo plano e iniciam ao entrar na sessão Windows por tarefa de logon do usuário normal, com HKCU Run como alternativa. O componente VSS inicia no boot; painel e agente iniciam ao entrar no Windows, sem abrir o navegador. Fechar o navegador não encerra o trabalho. O supervisor tenta reiniciar processos que falharem. Logs em `data/startup.log` e `data/launcher.log`; no client, `data/agent.log`. A desinstalação remove as tarefas e a entrada Run da própria instalação e preserva os dados e destinos externos.
 
 No master, **Vincular client** gera o token. Instale o client baixado no próprio master e configure token e URL HTTPS acessível. 127.0.0.1 só atende o mesmo computador. A API escuta no loopback por padrão e acessos pela rede continuam autenticados. O client não instala painel administrativo.
 
@@ -37,7 +37,7 @@ Node.js 24, sem pacotes externos: `npm start` inicia master e agente local; `npm
 Compilar no Linux: NSIS, curl, unzip, ripgrep e sha256sum; execute `bash windows/build.sh`. O runtime oficial Node.js 24.19.0 é validado por SHA-256; o script gera client e master com client embutido. `MAKENSIS`/`NSISDIR` selecionam compilador extraído localmente. Instaladores e diálogos nativos precisam de validação no Windows real. Testes Linux exercitam cópia/restauração, arquivos grandes, versões, corrupção, migração, destino indisponível, agentes e agendamento. USB e SMB reais não foram validados neste ambiente.
 
 
-## Rotinas e PST aberto — 0.8.0
+## Rotinas e PST aberto — 0.8.1
 
 As rotinas têm Ativar/Desativar e Excluir. Desativar bloqueia novas execuções agendadas e manuais; não interrompe uma cópia que já iniciou. Excluir é lógico: oculta a rotina, cancela seus backups ainda na fila e preserva arquivos, catálogo e restauração das versões existentes. Ativar novamente permite as próximas execuções elegíveis; não refaz automaticamente uma rotina já concluída no dia.
 
@@ -58,3 +58,5 @@ Cada rotina tem uma tentativa automática por dia elegível, mesmo se falhar ou 
 A validação nativa em Windows é executada pelo workflow `Windows VSS component`: tarefa SYSTEM, comunicação autenticada, arquivo bloqueado, motor de backup e limpeza. O resultado do workflow deve ser consultado antes de considerar essa parte validada. Ele não substitui o teste de recuperação do PST real.
 
 Validação nativa concluída: [Windows VSS component — execução 41705150814](https://github.com/rochamurilo/backupdesk/actions/runs/41705150814). Uma conta comum copiou um arquivo bloqueado usando o componente SYSTEM, verificou a cópia e testou isolamento/limpeza. Não valida integridade lógica de PST real com Outlook.
+
+0.8.1: encerramento para atualização é executado pelo helper do instalador elevado, por caminho exato do executável e com conferência no handle do processo. Não depende de RmShutdown e não encerra outros Node.js. Uma trava temporária bloqueia reinícios durante a troca dos arquivos e expira em 15 minutos se o instalador for interrompido. Ao concluir, o aplicativo é iniciado em segundo plano mesmo sem abrir o navegador.

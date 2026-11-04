@@ -6,6 +6,12 @@ try{
  $null=New-Object System.Security.Principal.SecurityIdentifier($sid)
  $principal=New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
  if(-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)){throw 'Autorize a instalação do componente VSS como administrador.'}
+ if($env:BACKUPDESK_UPDATE_DIR){
+  $phase='stop-application'
+  . (Join-Path $PSScriptRoot 'update-application.ps1')
+  Stop-BackupDeskInstallation $env:BACKUPDESK_UPDATE_DIR
+  if($env:BACKUPDESK_VSS_REMOVE -eq '1'){Remove-BackupDeskStartup $sid $product}else{Register-BackupDeskStartup $env:BACKUPDESK_UPDATE_DIR $sid $product}
+ }
  $taskName='BackupDeskVSS-'+$product+'-'+$sid
  $phase='stop-existing'
  $existing=Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue

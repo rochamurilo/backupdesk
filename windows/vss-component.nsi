@@ -18,6 +18,10 @@ Section
  System::Call 'kernel32::SetEnvironmentVariableW(w "BACKUPDESK_VSS_OWNER_SID", w r1)'
  System::Call 'kernel32::SetEnvironmentVariableW(w "BACKUPDESK_VSS_PRODUCT", w "${PRODUCT}")'
  ClearErrors
+ StrCpy $1 ""
+ ${GetOptions} $0 "/UPDATE=" $1
+ System::Call 'kernel32::SetEnvironmentVariableW(w "BACKUPDESK_UPDATE_DIR", w r1)'
+ ClearErrors
  ${GetOptions} $0 "/REMOVE" $1
  ${IfNot} ${Errors}
   System::Call 'kernel32::SetEnvironmentVariableW(w "BACKUPDESK_VSS_REMOVE", w "1")'
@@ -29,6 +33,7 @@ Section
  File "vss-broker.ps1"
  File "vss-protocol.ps1"
  File "vss.ps1"
+ File "update-application.ps1"
  nsExec::ExecToStack '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$OUTDIR\install-vss-component.ps1"'
  Pop $0
  Pop $1

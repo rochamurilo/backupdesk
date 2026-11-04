@@ -1,56 +1,45 @@
-; Restart Manager matches users of this installation's exact node.exe path.
-; It never stops unrelated Node.js executables or processes by image name.
-Var UpdateSession
+; Run the installer-only helper with elevation BEFORE replacing any application file.
+; The helper checks exact executable paths and stops supervisors before their workers.
 !macro UPDATE_GUARD Prefix
 Function ${Prefix}StopInstalledProcesses
- IfFileExists "$INSTDIR\node.exe" 0 update_done
- System::Call 'rstrtmgr::RmStartSession(*i .r0, i 0, w .r1) i .r2'
- ${If} $2 != 0
-  MessageBox MB_OK|MB_ICONSTOP "Não foi possível verificar os processos desta instalação (código $2). Feche o BackupDesk e tente novamente. Nenhum arquivo foi substituído."
+ nsExec::ExecToStack '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoLogo -NoProfile -NonInteractive -Command "[Security.Principal.WindowsIdentity]::GetCurrent().User.Value"'
+ Pop $0
+ Pop $1
+ ${TrimNewLines} "$1" $VssOwnerSid
+ ${If} $0 != 0
+  MessageBox MB_OK|MB_ICONSTOP "Não foi possível identificar o usuário da instalação. Nenhum arquivo foi substituído."
   Abort
  ${EndIf}
- StrCpy $UpdateSession $0
- ; Array of one LPCWSTR; the path comes from $INSTDIR, not a shell command.
- System::Call '*(&w${NSIS_MAX_STRLEN} "$INSTDIR\node.exe") p.r0'
- System::Call '*(p r0) p.r1'
- System::Call 'rstrtmgr::RmRegisterResources(i $UpdateSession, i 1, p r1, i 0, p 0, i 0, p 0) i .r2'
- System::Free $1
- System::Free $0
- ${If} $2 != 0
-  System::Call 'rstrtmgr::RmEndSession(i $UpdateSession)'
-  MessageBox MB_OK|MB_ICONSTOP "Não foi possível verificar o executável desta instalação (código $2). Nenhum arquivo foi substituído."
+!if "${Prefix}" == "un."
+ ClearErrors
+ ExecShellWait "runas" "$INSTDIR\VSSComponentSetup.exe" '/SID=$VssOwnerSid /UPDATE="$INSTDIR" /REMOVE' SW_HIDE $0
+!else
+ CreateDirectory "$INSTDIR"
+ InitPluginsDir
+ SetOutPath "$PLUGINSDIR"
+!ifdef CLIENT
+ File /oname=BackupDeskSetupHelper.exe "build/BackupDeskClientVSSComponent.exe"
+!else
+ File /oname=BackupDeskSetupHelper.exe "build/BackupDeskVSSComponent.exe"
+!endif
+ ClearErrors
+ ExecShellWait "runas" "$PLUGINSDIR\BackupDeskSetupHelper.exe" '/SID=$VssOwnerSid /UPDATE="$INSTDIR"' SW_HIDE $0
+!endif
+ ${If} ${Errors}
+  Delete "$INSTDIR\data\update-lock.json"
+  MessageBox MB_OK|MB_ICONSTOP "Autorize o instalador para encerrar o BackupDesk desta pasta e continuar. Nenhum arquivo do aplicativo foi substituído."
   Abort
  ${EndIf}
- System::Call 'rstrtmgr::RmGetList(i $UpdateSession, *i .r0, *i 0, p 0, *i .r1) i .r2'
- ${If} $2 == 234
-  MessageBox MB_OKCANCEL|MB_ICONEXCLAMATION "O BackupDesk desta pasta está em execução.$\r$\n$\r$\nPara continuar, o instalador encerrará o painel e os agentes que usam este executável. Um backup em andamento poderá ser interrompido.$\r$\n$\r$\nCadastros, configurações e backups já gravados serão preservados. Outros programas Node.js não serão encerrados.$\r$\n$\r$\nClique em OK para fechar o BackupDesk e continuar, ou Cancelar para aguardar o término do backup." IDOK update_close
-  System::Call 'rstrtmgr::RmEndSession(i $UpdateSession)'
-  Abort
- update_close:
-  ; RmForceShutdown is used only after the explicit warning above.
-  DetailPrint "Encerrando os processos do BackupDesk desta pasta..."
-  System::Call 'rstrtmgr::RmShutdown(i $UpdateSession, i 1, p 0) i .r2'
-  ${If} $2 != 0
-   System::Call 'rstrtmgr::RmEndSession(i $UpdateSession)'
-   MessageBox MB_OK|MB_ICONSTOP "O Windows não permitiu encerrar o BackupDesk (código $2). Feche as janelas do programa e tente novamente. Nenhum arquivo foi substituído."
-   Abort
-  ${EndIf}
-  Sleep 1500
- ${ElseIf} $2 != 0
-  System::Call 'rstrtmgr::RmEndSession(i $UpdateSession)'
-  MessageBox MB_OK|MB_ICONSTOP "Falha ao consultar programas em execução (código $2). Feche o BackupDesk e tente novamente."
+ ${If} $0 != 0
+  Delete "$INSTDIR\data\update-lock.json"
+  MessageBox MB_OK|MB_ICONSTOP "A preparação da instalação não foi concluída. Nenhum arquivo do aplicativo foi substituído. Confira o erro informado pelo componente."
   Abort
  ${EndIf}
- System::Call 'rstrtmgr::RmEndSession(i $UpdateSession)'
- update_check_file:
- ; Require write access before extracting anything. Never offer Ignore here.
- System::Call 'kernel32::CreateFileW(w "$INSTDIR\node.exe", i 0xC0000000, i 3, p 0, i 3, i 128, p 0) p .r0'
- ${If} $0 == -1
-  MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION "O Windows ainda não liberou node.exe para gravação. Feche todas as janelas do BackupDesk desta instalação e confira a permissão da pasta.$\r$\n$\r$\nClique em Repetir para verificar novamente. Cancelar interrompe antes de substituir arquivos." IDRETRY update_check_file
-  Abort
- ${EndIf}
- System::Call 'kernel32::CloseHandle(p r0)'
- update_done:
+!if "${Prefix}" == "un."
+ DeleteRegValue HKCU "Software\BackupDeskVSS" "${KEY}"
+!else
+ WriteRegStr HKCU "Software\BackupDeskVSS" "${KEY}" "$VssOwnerSid"
+!endif
 FunctionEnd
 !macroend
 !insertmacro UPDATE_GUARD ""

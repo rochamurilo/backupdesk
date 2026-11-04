@@ -1,10 +1,11 @@
 import {readFile} from 'node:fs/promises';
 import {openSync,mkdirSync} from 'node:fs';
-import {instanceLock,supervise} from './background.mjs';
+import {instanceLock,supervise,isUpdating} from './background.mjs';
 import {join,dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 const dir=dirname(fileURLToPath(import.meta.url));
 process.chdir(dir);
+if(isUpdating(dir))process.exit(0);
 const config=JSON.parse((await readFile(join(dir,'agent-config.json'),'utf8')).replace(/^\uFEFF/,''));
 const url=new URL(config.url);
 if(!['http:','https:'].includes(url.protocol)||url.username||url.password)throw Error('URL inválida');

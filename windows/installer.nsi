@@ -7,22 +7,24 @@ Unicode True
 Var VssOwnerSid
 !ifdef CLIENT
   !define PRODUCT "BackupDesk Client"
-  !define VERSION "0.8.0"
+  !define VERSION "0.8.1"
   !define KEY "BackupDeskClient"
   !define FOLDER "BackupDeskClient"
-  OutFile "../windows/build/BackupDesk-Client-0.8.0-x64.exe"
+  OutFile "../windows/build/BackupDesk-Client-0.8.1-x64.exe"
 !else
   !define PRODUCT "BackupDesk Master"
-  !define VERSION "0.8.0"
+  !define VERSION "0.8.1"
   !define KEY "BackupDesk"
   !define FOLDER "BackupDesk"
-  OutFile "../dist/BackupDesk-Master-0.8.0-x64.exe"
+  OutFile "../dist/BackupDesk-Master-0.8.1-x64.exe"
 !endif
 Name "${PRODUCT} (teste local)"
 InstallDir "$LOCALAPPDATA\${FOLDER}"
+InstallDirRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${KEY}" "InstallLocation"
 RequestExecutionLevel user
 SetCompressor /SOLID lzma
 !define MUI_ABORTWARNING
+!define MUI_CUSTOMFUNCTION_ABORT CancelUpdate
 !define MUI_FINISHPAGE_RUN_FUNCTION LaunchInstalled
 !ifdef CLIENT
  !define MUI_FINISHPAGE_RUN "$INSTDIR\Configurar.cmd"
@@ -51,6 +53,23 @@ Function .onInit
   MessageBox MB_OK "Este instalador requer Windows x64."
   Abort
  ${EndIf}
+FunctionEnd
+Function .onInstSuccess
+ Delete "$INSTDIR\data\update-lock.json"
+!ifdef CLIENT
+ ExecShell "open" "$INSTDIR\BackupDeskClient.exe" "/background"
+!else
+ ExecShell "open" "$INSTDIR\BackupDesk.exe" "/background"
+!endif
+FunctionEnd
+Function .onInstFailed
+ Delete "$INSTDIR\data\update-lock.json"
+FunctionEnd
+Function CancelUpdate
+ Delete "$INSTDIR\data\update-lock.json"
+FunctionEnd
+Function un.onUninstSuccess
+ Delete "$INSTDIR\data\update-lock.json"
 FunctionEnd
 !include "update.nsh"
 Section "${PRODUCT}" Main
@@ -94,7 +113,7 @@ Section "${PRODUCT}" Main
  File "../public/app.js"
  File "../public/style.css"
  SetOutPath "$INSTDIR\dist"
- File "build/BackupDesk-Client-0.8.0-x64.exe"
+ File "build/BackupDesk-Client-0.8.1-x64.exe"
  SetOutPath "$INSTDIR"
  nsExec::ExecToStack '"$INSTDIR\node.exe" "$INSTDIR\server.mjs" --prepare-master'
  Pop $0
@@ -115,27 +134,6 @@ Section "${PRODUCT}" Main
  Delete "$INSTDIR\BackupDeskClientVSS.exe"
  CreateShortcut "$DESKTOP\BackupDesk Client.lnk" "$INSTDIR\BackupDeskClient.exe"
 !endif
- ; Capture the installing user's SID before launching the privileged setup.
- nsExec::ExecToStack '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoLogo -NoProfile -NonInteractive -Command "[Security.Principal.WindowsIdentity]::GetCurrent().User.Value"'
- Pop $0
- Pop $1
- ${TrimNewLines} "$1" $VssOwnerSid
- ${If} $0 != 0
-  MessageBox MB_OK|MB_ICONSTOP "Não foi possível identificar o usuário para instalar o VSS automático."
-  Abort
- ${EndIf}
- ClearErrors
- ExecShellWait "runas" "$INSTDIR\VSSComponentSetup.exe" "/SID=$VssOwnerSid" SW_HIDE $0
- ${If} ${Errors}
-  MessageBox MB_OK|MB_ICONSTOP "A instalação do componente VSS não foi autorizada. Execute o instalador novamente e autorize uma vez. Backups não pedirão administrador depois da instalação."
-  Abort
- ${EndIf}
- ${If} $0 != 0
-  MessageBox MB_OK|MB_ICONSTOP "O componente VSS não foi instalado. Corrija o erro informado e execute este instalador novamente."
-  Abort
- ${EndIf}
- WriteRegStr HKCU "Software\BackupDeskVSS" "${KEY}" "$VssOwnerSid"
-
 !ifdef CLIENT
  CreateShortcut "$SMPROGRAMS\${FOLDER}\Configurar agente.lnk" "$INSTDIR\Configurar.cmd"
  CreateShortcut "$SMPROGRAMS\${FOLDER}\Iniciar agente.lnk" "$INSTDIR\BackupDeskClient.exe"
@@ -153,25 +151,13 @@ Section "${PRODUCT}" Main
  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${KEY}" "DisplayName" "${PRODUCT} (teste local)"
  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${KEY}" "UninstallString" '"$INSTDIR\Uninstall.exe"'
  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${KEY}" "DisplayVersion" "${VERSION}"
+ WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${KEY}" "InstallLocation" "$INSTDIR"
 !ifndef CLIENT
  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${KEY}" "DisplayIcon" "$INSTDIR\BackupDesk.exe"
 !endif
 SectionEnd
 Section "Uninstall"
  Call un.StopInstalledProcesses
- ReadRegStr $VssOwnerSid HKCU "Software\BackupDeskVSS" "${KEY}"
- ${If} $VssOwnerSid != ""
-  ClearErrors
-  ExecShellWait "runas" "$INSTDIR\VSSComponentSetup.exe" "/SID=$VssOwnerSid /REMOVE" SW_HIDE $0
-  ${If} ${Errors}
-   MessageBox MB_OK|MB_ICONSTOP "Autorize uma vez a remoção do componente VSS para desinstalar."
-   Abort
-  ${EndIf}
-  ${If} $0 != 0
-   Abort
-  ${EndIf}
-  DeleteRegValue HKCU "Software\BackupDeskVSS" "${KEY}"
- ${EndIf}
 !ifdef CLIENT
  DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "BackupDeskClient"
 !else
@@ -195,7 +181,7 @@ Section "Uninstall"
  Delete "$INSTDIR\public\app.js"
  Delete "$INSTDIR\public\style.css"
  RMDir "$INSTDIR\public"
- Delete "$INSTDIR\dist\BackupDesk-Client-0.8.0-x64.exe"
+ Delete "$INSTDIR\dist\BackupDesk-Client-0.8.1-x64.exe"
  RMDir "$INSTDIR\dist"
 !else
  Delete "$DESKTOP\BackupDesk Client.lnk"
