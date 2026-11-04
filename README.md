@@ -69,3 +69,5 @@ Depois de salvar, o formulário continua em Editar rotina e o botão passa a Sal
 Somente o andamento ativo permanece fixado no topo. Uma falha de cópia comum, quando a rotina já foi alterada para VSS, aparece como tentativa anterior, recolhida e sem encobrir o formulário. Fechar aviso oculta esse resultado na sessão do navegador; novas execuções e novas falhas continuam visíveis. Histórico e contagem de falhas não são apagados. Alterar a configuração não comprova que um backup foi feito: execute novamente e valide a restauração.
 
 Verificação de interface: `npm run test:browser` (Chromium instalado; CHROMIUM_BIN permite escolher o executável).
+
+Validação 0.8.2: 30 testes locais e a checagem Chromium passaram. O [workflow Windows 41870736621](https://github.com/rochamurilo/backupdesk/actions/runs/41870736621) também passou, incluindo o encerramento por caminho exato, preservação de outros Node.js, tarefa de logon no usuário normal e o componente VSS. A falha anterior do teste de inicialização foi corrigida comparando os caminhos após a mesma normalização usada no registro da tarefa.
