@@ -1,4 +1,4 @@
-BACKUPDESK 0.8.1 - TESTE WINDOWS x64
+BACKUPDESK 0.8.2 - TESTE WINDOWS x64
 
 INSTALACAO
 Instale na mesma pasta para preservar cadastros e backups.
@@ -43,3 +43,9 @@ Versao de teste, sem retencao automatica, criptografia ou assinatura digital.
 USB/SMB reais, PST com Outlook e recuperacao precisam ser validados no seu ambiente.
 Logs do aplicativo: data\startup.log e data\agent.log (client).
 A desinstalacao remove a tarefa automatica com autorizacao do Windows.
+
+ROTINAS E AVISOS
+Salvar mantem a edicao da mesma rotina. Use Nova rotina para cadastrar outra.
+Remover copias identicas preserva backups e historico e mantem a mais antiga.
+Avisos de resultados anteriores podem ser recolhidos e fechados sem apagar o historico.
+Somente o andamento ativo fica fixado no topo; novas falhas continuam visiveis.

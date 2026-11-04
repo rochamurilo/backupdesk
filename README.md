@@ -1,12 +1,12 @@
-# BackupDesk 0.8.1 — versão de teste
+# BackupDesk 0.8.2 — versão de teste
 
-[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.8.1-x64.exe)
+[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.8.2-x64.exe)
 
 ## Criar ou ajustar uma rotina
 
 Na aba Backup, escolha computador, dias, horário e pastas/arquivos de origem. Em **Onde salvar o backup**, escolha Pasta local, HD externo/USB ou Unidade de rede/NAS, selecione a pasta e use **Testar destino e espaço disponível**. O caminho pertence ao computador selecionado, não ao navegador ou necessariamente ao master. No master local, o seletor abre a janela nativa do Windows; nos clients remotos, informe um caminho acessível naquele computador.
 
-Salve e use **Fazer backup agora** para testar. O agendador usa o horário local do computador e executa cada rotina no máximo uma vez por dia agendado; dias perdidos com o computador desligado ainda não são recuperados automaticamente. Rotinas antigas podem ser ajustadas em **Editar**. Elas conservam o armazenamento legado até serem alteradas; não são movidas automaticamente. Atualize os clients para 0.8.1 pelo botão no canto inferior esquerdo do master antes de usar destinos em disco. Agentes antigos não recebem rotinas com esses destinos.
+Salve e use **Fazer backup agora** para testar. O agendador usa o horário local do computador e executa cada rotina no máximo uma vez por dia agendado; dias perdidos com o computador desligado ainda não são recuperados automaticamente. Rotinas antigas podem ser ajustadas em **Editar**. Elas conservam o armazenamento legado até serem alteradas; não são movidas automaticamente. Atualize os clients para 0.8.2 pelo botão no canto inferior esquerdo do master antes de usar destinos em disco. Agentes antigos não recebem rotinas com esses destinos.
 
 O motor em disco grava versões completas em `DESTINO/BackupDesk/ID-COMPUTADOR/ID-ROTINA/ID-EXECUÇÃO`. Cada versão tem arquivos e manifest.json com hashes SHA-256. Diretórios .partial-* são execuções incompletas e não são apresentados como backups válidos. O catálogo e os status continuam no master; os conteúdos desses backups ficam somente no destino escolhido.
 
@@ -62,3 +62,10 @@ Validação nativa concluída: [Windows VSS component — execução 41705150814
 0.8.1: encerramento para atualização é executado pelo helper do instalador elevado, por caminho exato do executável e com conferência no handle do processo. Não depende de RmShutdown e não encerra outros Node.js. Uma trava temporária bloqueia reinícios durante a troca dos arquivos e expira em 15 minutos se o instalador for interrompido. Ao concluir, o aplicativo é iniciado em segundo plano mesmo sem abrir o navegador.
 
 Validação 0.8.1: 29 testes locais passaram, incluindo bloqueio de reinício durante atualização e expiração da trava. O código PowerShell e o trecho C# foram compilados/verificados. O teste nativo de encerramento e registro da inicialização está no [workflow Windows](https://github.com/rochamurilo/backupdesk/actions/runs/41864928672); na publicação ele ainda aguardava executor, portanto esse novo fluxo não deve ser considerado validado nativamente até a conclusão desse teste.
+
+## Salvar rotinas e avisos — 0.8.2
+Depois de salvar, o formulário continua em Editar rotina e o botão passa a Salvar alterações. Cliques repetidos e reenvio da mesma configuração não criam novas cópias. Para cadastrar outra rotina, use Nova rotina; os campos são limpos. A ação Remover cópias idênticas mantém a rotina mais antiga, cancela as tarefas duplicadas ainda na fila e preserva os backups e o histórico. Rotinas com parâmetros ou situação diferentes não são removidas.
+
+Somente o andamento ativo permanece fixado no topo. Uma falha de cópia comum, quando a rotina já foi alterada para VSS, aparece como tentativa anterior, recolhida e sem encobrir o formulário. Fechar aviso oculta esse resultado na sessão do navegador; novas execuções e novas falhas continuam visíveis. Histórico e contagem de falhas não são apagados. Alterar a configuração não comprova que um backup foi feito: execute novamente e valide a restauração.
+
+Verificação de interface: `npm run test:browser` (Chromium instalado; CHROMIUM_BIN permite escolher o executável).

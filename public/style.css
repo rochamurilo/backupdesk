@@ -10,3 +10,9 @@ nav a.active{background:#22344d;color:#79dac2}#page-backup>section{max-width:900
 #page-restore input{display:block;width:100%;margin:12px 0}#message{position:sticky;bottom:10px;background:#17253b;padding:14px;border-radius:8px;white-space:pre-wrap}#message:empty{display:none}
 
 #activityPanel{position:sticky;top:8px;z-index:20;background:#122137;border:1px solid #6bd2ba;margin-bottom:16px;padding:16px}#activityPanel progress{display:block;width:100%;height:20px;accent-color:#6bd2ba}#activityPanel p{overflow-wrap:anywhere;margin:8px 0}#activityPanel[data-status=failed]{border-color:#ff7676}#activityPanel[data-status=failed] strong{color:#ff9999}#activityPanel[data-status=failed] progress{display:none}#message{overflow-wrap:anywhere;color:#ffd166}
+
+#activityPanel{position:static}#activityPanel[data-status=running],#activityPanel[data-status=queued]{position:sticky;top:8px;max-height:40vh;overflow:auto}#activityPanel[data-status=historical]{border-color:#657c9c}#activityPanel[data-status=historical] strong{color:#b9c8db}#activityPanel .row{gap:12px;align-items:flex-start}#dismissActivity{padding:5px 10px;white-space:nowrap;font-size:13px}#activityPanel summary{cursor:pointer;color:#b9c8db;margin-top:8px}#activityPanel details[open]>summary{margin-bottom:12px}#activityPanel[data-status=running] #activityDetail,#activityPanel[data-status=queued] #activityDetail{max-height:4.5em;overflow:auto}#routineForm{scroll-margin-top:45vh}
+
+#activityPanel[data-status=cancelled]{border-color:#657c9c}#activityPanel[data-status=cancelled] strong{color:#b9c8db}
+
+#activityPanel:not([data-status=running]):not([data-status=queued]) progress{display:none}

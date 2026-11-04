@@ -22,7 +22,9 @@ try{
  Register-BackupDeskStartup $target $sid 'master'
  $task=Get-ScheduledTask -TaskName ('BackupDesk-master-'+$sid)
  if($task.Principal.RunLevel -ne 'Limited' -or $task.Principal.LogonType -ne 'Interactive'){throw 'A inicialização não está no usuário normal.'}
- if($task.Actions.Execute -ne (Join-Path $target 'BackupDesk.exe') -or $task.Actions.Arguments -ne '/background'){throw 'Inicialização aponta para outra instalação.'}
+ $expected=Join-Path (Get-BackupDeskDirectory $target) 'BackupDesk.exe'
+ $actual=[IO.Path]::GetFullPath($task.Actions[0].Execute.Trim('"'))
+ if($actual -ne $expected -or $task.Actions[0].Arguments.Trim() -ne '/background'){throw ('Inicialização incorreta: '+$actual+' '+$task.Actions[0].Arguments+'; esperado: '+$expected)}
  if(-not $task.Triggers){throw 'O gatilho de entrada no Windows não foi criado.'}
  Remove-BackupDeskStartup $sid 'master'
  if(Get-ScheduledTask -TaskName ('BackupDesk-master-'+$sid) -ErrorAction SilentlyContinue){throw 'A inicialização não foi removida.'}
