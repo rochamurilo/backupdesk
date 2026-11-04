@@ -3,6 +3,7 @@ Unicode True
 !include "x64.nsh"
 !include "LogicLib.nsh"
 !include "FileFunc.nsh"
+!include "TextFunc.nsh"
 Var VssOwnerSid
 !ifdef CLIENT
   !define PRODUCT "BackupDesk Client"
