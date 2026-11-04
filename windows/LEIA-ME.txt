@@ -1,4 +1,4 @@
-BACKUPDESK 0.10.0 - TESTE WINDOWS x64
+BACKUPDESK 0.11.0 - TESTE WINDOWS x64
 
 INSTALACAO
 Instale na mesma pasta para preservar cadastros e backups.
@@ -12,8 +12,9 @@ Ao terminar a atualizacao, o aplicativo inicia em segundo plano automaticamente.
 Pesquise BackupDesk no menu Iniciar para abrir. Fechar o navegador nao encerra.
 
 BACKUP
-Escolha origem, destino local/USB/rede, dias e horario na aba Backup.
-Use Testar destino, salve e clique Fazer backup agora.
+Em Preferencias, selecione o computador e uma ou mais pastas de destino.
+Todas as rotinas usam os destinos desse computador.
+Na aba Backup, escolha origem, dias e horario; salve e clique Fazer backup agora.
 VSS e obrigatorio nos backups em disco do Windows. Nao ha opcao de desativar.
 O componente VSS trabalha automaticamente em segundo plano.
 Clients devem ser atualizados pelo botao no master para usar o VSS automatico.
@@ -84,3 +85,25 @@ no client depois de instalar. O nome e o token ja estarao preenchidos.
 127.0.0.1 aponta somente para o proprio computador, nao para outro master.
 O cadastro nao significa que o client esta online ou que um backup foi feito.
 O repositorio de logs na internet ainda nao foi implementado.
+
+PREFERENCIAS - 0.11.0
+Cadastre destinos local/USB/rede em Preferencias, por computador.
+Cada rotina faz uma copia em cada destino. Nao sao destinos alternativos.
+Uma falha em um disco nao impede a tentativa nos outros destinos.
+O resultado geral informa falha se alguma copia nao concluir.
+Remover destino das preferencias nao apaga os backups gravados.
+Limitar largura de banda controla a transferencia real dos arquivos.
+Upload limita gravacao de backup; download limita leitura/restauracao.
+Escolha Mbit/s ou MB/s. Campo vazio e ilimitado.
+Horarios iguais aplicam o limite o dia inteiro; aceita virada da meia-noite.
+O horario considerado e o do computador que executa o backup.
+Atualize os clients para usar limites e multiplos destinos.
+
+OUTRA ORIGEM DE RESTAURACAO
+Clique Abrir outro local na aba Restauracao.
+Selecione BackupDesk ou a pasta que a contem no HD externo.
+O calendario mostra as versoes encontradas nos manifestos.
+E possivel restaurar de um repositorio movido, mesmo com outra letra de unidade.
+Diferenciais dependem do completo que deve estar nesse mesmo repositorio.
+Copie toda a pasta BackupDesk para preservar as bases.
+A leitura do catalogo nao modifica os arquivos do disco.

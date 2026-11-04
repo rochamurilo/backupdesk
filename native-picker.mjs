@@ -2,7 +2,7 @@ import {spawn} from 'node:child_process';
 import {readFile,stat} from 'node:fs/promises';
 import {isAbsolute} from 'node:path';
 export async function pickFolder(purpose='source'){
- const titles={source:'Selecione a pasta de origem do backup',destination:'Selecione onde salvar o backup',restore:'Selecione onde restaurar os arquivos'};
+ const titles={source:'Selecione a pasta de origem do backup',destination:'Selecione onde salvar o backup',restore:'Selecione onde restaurar os arquivos',repository:'Selecione a pasta BackupDesk ou a pasta que a contém'};
  if(!Object.hasOwn(titles,purpose))throw Error('Seleção de pasta inválida.');
  if(process.platform!=='win32')throw Error('A seleção nativa de pasta está disponível no Windows.');
  const script=await readFile(new URL('./windows/folder-picker.ps1',import.meta.url),'utf8');

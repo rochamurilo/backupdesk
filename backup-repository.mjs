@@ -1,13 +1,13 @@
-import {readFile,readdir,realpath,stat} from 'node:fs/promises';
+import {readFile,readdir,realpath,stat,lstat} from 'node:fs/promises';
 import {createReadStream} from 'node:fs';import {createHash} from 'node:crypto';import path from 'node:path';
 export const FULL_WINDOW_MS=5*24*60*60*1000;
 export function contained(parent,child){const r=path.relative(parent,child);return r===''||(!r.startsWith('..'+path.sep)&&r!=='..'&&!path.isAbsolute(r))}
 export function safeRelative(name){return typeof name==='string'&&name.length>0&&!path.isAbsolute(name)&&!name.split(/[\\/]/).some(p=>p==='..'||p==='')&&!/^[A-Za-z]:/.test(name)}
 export function identityPath(value){const normalized=path.normalize(value);return process.platform==='win32'?normalized.toLowerCase():normalized}
 export function scopeIdentity(device,sources,destination){return createHash('sha256').update(JSON.stringify({version:1,device,sources:sources.map(identityPath),destination:identityPath(destination)})).digest('hex')}
-export async function hashFile(file,onBytes=()=>{}){const hash=createHash('sha256');for await(const chunk of createReadStream(file)){hash.update(chunk);onBytes(chunk.length)}return hash.digest('hex')}
+export async function hashFile(file,onBytes=()=>{},throttle=async()=>{}){const hash=createHash('sha256');for await(const chunk of createReadStream(file)){await throttle(chunk.length);hash.update(chunk);onBytes(chunk.length)}return hash.digest('hex')}
 export async function readManifest(snapshot){
- const m=JSON.parse(await readFile(path.join(snapshot,'manifest.json'),'utf8'));
+ const file=path.join(snapshot,'manifest.json');if((await lstat(file)).isSymbolicLink())throw Error('Manifesto redirecionado não é aceito.');const m=JSON.parse(await readFile(file,'utf8'));
  if(!['backupdesk-files-v1','backupdesk-files-v2'].includes(m.format)||m.status!=='success'||!Array.isArray(m.files))throw Error('Manifesto de backup inválido.');
  const names=new Set();for(const f of m.files){if(!safeRelative(f.path)||!/^[a-f0-9]{64}$/.test(f.hash)||!Number.isSafeInteger(f.size)||f.size<0)throw Error('Arquivo inválido no manifesto.');const key=identityPath(f.path);if(names.has(key))throw Error('Arquivo duplicado no manifesto.');names.add(key)}return m;
 }
@@ -35,8 +35,8 @@ export async function findFullBaseline({repository,target,device,sources,scopeKe
  }
  candidates.sort((a,b)=>b.finished-a.finished);return candidates[0]||null;
 }
-export async function verifyFullBaseline(candidate,repository,onBytes=()=>{}){
- for(const f of candidate.manifest.files){const file=await storedFile(candidate.snapshot,f.path,repository);if((await stat(file)).size!==f.size||await hashFile(file,onBytes)!==f.hash)throw Error('A base completa está incompleta ou corrompida: '+f.path)}
+export async function verifyFullBaseline(candidate,repository,onBytes=()=>{},throttle=async()=>{}){
+ for(const f of candidate.manifest.files){const file=await storedFile(candidate.snapshot,f.path,repository);if((await stat(file)).size!==f.size||await hashFile(file,onBytes,throttle)!==f.hash)throw Error('A base completa está incompleta ou corrompida: '+f.path)}
 }
 
 // The source LastWriteTime is distinct from the time a backup was performed.
@@ -52,4 +52,11 @@ export function backupDestination(run){
  const snapshot=p.normalize(run.snapshot),routine=p.dirname(snapshot),device=p.dirname(routine),repository=p.dirname(device);
  if(p.basename(snapshot)!==run.id||p.basename(device)!==run.device||p.basename(repository).toLowerCase()!=='backupdesk')return null;
  return p.dirname(repository);
+}
+
+export async function resolveBaseSnapshot(manifest,deviceRepository){
+ if(!/^[a-zA-Z0-9_-]+$/.test(manifest.base_run||''))throw Error('Referência diferencial inválida.');
+ if(manifest.base_snapshot){try{const original=await realpath(manifest.base_snapshot);if(contained(deviceRepository,original))return original}catch{}}
+ for(const routine of await readdir(deviceRepository,{withFileTypes:true})){if(!routine.isDirectory()||!/^\d+$/.test(routine.name))continue;try{const candidate=await realpath(path.join(deviceRepository,routine.name,manifest.base_run));if(contained(deviceRepository,candidate))return candidate}catch{}}
+ throw Error('A base completa deste diferencial não foi encontrada neste repositório. Conecte também a cópia completa.');
 }

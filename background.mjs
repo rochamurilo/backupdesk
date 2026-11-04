@@ -5,7 +5,7 @@ import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {spawn} from 'node:child_process';
 export function isUpdating(directory=process.cwd(),now=Date.now()){
- try{const age=now-statSync(join(directory,'data','update-lock.json')).mtimeMs;return age>=0&&age<15*60*1000}catch{return false}
+ try{const age=now-statSync(join(directory,'data','update-lock.json')).mtimeMs;return age>=-1000&&age<15*60*1000}catch{return false}
 }
 export async function instanceLock(key){
  const id=createHash('sha256').update(key).digest('hex').slice(0,24);
