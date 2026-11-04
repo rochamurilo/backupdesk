@@ -18,7 +18,7 @@ Na aba Restauração, selecione computador e versão concluída. Para cópias em
 
 ## Outlook e limitações
 
-No modo normal, PST/OST requer Outlook fechado. No modo VSS experimental, lê um snapshot do volume, com as condições descritas abaixo. Ainda não oferece consistência da aplicação validada nem backup de caixas Microsoft 365. OST é cache e não deve ser considerado o backup principal da caixa postal. Falhas durante cópia preservam versões anteriores.
+No Windows, os backups em disco usam VSS automaticamente para ler o snapshot do volume, com as condições descritas abaixo. Ainda não oferece consistência da aplicação validada nem backup de caixas Microsoft 365. OST é cache e não deve ser considerado o backup principal da caixa postal. Falhas durante cópia preservam versões anteriores.
 
 Use dados de teste. Não há criptografia em repouso, instalador assinado, serviço Windows antes do login, alertas, retomada por blocos, revogação de tokens ou política automática de retenção. A autenticação remota ainda precisa de endurecimento. Não publicar diretamente na internet nem usar como única cópia de dados de produção. Consulte [critérios de validação](BACKUP-VALIDATION.md).
 
@@ -41,7 +41,7 @@ Compilar no Linux: NSIS, curl, unzip, ripgrep e sha256sum; execute `bash windows
 
 As rotinas têm Ativar/Desativar e Excluir. Desativar bloqueia novas execuções agendadas e manuais; não interrompe uma cópia que já iniciou. Excluir é lógico: oculta a rotina, cancela seus backups ainda na fila e preserva arquivos, catálogo e restauração das versões existentes. Ativar novamente permite as próximas execuções elegíveis; não refaz automaticamente uma rotina já concluída no dia.
 
-VSS é **experimental**. Marque Usar VSS e salve a rotina. O componente automático é instalado com autorização UAC uma vez por instalação/atualização. Ele inicia com o Windows e atende os pedidos de snapshot sem elevar ou reiniciar o painel e o agente. Não é necessário abrir modo administrador para cada backup. O programa não fecha o Outlook. Os atalhos antigos de modo administrador são removidos na atualização.
+VSS é **experimental** e obrigatório nos backups em disco do Windows, sem caixa de seleção. O componente automático é instalado com autorização UAC uma vez por instalação/atualização. Ele inicia com o Windows e atende os pedidos de snapshot sem elevar ou reiniciar o painel e o agente. Não é necessário abrir modo administrador para cada backup. O programa não fecha o Outlook. Os atalhos antigos de modo administrador são removidos na atualização.
 
 O componente é uma tarefa de inicialização do Agendador de Tarefas, executada como SYSTEM; não é um serviço que execute todo o aplicativo como administrador. Seu código fica em `Program Files/BackupDesk VSS/master` ou `client`, com gravação restrita a Administradores e SYSTEM. O pipe local aceita somente o SID cadastrado na instalação. O cliente verifica que o pipe pertence a SYSTEM. O protocolo permite somente consultar disponibilidade, criar snapshot de volume local NTFS e remover snapshots registrados pela própria instalação. Não aceita comandos, scripts, caminhos de ledger nem leitura arbitrária de arquivos como SYSTEM. O painel e a cópia para destinos locais/USB/rede continuam no usuário normal. A desinstalação remove a tarefa daquele usuário/produto e seus snapshots próprios; scripts compartilhados protegidos podem permanecer para outros usuários.
 
@@ -49,7 +49,7 @@ O helper usa Win32_ShadowCopy com contexto ClientAccessible, sem writers: snapsh
 
 **Consistência do volume não comprova integridade lógica do PST.** Manifesto, histórico e resultado exibem `vss-crash-consistent-no-writers`. Valide um PST restaurado no Outlook antes de confiar no backup de um arquivo aberto; o Outlook não é validado automaticamente. O teste Windows automatizado usa um arquivo bloqueado de teste, não um PST real com Outlook.
 
-O painel mostra a disponibilidade do componente automático na aba Backup. Se indisponível, execute o instalador e autorize o componente. Nenhum botão no painel solicita elevação ou reinício. Atualize também os clients para obter esse fluxo.
+Se o componente automático estiver indisponível, o erro é registrado na execução. Reinstale e autorize o componente. Nenhum botão no painel solicita elevação ou reinício. Atualize também os clients para obter esse fluxo.
 
 O andamento aparece no topo: fila, preparação, VSS, cópia, verificação e resultado. O percentual mede os bytes processados na cópia e verificação; a conclusão só aparece após finalizar. Leitura das pastas e criação VSS usam barra indeterminada.
 
@@ -76,3 +76,5 @@ Validação 0.8.2: 30 testes locais e a checagem Chromium passaram. O [workflow 
 Não há caixa de seleção nem opção de desativação. Rotinas de disco existentes no Windows são migradas, a API ignora pedidos de desativação e comandos antigos em fila recebem a política atual. O agente e o motor também impõem VSS no Windows, mesmo com um payload antigo falso. Falha de VSS não usa cópia do arquivo vivo como alternativa. Origens precisam de snapshot local NTFS; destino continua podendo ser local, USB ou rede. O armazenamento legado por upload continua disponível para restauração, mas novas execuções Windows exigem escolher uma pasta de destino em disco. Linux não dispõe de VSS do Windows e conserva sua cópia verificada.
 
 O formulário de rotinas mostra somente campos, rótulos e ações; os textos explicativos da área de origem/destino/VSS foram removidos. Erros reais, integridade e observações de recuperação continuam registrados no resultado e no histórico. Snapshots sem writers ainda não comprovam integridade lógica do PST: valide a cópia restaurada no Outlook.
+
+Validação 0.8.3: 31 testes locais e checagem Chromium passaram. O [workflow Windows 41876030759](https://github.com/rochamurilo/backupdesk/actions/runs/41876030759) passou, incluindo cópia de arquivo bloqueado como usuário comum mesmo com useVss:false, comprovando a imposição no motor Windows. PST real com Outlook continua sujeito ao teste de restauração descrito acima.
