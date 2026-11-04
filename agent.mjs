@@ -4,7 +4,7 @@ import {runScheduledRoutine} from './schedule.mjs';import {browseFiles,collectFi
 import {backupToDisk,validateDestination,validateVssDestination,restoreFromDisk} from './disk-backup.mjs';
 const base=process.env.BACKUPDESK_URL||'http://127.0.0.1:3000',token=process.env.BACKUPDESK_TOKEN;
 if(!token)throw Error('Defina BACKUPDESK_TOKEN');
-async function api(path,data){const r=await fetch(base+'/api/agent/'+path,{method:data?'POST':'GET',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json','X-BackupDesk-Version':'0.9.0','X-BackupDesk-Platform':process.platform},body:data?JSON.stringify(data):undefined,signal:AbortSignal.timeout(path.endsWith('/progress')?5000:30000)});const b=await r.json();if(!r.ok)throw Error(b.error);return b}
+async function api(path,data){const r=await fetch(base+'/api/agent/'+path,{method:data?'POST':'GET',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json','X-BackupDesk-Version':'0.10.0','X-BackupDesk-Platform':process.platform,...(process.env.BACKUPDESK_INSTALLATION_ID?{'X-BackupDesk-Installation':process.env.BACKUPDESK_INSTALLATION_ID}:{})},body:data?JSON.stringify(data):undefined,signal:AbortSignal.timeout(path.endsWith('/progress')?5000:30000)});const b=await r.json();if(!r.ok)throw Error(b.error);return b}
 async function backup(routine,jobId){const run=await api('runs',routine.id?{routine_id:routine.id,storage_type:routine.destination_type,job_id:jobId}:{});const reporter=createProgressReporter(p=>api('runs/'+run.id+'/progress',p));try{
  let result={};let snapshot,consistency,warning;
  if(routine.destination_type&&routine.destination_type!=='server'){
@@ -15,7 +15,7 @@ async function backup(routine,jobId){const run=await api('runs',routine.id?{rout
 if(process.argv[2]==='--once'){if(!process.argv[3])throw Error('Uso: node agent.mjs --once CAMINHO');await backup({source:process.argv[3],destination_type:'server'})}
 else{
  const statePath=resolve(process.env.BACKUPDESK_AGENT_STATE||'.backupdesk-agent-state.json');let state={};try{state=JSON.parse(await readFile(statePath,'utf8'))}catch(e){if(e.code!=='ENOENT')throw e}
- await api('hello',{});
+ await api('hello',{installation_id:process.env.BACKUPDESK_INSTALLATION_ID});if(process.env.BACKUPDESK_COMPUTER_NAME)console.log('Computador:',process.env.BACKUPDESK_COMPUTER_NAME);
  async function tick(){const {routines}=await api('config');for(const r of routines){try{await runScheduledRoutine(r,new Date(),state,value=>writeFile(statePath,JSON.stringify(value)),backup)}catch(e){console.error('Rotina '+r.name+': '+e.message)}}}
 
  let busy=false,lastTick=0;

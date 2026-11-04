@@ -7,16 +7,16 @@ Unicode True
 Var VssOwnerSid
 !ifdef CLIENT
   !define PRODUCT "BackupDesk Client"
-  !define VERSION "0.9.0"
+  !define VERSION "0.10.0"
   !define KEY "BackupDeskClient"
   !define FOLDER "BackupDeskClient"
-  OutFile "../windows/build/BackupDesk-Client-0.9.0-x64.exe"
+  OutFile "../windows/build/BackupDesk-Client-0.10.0-x64.exe"
 !else
   !define PRODUCT "BackupDesk Master"
-  !define VERSION "0.9.0"
+  !define VERSION "0.10.0"
   !define KEY "BackupDesk"
   !define FOLDER "BackupDesk"
-  OutFile "../dist/BackupDesk-Master-0.9.0-x64.exe"
+  OutFile "../dist/BackupDesk-Master-0.10.0-x64.exe"
 !endif
 Name "${PRODUCT} (teste local)"
 InstallDir "$LOCALAPPDATA\${FOLDER}"
@@ -28,7 +28,7 @@ SetCompressor /SOLID lzma
 !define MUI_FINISHPAGE_RUN_FUNCTION LaunchInstalled
 !ifdef CLIENT
  !define MUI_FINISHPAGE_RUN "$INSTDIR\Configurar.cmd"
- !define MUI_FINISHPAGE_RUN_TEXT "Configurar este client"
+ !define MUI_FINISHPAGE_RUN_TEXT "Abrir client"
 !else
  !define MUI_FINISHPAGE_RUN "$INSTDIR\BackupDesk.exe"
  !define MUI_FINISHPAGE_RUN_TEXT "Abrir master e criar rotinas"
@@ -42,7 +42,14 @@ SetCompressor /SOLID lzma
 !insertmacro MUI_LANGUAGE "PortugueseBR"
 Function LaunchInstalled
 !ifdef CLIENT
- ExecShell "open" "$INSTDIR\Configurar.cmd"
+ nsExec::ExecToStack '"$INSTDIR\node.exe" "$INSTDIR\client-package.mjs" --ready'
+ Pop $0
+ Pop $1
+ ${If} $0 == 0
+  ExecShell "open" "$INSTDIR\BackupDeskClient.exe"
+ ${Else}
+  ExecShell "open" "$INSTDIR\Configurar.cmd"
+ ${EndIf}
 !else
  ExecShell "open" "$INSTDIR\BackupDesk.exe"
 !endif
@@ -82,6 +89,7 @@ Section "${PRODUCT}" Main
  File "../filesystem.mjs"
  File "../disk-backup.mjs"
  File "../backup-repository.mjs"
+ File "../client-package.mjs"
  File "../progress.mjs"
  File "../vss.mjs"
  SetOutPath "$INSTDIR\windows"
@@ -95,6 +103,13 @@ Section "${PRODUCT}" Main
  File "Configurar.cmd"
  File "build/BackupDeskClient.exe"
  File /oname=VSSComponentSetup.exe "build/BackupDeskClientVSSComponent.exe"
+ nsExec::ExecToStack '"$INSTDIR\node.exe" "$INSTDIR\client-package.mjs" --install "$EXEPATH"'
+ Pop $0
+ Pop $1
+ ${If} $0 != 0
+  MessageBox MB_OK|MB_ICONSTOP "Não foi possível configurar a identificação do client. $1"
+  Abort
+ ${EndIf}
 !endif
  File "LEIA-ME.txt"
  CreateDirectory "$SMPROGRAMS\${FOLDER}"
@@ -114,7 +129,7 @@ Section "${PRODUCT}" Main
  File "../public/app.js"
  File "../public/style.css"
  SetOutPath "$INSTDIR\dist"
- File "build/BackupDesk-Client-0.9.0-x64.exe"
+ File "build/BackupDesk-Client-0.10.0-x64.exe"
  SetOutPath "$INSTDIR"
  nsExec::ExecToStack '"$INSTDIR\node.exe" "$INSTDIR\server.mjs" --prepare-master'
  Pop $0
@@ -182,7 +197,7 @@ Section "Uninstall"
  Delete "$INSTDIR\public\app.js"
  Delete "$INSTDIR\public\style.css"
  RMDir "$INSTDIR\public"
- Delete "$INSTDIR\dist\BackupDesk-Client-0.9.0-x64.exe"
+ Delete "$INSTDIR\dist\BackupDesk-Client-0.10.0-x64.exe"
  RMDir "$INSTDIR\dist"
 !else
  Delete "$DESKTOP\BackupDesk Client.lnk"
@@ -198,6 +213,7 @@ Section "Uninstall"
  Delete "$INSTDIR\filesystem.mjs"
  Delete "$INSTDIR\disk-backup.mjs"
  Delete "$INSTDIR\backup-repository.mjs"
+ Delete "$INSTDIR\client-package.mjs"
  Delete "$INSTDIR\progress.mjs"
  Delete "$INSTDIR\vss.mjs"
  Delete "$INSTDIR\windows\vss.ps1"

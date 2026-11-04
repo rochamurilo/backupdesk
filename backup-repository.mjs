@@ -38,3 +38,18 @@ export async function findFullBaseline({repository,target,device,sources,scopeKe
 export async function verifyFullBaseline(candidate,repository,onBytes=()=>{}){
  for(const f of candidate.manifest.files){const file=await storedFile(candidate.snapshot,f.path,repository);if((await stat(file)).size!==f.size||await hashFile(file,onBytes)!==f.hash)throw Error('A base completa está incompleta ou corrompida: '+f.path)}
 }
+
+// The source LastWriteTime is distinct from the time a backup was performed.
+export function modifiedDate(nanoseconds){
+ if(typeof nanoseconds!=='string'||!/^-?\d{1,24}$/.test(nanoseconds))return null;
+ const date=new Date(Number(BigInt(nanoseconds)/1000000n));return Number.isNaN(date.getTime())?null:date.toISOString();
+}
+export function backupDestination(run){
+ if(run.storage_type==='server')return 'Armazenamento do master';
+ if(run.scope_destination)return run.scope_destination;
+ if(typeof run.snapshot!=='string')return null;
+ const p=/^(?:[a-z]:|\\)/i.test(run.snapshot)?path.win32:path.posix;
+ const snapshot=p.normalize(run.snapshot),routine=p.dirname(snapshot),device=p.dirname(routine),repository=p.dirname(device);
+ if(p.basename(snapshot)!==run.id||p.basename(device)!==run.device||p.basename(repository).toLowerCase()!=='backupdesk')return null;
+ return p.dirname(repository);
+}

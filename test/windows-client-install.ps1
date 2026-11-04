@@ -1,0 +1,39 @@
+﻿$ErrorActionPreference='Stop'
+$repo=Split-Path $PSScriptRoot -Parent
+$master=Join-Path $repo 'dist\BackupDesk-Master-0.10.0-x64.exe'
+if(-not (Test-Path -LiteralPath $master)){'Instalador ainda não publicado; teste de pacote será executado na publicação.';return}
+$root=Join-Path $env:TEMP ('BackupDesk Client Test '+[guid]::NewGuid().ToString('N'))
+$extract=Join-Path $root 'extracted'
+$target=Join-Path $root 'client instalado'
+$renamed=Join-Path $root 'arquivo renomeado.exe'
+$sevenZip=(Get-Command 7z.exe -ErrorAction SilentlyContinue).Source
+if(-not $sevenZip){$sevenZip=Join-Path $env:ProgramFiles '7-Zip\7z.exe'}
+New-Item -ItemType Directory -Path $root | Out-Null
+try{
+ $null=& $sevenZip x $master ('-o'+$extract) -y
+ if($LASTEXITCODE -ne 0){throw 'Falha ao extrair o pacote publicado.'}
+ $generic=Get-ChildItem -LiteralPath $extract -Filter 'BackupDesk-Client-0.10.0-x64.exe' -Recurse | Select-Object -First 1
+ if(-not $generic){throw 'Master não contém o client esperado.'}
+ $env:BACKUPDESK_TEST_CLIENT_BASE=$generic.FullName
+ $env:BACKUPDESK_TEST_CLIENT_NAMED=$renamed
+ Set-Location $repo
+ & node --input-type=module -e "import {readFile,writeFile} from 'node:fs/promises';import {enrollmentTrailer} from './client-package.mjs';const config={format:'backupdesk-client-v1',device_id:'d'.repeat(64),name:'Financeiro São Paulo',url:null,token:'a'.repeat(64)};await writeFile(process.env.BACKUPDESK_TEST_CLIENT_NAMED,Buffer.concat([await readFile(process.env.BACKUPDESK_TEST_CLIENT_BASE),enrollmentTrailer(config)]));"
+ if($LASTEXITCODE -ne 0){throw 'Falha ao incorporar identificação no instalador.'}
+ $process=Start-Process -FilePath $renamed -ArgumentList @('/S',('/D='+$target)) -PassThru
+ if(-not $process.WaitForExit(180000)){$process.Kill();throw 'Instalação identificada excedeu o prazo.'}
+ if($process.ExitCode -ne 0){throw ('Instalador retornou '+$process.ExitCode)}
+ $config=Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $target 'agent-config.json') | ConvertFrom-Json
+ if($config.name -ne 'Financeiro São Paulo' -or $config.device_id -ne ('d'*64) -or -not $config.installation_id){throw 'Identidade não foi instalada automaticamente.'}
+ $instance=$config.installation_id
+ $process=Start-Process -FilePath $renamed -ArgumentList @('/S',('/D='+$target)) -PassThru
+ if(-not $process.WaitForExit(180000)){$process.Kill();throw 'Atualização do client excedeu o prazo.'}
+ if($process.ExitCode -ne 0){throw 'Atualização identificada falhou.'}
+ $updated=Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $target 'agent-config.json') | ConvertFrom-Json
+ if($updated.installation_id -ne $instance){throw 'A atualização mudou a identificação da instalação.'}
+ if(-not (Test-Path -LiteralPath (Join-Path $target 'client-package.mjs'))){throw 'Módulo de identificação não foi incluído no pacote.'}
+ 'Instalador NSIS real: CRC preservado com identificação incorporada, nome independente do arquivo e vínculo mantido na atualização: OK.'
+}finally{
+ $uninstall=Join-Path $target 'Uninstall.exe'
+ if(Test-Path -LiteralPath $uninstall){$process=Start-Process -FilePath $uninstall -ArgumentList @('/S',('_?='+$target)) -PassThru;if(-not $process.WaitForExit(60000)){$process.Kill();throw 'Desinstalação do teste excedeu o prazo.'}}
+ if(Test-Path -LiteralPath $root){Remove-Item -LiteralPath $root -Recurse -Force}
+}

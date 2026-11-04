@@ -20,7 +20,11 @@ Section
  System::Call '*(i 68, p 0, p 0, p 0, i 0, i 0, i 0, i 0, i 0, i 0, i 0, i 0, &i2 0, &i2 0, p 0, p 0, p 0, p 0) p.r0'
  System::Call '*(p 0, p 0, i 0, i 0) p.r1'
 !ifdef CLIENT
+ ${GetParameters} $4
  StrCpy $3 '"$EXEDIR\node.exe" "$EXEDIR\launch-agent.mjs"'
+ ${If} $4 != "/background"
+  StrCpy $3 '$3 --interactive'
+ ${EndIf}
  IfFileExists "$EXEDIR\agent-config.json" +2 0
  Quit
 !else

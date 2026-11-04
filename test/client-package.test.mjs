@@ -1,0 +1,18 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import {mkdtemp,writeFile,readFile,rename,rm} from 'node:fs/promises';import {tmpdir} from 'node:os';import {join} from 'node:path';import {computerName,clientUrl,enrollmentTrailer,readEnrollment,installEnrollment} from '../client-package.mjs';
+const config={format:'backupdesk-client-v1',device_id:'d'.repeat(64),name:'Financeiro São Paulo',url:'https://backup.example.test',token:'a'.repeat(64)};
+async function fixture(fn){const dir=await mkdtemp(join(tmpdir(),'backupdesk-client-package-'));try{await fn(dir)}finally{await rm(dir,{recursive:true,force:true})}}
+test('instalador leva nome/identidade mesmo renomeado; atualização mantém vínculo e instância',()=>fixture(async dir=>{
+ const source=Buffer.from('MZ-instalador de teste'),file=join(dir,'client.exe');await writeFile(file,Buffer.concat([source,enrollmentTrailer(config)]));assert.deepEqual((await readFile(file)).subarray(0,source.length),source);const renamed=join(dir,'nome-alterado.exe');await rename(file,renamed);assert.deepEqual(await readEnrollment(renamed),config);
+ const target=join(dir,'app');assert.deepEqual(await installEnrollment(renamed,target),{configured:true,named:true});const before=JSON.parse(await readFile(join(target,'agent-config.json'),'utf8'));assert.equal(before.name,config.name);assert.equal(before.device_id,config.device_id);assert.match(before.installation_id,/^[a-f0-9-]{36}$/);await installEnrollment(renamed,target);assert.equal(JSON.parse(await readFile(join(target,'agent-config.json'),'utf8')).installation_id,before.installation_id);
+}));
+test('sem endereço do master a identificação fica salva; genérico não apaga configuração existente',()=>fixture(async dir=>{
+ const file=join(dir,'client.exe');await writeFile(file,Buffer.concat([Buffer.from('MZ'),enrollmentTrailer({...config,url:null})]));assert.equal((await installEnrollment(file,dir)).configured,false);const before=await readFile(join(dir,'agent-config.json'),'utf8');assert.equal(JSON.parse(before).name,config.name);await writeFile(file,'MZ-generico');assert.deepEqual(await installEnrollment(file,dir),{configured:false,named:false});assert.equal(await readFile(join(dir,'agent-config.json'),'utf8'),before);
+}));
+test('configuração adulterada e tentativa de trocar a identidade não substituem vínculo anterior',()=>fixture(async dir=>{
+ const file=join(dir,'client.exe');const original=Buffer.concat([Buffer.from('MZ'),enrollmentTrailer(config)]);await writeFile(file,original);await installEnrollment(file,dir);const before=await readFile(join(dir,'agent-config.json'),'utf8');const corrupt=Buffer.from(original);corrupt[5]^=1;await writeFile(file,corrupt);await assert.rejects(installEnrollment(file,dir),/corrompida/);assert.equal(await readFile(join(dir,'agent-config.json'),'utf8'),before);
+ await writeFile(file,Buffer.concat([Buffer.from('MZ'),enrollmentTrailer({...config,device_id:'e'.repeat(64),token:'b'.repeat(64)})]));await assert.rejects(installEnrollment(file,dir),/preservada/);assert.equal(await readFile(join(dir,'agent-config.json'),'utf8'),before);
+}));
+test('nomes e endereços do master são validados sem aceitar comandos/caminhos como configuração',()=>{
+ for(const name of ['', 'A\nB','../x','C:\\file','a"b','a*','x'.repeat(81)])assert.throws(()=>computerName(name));assert.equal(computerName('  PC Financeiro  '),'PC Financeiro');
+ for(const url of ['file:///C:/Windows','https://user:secret@example.test','http://office.example.test','https://example.test/script?x=1'])assert.throws(()=>clientUrl(url));assert.equal(clientUrl('https://example.test/'),'https://example.test');assert.equal(clientUrl(null),null);
+});

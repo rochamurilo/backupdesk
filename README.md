@@ -1,12 +1,12 @@
-# BackupDesk 0.9.0 — versão de teste
+# BackupDesk 0.10.0 — versão de teste
 
-[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.9.0-x64.exe)
+[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.10.0-x64.exe)
 
 ## Criar ou ajustar uma rotina
 
 Na aba Backup, escolha computador, dias, horário e pastas/arquivos de origem. Em **Onde salvar o backup**, escolha Pasta local, HD externo/USB ou Unidade de rede/NAS, selecione a pasta e use **Testar destino e espaço disponível**. O caminho pertence ao computador selecionado, não ao navegador ou necessariamente ao master. No master local, o seletor abre a janela nativa do Windows; nos clients remotos, informe um caminho acessível naquele computador.
 
-Salve e use **Fazer backup agora** para testar. O agendador usa o horário local do computador e executa cada rotina no máximo uma vez por dia agendado; dias perdidos com o computador desligado ainda não são recuperados automaticamente. Rotinas antigas podem ser ajustadas em **Editar**. Elas conservam o armazenamento legado até serem alteradas; não são movidas automaticamente. Atualize os clients para 0.9.0 pelo botão no canto inferior esquerdo do master antes de usar destinos em disco. Agentes antigos não recebem rotinas com esses destinos.
+Salve e use **Fazer backup agora** para testar. O agendador usa o horário local do computador e executa cada rotina no máximo uma vez por dia agendado; dias perdidos com o computador desligado ainda não são recuperados automaticamente. Rotinas antigas podem ser ajustadas em **Editar**. Elas conservam o armazenamento legado até serem alteradas; não são movidas automaticamente. Atualize os clients para 0.10.0 pelo botão no canto inferior esquerdo do master antes de usar destinos em disco. Agentes antigos não recebem rotinas com esses destinos.
 
 O motor em disco grava versões completas ou diferenciais em `DESTINO/BackupDesk/ID-COMPUTADOR/ID-ROTINA/ID-EXECUÇÃO`. Cada versão tem manifest.json com o catálogo lógico completo, hashes SHA-256 e referências à base completa. A pasta files contém apenas o conteúdo gravado naquela execução. Diretórios .partial-* são execuções incompletas e não são apresentados como backups válidos. O catálogo e os status continuam no master; os conteúdos desses backups ficam somente no destino escolhido.
 
@@ -14,7 +14,7 @@ Não apaga versões anteriores. Não há retenção automática, compressão nem
 
 ## Restaurar
 
-Na aba Restauração, selecione computador, conjunto de origem/destino, dia no calendário e horário. A lista mostra todos os arquivos do último backup concluído até aquele momento, sem misturar destinos ou incluir versões futuras. Para cópias em disco, escolha uma pasta de recuperação e o arquivo. O agente recupera para `PASTA/BackupDesk-Restaurado/ID-TAREFA`, verifica hashes e não sobrescreve o original. Os backups antigos do armazenamento interno continuam podendo ser baixados pelo navegador. Não é possível recuperar de um disco que não esteja conectado ou de um client que esteja offline.
+Na aba Restauração, selecione computador, local onde os backups estão salvos, dia no calendário e horário. A lista mostra todos os arquivos do último backup concluído até aquele momento, sem misturar destinos ou incluir versões futuras. Para cópias em disco, escolha uma pasta de recuperação e o arquivo. O agente recupera para `PASTA/BackupDesk-Restaurado/ID-TAREFA`, verifica hashes e não sobrescreve o original. Os backups antigos do armazenamento interno continuam podendo ser baixados pelo navegador. Não é possível recuperar de um disco que não esteja conectado ou de um client que esteja offline.
 
 ## Outlook e limitações
 
@@ -97,3 +97,20 @@ A observação genérica de PST deixa de aparecer como alerta operacional em tod
 Atualize master e clients para 0.9.0 antes de restaurar diferenciais. Os completos v1 continuam restauráveis e podem servir de base quando origem/destino coincidem. Backups do armazenamento legado por upload continuam disponíveis na restauração.
 
 Validação 0.9.0: a suíte local, a checagem Chromium e os testes adicionais de catálogo/restauração passaram. O [workflow Windows 41884357162](https://github.com/rochamurilo/backupdesk/actions/runs/41884357162) passou no código final: VSS automático como usuário comum, cópia de arquivo bloqueado, diferencial em outra rotina do mesmo conjunto, restauração verificada, isolamento/limpeza e atualização/inicialização. O arquivo bloqueado é uma fixture de teste; a integridade lógica de um PST real com Outlook não foi validada.
+
+
+## Restauração e client identificado — 0.10.0
+
+O seletor **Local dos backups** mostra somente o destino de armazenamento. Origens diferentes no mesmo local ficam reunidas nessa seleção: o calendário encontra a última versão concluída de cada origem até o horário escolhido e lista os arquivos de cada conjunto, sem misturar os conteúdos de arquivos homônimos. Destinos diferentes permanecem separados. Versões vazias respeitam as exclusões, sem ressuscitar arquivos de versões anteriores.
+
+**Destino** abre o seletor da pasta que receberá o arquivo restaurado. A ação na interface é individual pelo botão Restaurar arquivo; o botão Restaurar todos foi removido. O cabeçalho não exibe o slogan anterior.
+
+Cada arquivo mostra a data de modificação da origem (LastWriteTime no Windows), separada da data da execução. A informação fica no catálogo e no manifesto e é preservada na cópia e na restauração, respeitando a precisão do sistema de arquivos. Diferenciais usam a data atual da origem mesmo quando o conteúdo não mudou e continua na base. Backups 0.9.0 locais recuperam essa informação do manifesto. Versões antigas sem o metadado mostram **data não registrada**; não se usa a data da cópia ou do backup como se fosse a original. Manifestos antigos inacessíveis só podem ter a data recuperada quando o armazenamento voltar a estar disponível.
+
+**Baixar client Windows** pede o nome do computador e gera um .exe com nome, ID, token restrito de agente e endereço do master (quando informado) incorporados ao próprio arquivo. O nome também acompanha o arquivo baixado. Renomear o .exe não altera sua identificação. A identificação é validada antes de gravar agent-config.json e uma atualização da mesma identidade preserva o ID da instalação. Instaladores genéricos preservam a configuração existente. Um instalador de outra identidade não substitui silenciosamente um vínculo existente. Downloads repetidos do mesmo nome pelo mesmo proprietário reaproveitam o cadastro; nomes não criam rotinas nem registram sucesso de backup.
+
+O pacote identificado contém uma credencial do computador: entregue-o somente à máquina correspondente e não publique esses instaladores personalizados no GitHub. Apenas o instalador master genérico, com client genérico embutido, é publicado no repositório. O servidor entrega os personalizados apenas a um master autenticado e com Cache-Control: no-store. O payload tem SHA-256 para detectar corrupção; isso não substitui assinatura digital do instalador. O CRC original do NSIS permanece habilitado, pois seu formato permite dados após o bloco verificado.
+
+Se o master já tem endereço HTTPS acessível, informe-o na opção Conexão com o master ao baixar. Sem esse endereço, nome/ID/token já ficam instalados, mas a conexão precisa ser configurada no client; ele informa a pendência em seu log. O client não deve usar 127.0.0.1 para procurar um master em outra máquina. O instalador não abre a API do master na rede nem configura TLS automaticamente. Isso preserva o teste local existente. Um ID de instalação diferencia computadores; copiar o mesmo pacote identificado para outra instalação é recusado após o vínculo inicial. Para outra máquina, gere outro nome/instalador.
+
+A identificação persistente prepara o cadastro para o painel central futuro. **Não foi criado um repositório de logs na internet nesta versão.** Status e históricos continuam no master configurado.

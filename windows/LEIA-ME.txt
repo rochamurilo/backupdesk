@@ -1,4 +1,4 @@
-BACKUPDESK 0.9.0 - TESTE WINDOWS x64
+BACKUPDESK 0.10.0 - TESTE WINDOWS x64
 
 INSTALACAO
 Instale na mesma pasta para preservar cadastros e backups.
@@ -65,3 +65,22 @@ Na restauracao, o catalogo reune automaticamente completo e diferencial.
 Verificacao do PST fica nos detalhes: integridade da copia nao comprova
 abertura no Outlook. A validacao logica de PST real nao e automatizada.
 Atualize tambem os clients pelo master antes de restaurar diferenciais.
+
+RESTAURACAO E IDENTIFICACAO - 0.10.0
+Selecione somente o local onde os backups estao armazenados.
+Destino e a pasta que recebera o arquivo restaurado.
+A lista mostra a data original de modificacao (LastWriteTime), quando registrada.
+Copias antigas sem essa informacao mostram data nao registrada.
+A restauracao preserva a data de modificacao, sem substituir os originais.
+A restauracao pela tela e individual, pelo botao de cada arquivo.
+
+Ao baixar um client no master, informe o nome do computador.
+O executavel leva nome, identificador e token de agente incorporados.
+Renomear o arquivo .exe nao muda o nome cadastrado.
+Atualizacoes do mesmo client preservam sua identificacao.
+Use um instalador identificado diferente para cada computador.
+Se o endereco HTTPS do master nao foi informado no download, configure-o
+no client depois de instalar. O nome e o token ja estarao preenchidos.
+127.0.0.1 aponta somente para o proprio computador, nao para outro master.
+O cadastro nao significa que o client esta online ou que um backup foi feito.
+O repositorio de logs na internet ainda nao foi implementado.

@@ -24,7 +24,14 @@ async function download(path,name){try{const r=await fetch('/api/'+path,{headers
 function equipment(){const filter=$('search').value.toLowerCase();const labels={success:'Concluído',failed:'Falha',running:'Em execução'};const localDate=d=>[d.getFullYear(),d.getMonth(),d.getDate()].join('-');$('equipmentRows').innerHTML=state.devices.filter(d=>d.name.toLowerCase().includes(filter)).map(d=>{const runs=state.runs.filter(r=>r.device===d.id),last=runs[0],success=runs.find(r=>r.status==='success');const bars=Array.from({length:28},(_,i)=>{const day=new Date();day.setDate(day.getDate()-27+i);const rs=runs.filter(r=>localDate(new Date(r.started))===localDate(day));const status=rs.some(r=>r.status==='failed')?'failed':rs.some(r=>r.status==='running')?'running':rs.length?'success':'none';return `<span class="bar ${status}" title="${day.toLocaleDateString('pt-BR')}: ${labels[status]||'Sem execução'}"></span>`}).join('');return `<tr><td><b>${esc(d.name)}</b><br><small>Agente: ${esc(d.version||'aguardando contato')}</small></td><td class="${last?.status||''}">${labels[last?.status]||'Sem backup'}</td><td><div class="bars">${bars}</div></td><td>${success?new Date(success.finished).toLocaleString('pt-BR'):'—'}</td><td>${last?new Intl.NumberFormat('pt-BR',{maximumFractionDigits:2}).format(last.bytes/1048576)+' MiB':'—'}</td></tr>`}).join('')||'<tr><td colspan="5">Nenhum equipamento encontrado.</td></tr>'}
 $('search').oninput=()=>{if(state)equipment()};
 
-$('downloadClient').onclick=()=>download('download/client','BackupDesk-Client-0.9.0-x64.exe');
+$('downloadClient').onclick=()=>{$('clientDownloadError').textContent='';const origin=new URL(location.origin);if(origin.protocol==='https:'&&!['localhost','127.0.0.1','[::1]'].includes(origin.hostname))$('clientMasterUrl').value=origin.origin;$('clientDownload').showModal();$('clientComputerName').focus()};
+$('closeClientDownload').onclick=()=>$('clientDownload').close();
+let downloadingClient=false;
+$('clientDownloadForm').onsubmit=async event=>{
+ event.preventDefault();if(downloadingClient)return;downloadingClient=true;const button=$('generateNamedClient');button.disabled=true;button.textContent='Gerando…';$('clientDownloadError').textContent='';
+ try{const name=$('clientComputerName').value.trim();const response=await fetch('/api/download/client',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({name,url:$('clientMasterUrl').value.trim()||null})});if(!response.ok)throw Error((await response.json()).error||'Falha ao gerar o client.');const disposition=response.headers.get('Content-Disposition')||'',encoded=disposition.match(/filename\*=UTF-8''([^;]+)/i),filename=encoded?decodeURIComponent(encoded[1]):'BackupDesk-Client-'+name+'.exe',url=URL.createObjectURL(await response.blob()),link=document.createElement('a');link.href=url;link.download=filename;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);$('clientDownload').close();message('Instalador preparado para '+name+'.');await refresh()}
+ catch(error){$('clientDownloadError').textContent=error.message}finally{downloadingClient=false;button.disabled=false;button.textContent='Gerar instalador'}
+};
 
 function displaySources(source){try{return JSON.parse(source).join(' · ')}catch{return source}}
 let picking=false;
@@ -65,13 +72,16 @@ function renderHistory(){
 }
 let restoreLoaded='';
 const dateValue=d=>[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
-const restoreScopeKey=r=>r.scope_key||'legacy:'+r.routine_id+':'+r.storage_type;
+function normalizedLocation(value){const path=String(value||'').replace(/[\\/]+$/,'');return /^(?:[a-z]:|\\)/i.test(path)?path.replaceAll('/',String.fromCharCode(92)).toLowerCase():path}
+const restoreScopeKey=r=>normalizedLocation(r.backup_destination||r.scope_destination)||'unknown:'+r.routine_id;
+function restoreSourceKey(run){try{return JSON.stringify(JSON.parse(run.scope_sources).map(normalizedLocation).sort())}catch{return run.scope_key||'legacy:'+run.routine_id}}
+let restoreSelection=[];
 function deviceRestoreRuns(){return state.runs.filter(r=>r.device===$('restoreDevice').value&&r.status==='success').sort((a,b)=>Date.parse(b.finished)-Date.parse(a.finished))}
 function scopeRestoreRuns(){return deviceRestoreRuns().filter(r=>restoreScopeKey(r)===$('restoreScope').value)}
 function renderRestore(){
  const previous=$('restoreDevice').value;$('restoreDevice').innerHTML=state.devices.map(d=>`<option value="${d.id}">${esc(d.name)}</option>`).join('');if(state.devices.some(d=>d.id===previous))$('restoreDevice').value=previous;
  const selected=$('restoreScope').value,groups=new Map();for(const r of deviceRestoreRuns())if(!groups.has(restoreScopeKey(r)))groups.set(restoreScopeKey(r),r);
- $('restoreScope').innerHTML=[...groups].map(([key,r])=>`<option value="${esc(key)}">${esc(r.scope_sources?displaySources(r.scope_sources)+' → '+r.scope_destination:(r.routine_name||'Backups anteriores')+' · '+(r.storage_type==='server'?'Servidor':'Destino anterior'))}</option>`).join('');if(groups.has(selected))$('restoreScope').value=selected;
+ $('restoreScope').innerHTML=[...groups].map(([key,r])=>`<option value="${esc(key)}">${esc(r.backup_destination||r.scope_destination||'Local não registrado')}</option>`).join('');if(groups.has(selected))$('restoreScope').value=selected;
  if(!$('restoreDate').value){const latest=scopeRestoreRuns()[0];const date=latest?new Date(latest.finished):new Date();$('restoreDate').value=dateValue(date);$('restoreMonth').value=dateValue(date).slice(0,7)}
  renderRestoreCalendar();updateRestoreRuns();
 }
@@ -82,16 +92,22 @@ function renderRestoreCalendar(){
 }
 function selectRestorePoint(run){const date=new Date(run.finished);$('restoreDate').value=dateValue(date);$('restoreMonth').value=dateValue(date).slice(0,7);$('restoreTime').value=[date.getHours(),date.getMinutes(),date.getSeconds()].map(n=>String(n).padStart(2,'0')).join(':');renderRestoreCalendar();updateRestoreRuns()}
 function updateRestoreRuns(){
- // Select the newest *completed* point no later than the local date/time requested.
- const asOf=new Date($('restoreDate').value+'T'+(($('restoreTime').value||'23:59:59').length===5?$('restoreTime').value+':00':$('restoreTime').value||'23:59:59')+'.999').getTime();
- const run=scopeRestoreRuns().find(r=>Date.parse(r.finished)<=asOf);
- $('restoreRun').innerHTML=run?`<option value="${run.id}">${esc(run.finished)}</option>`:'';$('restoreAll').disabled=!run;
- $('restoreValidation').innerHTML=run?validationDetails(run):'';
+ const asOf=new Date($('restoreDate').value+'T'+(($('restoreTime').value||'23:59:59').length===5?$('restoreTime').value+':00':$('restoreTime').value||'23:59:59')+'.999').getTime(),points=new Map();
+ for(const run of scopeRestoreRuns()){const source=restoreSourceKey(run);if(Date.parse(run.finished)<=asOf&&!points.has(source))points.set(source,run)}
+ restoreSelection=[...points.values()];const run=restoreSelection[0];
+ $('restoreRun').innerHTML=restoreSelection.map(r=>`<option value="${r.id}">${esc(r.finished)}</option>`).join('');
+ $('restoreValidation').innerHTML=restoreSelection.map(validationDetails).find(Boolean)||'';
  if(!run){$('restorePoint').textContent='Nenhum backup concluído até a data e o horário selecionados.';$('restoreFiles').textContent='';restoreLoaded='';return}
- $('restorePoint').textContent='Versão disponível: '+new Date(run.finished).toLocaleString('pt-BR')+' · '+backupLabel(run)+' · '+bytes(run.logical_bytes??run.bytes)+' em arquivos.';
- if(restoreLoaded!==run.id)loadRestoreFiles();
+ $('restorePoint').textContent=(restoreSelection.length>1?restoreSelection.length+' conjuntos · Última versão: ':'Versão disponível: ')+new Date(run.finished).toLocaleString('pt-BR')+' · '+(restoreSelection.length===1?backupLabel(run)+' · ':'')+bytes(restoreSelection.reduce((n,r)=>n+(r.logical_bytes??r.bytes??0),0))+' em arquivos.';
+ if(restoreLoaded!==restoreSelection.map(r=>r.id).join(','))loadRestoreFiles();
 }
-async function loadRestoreFiles(){const run=$('restoreRun').value;restoreLoaded=run;$('restoreFiles').textContent='Carregando arquivos…';try{const files=await api('runs/'+run+'/files');if($('restoreRun').value!==run)return;$('restoreAll').disabled=!files.length;$('restoreFiles').innerHTML=files.map((f,i)=>`<div class="item">${esc(f.path)} · ${bytes(f.size)} <button data-restore="${i}">Restaurar arquivo</button></div>`).join('')||'Esta versão não contém arquivos.';document.querySelectorAll('[data-restore]').forEach(b=>b.onclick=()=>restoreFile(run,files[b.dataset.restore]))}catch(e){restoreLoaded='';$('restoreFiles').textContent=e.message}}
+async function loadRestoreFiles(){
+ const selection=[...restoreSelection],key=selection.map(r=>r.id).join(',');restoreLoaded=key;$('restoreFiles').textContent='Carregando arquivos…';
+ try{const sets=await Promise.all(selection.map(async run=>({run,files:await api('runs/'+run.id+'/files')})));if(restoreSelection.map(r=>r.id).join(',')!==key)return;
+  const rows=sets.flatMap(({run,files})=>files.map(file=>({run,file})));$('restoreFiles').innerHTML=rows.map(({run,file},i)=>`<div class="item">${esc(file.path)} · ${bytes(file.size)} · Modificado em: ${file.modified_at?esc(new Date(file.modified_at).toLocaleString('pt-BR')):'data não registrada'} <button data-restore="${i}">Restaurar arquivo</button>${sets.length>1?'<br><small>'+esc(displaySources(run.scope_sources)||run.routine_name||'Backup anterior')+'</small>':''}</div>`).join('')||'Esta versão não contém arquivos.';
+  document.querySelectorAll('[data-restore]').forEach(b=>b.onclick=()=>{const {run,file}=rows[b.dataset.restore];return restoreFile(run.id,file)});
+ }catch(e){if(restoreSelection.map(r=>r.id).join(',')===key){restoreLoaded='';$('restoreFiles').textContent=e.message}}
+}
 $('restoreDevice').onchange=()=>{restoreLoaded='';$('restoreDate').value='';renderRestore()};
 $('restoreScope').onchange=()=>{restoreLoaded='';const latest=scopeRestoreRuns()[0];if(latest)selectRestorePoint(latest);else updateRestoreRuns()};
 $('restoreMonth').onchange=renderRestoreCalendar;
@@ -116,7 +132,7 @@ $('testDestination').onclick=()=>startJob({kind:'validate',device:$('deviceOptio
 async function startJob(payload,label){showActivity({kind:payload.kind,status:'queued',progress:{}});$('activityPanel').scrollIntoView({behavior:'smooth',block:'start'});try{const {id}=await api('jobs',payload);message(label+': aguardando o agente…');async function poll(){try{const j=await api('jobs/'+id);if(j.status==='success'){let details='';if(j.result?.destination)details=' Pasta: '+j.result.destination;if(j.result?.backup_type)details=' '+backupLabel(j.result)+' · '+j.result.changed_files+' arquivo(s) gravado(s) · '+bytes(j.result.stored_bytes)+'.';if(operationalWarning(j.result?.warning))details+=' '+operationalWarning(j.result.warning);if(j.result?.availableBytes)details+=' Espaço disponível: '+(Number(j.result.availableBytes)/1073741824).toFixed(1)+' GB';message(label+(['Restauração','Verificação do destino'].includes(label)?' concluída.':' concluído.')+details);await refresh()}else if(j.status==='failed'){message(label+' falhou: '+j.error);await refresh()}else setTimeout(poll,2000)}catch(e){message(e)}}poll()}catch(e){showActivity({kind:payload.kind,status:'failed',error:e.message});message(e)}}
 async function restoreFile(runId,file){const run=state.runs.find(r=>r.id===runId);if(run&&run.storage_type!=='server'){if(!$('restoreTarget').value){location.hash='restore';return message('Selecione a pasta para receber os arquivos restaurados.')}return startJob({kind:'restore',run:runId,path:file.path,target:$('restoreTarget').value},'Restauração')}return download('runs/'+runId+'/files?path='+encodeURIComponent(file.path),file.path.split('/').pop())}
 
-$('restoreAll').onclick=()=>{const run=state.runs.find(r=>r.id===$('restoreRun').value);if(!run)return message('Selecione uma versão concluída.');if(run.storage_type==='server')return message('Para o armazenamento antigo, baixe os arquivos individualmente abaixo.');if(!$('restoreTarget').value)return message('Escolha a pasta para receber a restauração.');startJob({kind:'restore',run:run.id,path:'*',target:$('restoreTarget').value},'Restauração')};
+
 
 const stages={checking_base:'Verificando backup completo',comparing:'Comparando arquivos com o completo',preparing:'Preparando',scanning:'Localizando arquivos',checking_destination:'Verificando destino e espaço',vss_prepare:'Preparando VSS',vss_snapshot:'Criando snapshot VSS',vss_cleanup:'Limpando snapshots VSS',copying:'Copiando arquivos',verifying:'Verificando integridade',finalizing:'Finalizando'};
 let activityBusy=false,lastActivity=null;
