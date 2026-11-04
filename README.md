@@ -1,20 +1,20 @@
-# BackupDesk 0.8.3 — versão de teste
+# BackupDesk 0.9.0 — versão de teste
 
-[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.8.3-x64.exe)
+[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.9.0-x64.exe)
 
 ## Criar ou ajustar uma rotina
 
 Na aba Backup, escolha computador, dias, horário e pastas/arquivos de origem. Em **Onde salvar o backup**, escolha Pasta local, HD externo/USB ou Unidade de rede/NAS, selecione a pasta e use **Testar destino e espaço disponível**. O caminho pertence ao computador selecionado, não ao navegador ou necessariamente ao master. No master local, o seletor abre a janela nativa do Windows; nos clients remotos, informe um caminho acessível naquele computador.
 
-Salve e use **Fazer backup agora** para testar. O agendador usa o horário local do computador e executa cada rotina no máximo uma vez por dia agendado; dias perdidos com o computador desligado ainda não são recuperados automaticamente. Rotinas antigas podem ser ajustadas em **Editar**. Elas conservam o armazenamento legado até serem alteradas; não são movidas automaticamente. Atualize os clients para 0.8.3 pelo botão no canto inferior esquerdo do master antes de usar destinos em disco. Agentes antigos não recebem rotinas com esses destinos.
+Salve e use **Fazer backup agora** para testar. O agendador usa o horário local do computador e executa cada rotina no máximo uma vez por dia agendado; dias perdidos com o computador desligado ainda não são recuperados automaticamente. Rotinas antigas podem ser ajustadas em **Editar**. Elas conservam o armazenamento legado até serem alteradas; não são movidas automaticamente. Atualize os clients para 0.9.0 pelo botão no canto inferior esquerdo do master antes de usar destinos em disco. Agentes antigos não recebem rotinas com esses destinos.
 
-O motor em disco grava versões completas em `DESTINO/BackupDesk/ID-COMPUTADOR/ID-ROTINA/ID-EXECUÇÃO`. Cada versão tem arquivos e manifest.json com hashes SHA-256. Diretórios .partial-* são execuções incompletas e não são apresentados como backups válidos. O catálogo e os status continuam no master; os conteúdos desses backups ficam somente no destino escolhido.
+O motor em disco grava versões completas ou diferenciais em `DESTINO/BackupDesk/ID-COMPUTADOR/ID-ROTINA/ID-EXECUÇÃO`. Cada versão tem manifest.json com o catálogo lógico completo, hashes SHA-256 e referências à base completa. A pasta files contém apenas o conteúdo gravado naquela execução. Diretórios .partial-* são execuções incompletas e não são apresentados como backups válidos. O catálogo e os status continuam no master; os conteúdos desses backups ficam somente no destino escolhido.
 
-Não apaga versões anteriores. Não há retenção automática, compressão nem deduplicação nesta versão. Verifica espaço para uma cópia completa e acesso de gravação, bloqueia destino dentro da origem e não cria outro destino se o HD/rede estiver indisponível. Usa cópia em fluxo, verifica integridade e detecta alterações no arquivo durante a leitura. Copia arquivos grandes sem o limite antigo de 16 MiB; o armazenamento legado por upload continua limitado.
+Não apaga versões anteriores. Não há retenção automática, compressão nem deduplicação nesta versão. Antes de executar, calcula espaço para os arquivos que serão gravados e confirma acesso de gravação, bloqueia destino dentro da origem e não cria outro destino se o HD/rede estiver indisponível. Usa cópia em fluxo, verifica integridade e detecta alterações no arquivo durante a leitura. Copia arquivos grandes sem o limite antigo de 16 MiB; o armazenamento legado por upload continua limitado.
 
 ## Restaurar
 
-Na aba Restauração, selecione computador e versão concluída. Para cópias em disco, escolha uma pasta de recuperação e o arquivo. O agente recupera para `PASTA/BackupDesk-Restaurado/ID-TAREFA`, verifica hashes e não sobrescreve o original. Os backups antigos do armazenamento interno continuam podendo ser baixados pelo navegador. Não é possível recuperar de um disco que não esteja conectado ou de um client que esteja offline.
+Na aba Restauração, selecione computador, conjunto de origem/destino, dia no calendário e horário. A lista mostra todos os arquivos do último backup concluído até aquele momento, sem misturar destinos ou incluir versões futuras. Para cópias em disco, escolha uma pasta de recuperação e o arquivo. O agente recupera para `PASTA/BackupDesk-Restaurado/ID-TAREFA`, verifica hashes e não sobrescreve o original. Os backups antigos do armazenamento interno continuam podendo ser baixados pelo navegador. Não é possível recuperar de um disco que não esteja conectado ou de um client que esteja offline.
 
 ## Outlook e limitações
 
@@ -78,3 +78,20 @@ Não há caixa de seleção nem opção de desativação. Rotinas de disco exist
 O formulário de rotinas mostra somente campos, rótulos e ações; os textos explicativos da área de origem/destino/VSS foram removidos. Erros reais, integridade e observações de recuperação continuam registrados no resultado e no histórico. Snapshots sem writers ainda não comprovam integridade lógica do PST: valide a cópia restaurada no Outlook.
 
 Validação 0.8.3: 31 testes locais e checagem Chromium passaram. O [workflow Windows 41876030759](https://github.com/rochamurilo/backupdesk/actions/runs/41876030759) passou, incluindo cópia de arquivo bloqueado como usuário comum mesmo com useVss:false, comprovando a imposição no motor Windows. PST real com Outlook continua sujeito ao teste de restauração descrito acima.
+
+
+## Diferenciais e calendário — 0.9.0
+
+Antes de cada backup em disco, o agente procura a versão **completa concluída nos últimos cinco dias corridos**, da mesma máquina, mesmas origens normalizadas e mesmo destino real. Uma rotina diferente pode reutilizar a base quando esses três itens são iguais. Execuções incompletas ou não confirmadas no catálogo do master não são usadas como base. Sem base válida, faz um completo. Diferenciais não renovam o prazo do completo.
+
+A base é conferida por tamanho e SHA-256. O diferencial compara o conteúdo atual com o **completo**, não com o diferencial anterior: grava todos os arquivos novos ou diferentes desde a base. Arquivos iguais apontam para o completo; arquivos removidos ficam ausentes no catálogo daquela versão. A comparação usa hash, inclusive quando tamanho e data de modificação coincidem. PST alterado é copiado inteiro; não há diferencial por blocos. No Windows, a leitura continua obrigatoriamente no snapshot VSS.
+
+O espaço exigido é calculado pelos arquivos novos/alterados, com margem para metadados. Uma base ausente ou corrompida impede seu reaproveitamento e provoca um novo completo verificado. Falhas de destino nunca desviam a gravação para outra pasta. A verificação da base e a comparação também aparecem no andamento.
+
+Cada diferencial preserva um catálogo completo e depende somente de seu completo e dos próprios arquivos gravados. A restauração resolve essas referências e verifica os hashes antes e depois da cópia. **Não apague ou mova pastas do repositório manualmente:** os diferenciais precisam da base. Não existe política automática de retenção. Um arquivo excluído na origem deixa de aparecer nas versões seguintes, mas continua recuperável nas anteriores. Se todas as origens ficarem vazias, a versão vazia é registrada; origem inacessível é falha.
+
+O calendário de restauração usa horários locais e o instante de conclusão. Selecionar um dia sem backup usa a última versão disponível até o horário escolhido. Antes do primeiro backup, não há arquivos disponíveis. O histórico mostra somente as últimas dez execuções; o catálogo completo e os conteúdos antigos são preservados para o calendário e a restauração. A lista mostra o volume físico gravado; o ponto de restauração mostra o volume lógico de todos os arquivos.
+
+A observação genérica de PST deixa de aparecer como alerta operacional em todo backup VSS. Apenas versões que contêm PST/OST registram a condição em **Verificação do PST**, recolhida. SHA-256 confirma a integridade da cópia; `outlook: not-tested` informa que a abertura no Outlook não foi testada. Isso não é apresentado como falha da cópia nem como validação lógica concluída. Observações antigas continuam nos dados e aparecem nos detalhes; erros reais permanecem visíveis. VSS sem writers não substitui o teste de restauração de um PST real. ScanPST é ferramenta de reparação e pode remover estruturas danificadas; o programa não a executa sobre o original ou o repositório.
+
+Atualize master e clients para 0.9.0 antes de restaurar diferenciais. Os completos v1 continuam restauráveis e podem servir de base quando origem/destino coincidem. Backups do armazenamento legado por upload continuam disponíveis na restauração.

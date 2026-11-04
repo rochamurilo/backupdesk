@@ -1,4 +1,4 @@
-BACKUPDESK 0.8.3 - TESTE WINDOWS x64
+BACKUPDESK 0.9.0 - TESTE WINDOWS x64
 
 INSTALACAO
 Instale na mesma pasta para preservar cadastros e backups.
@@ -24,7 +24,10 @@ A tentativa agendada ocorre uma vez por dia elegivel, inclusive em caso de falha
 Para tentar novamente no mesmo dia, use Fazer backup agora.
 
 RESTAURACAO
-Escolha versao, pasta de recuperacao e arquivo na aba Restauracao.
+Escolha computador, origem/destino, dia no calendario e horario.
+A lista mostra todos os arquivos da ultima versao concluida ate esse instante.
+Escolha uma pasta de recuperacao e restaure um ou todos os arquivos.
+O historico exibe so as dez ultimas execucoes; copias antigas sao preservadas.
 A recuperacao cria BackupDesk-Restaurado e nao sobrescreve os originais.
 Excluir/desativar uma rotina preserva seus backups anteriores.
 
@@ -49,3 +52,16 @@ Salvar mantem a edicao da mesma rotina. Use Nova rotina para cadastrar outra.
 Remover copias identicas preserva backups e historico e mantem a mais antiga.
 Avisos de resultados anteriores podem ser recolhidos e fechados sem apagar o historico.
 Somente o andamento ativo fica fixado no topo; novas falhas continuam visiveis.
+
+COMPLETO E DIFERENCIAL
+Sem completo valido nos ultimos cinco dias, faz um completo.
+Com mesma maquina, origens e destino, compara com esse completo por SHA-256.
+Grava somente arquivos novos/modificados desde a base completa.
+O diferencial e cumulativo; ele nao reinicia o prazo de cinco dias.
+PST modificado e copiado inteiro. Nao ha diferenca por blocos.
+Nao apague nem mova as pastas de backup: diferenciais dependem do completo.
+Base corrompida ou ausente exige novo completo, sem reutilizar dados invalidos.
+Na restauracao, o catalogo reune automaticamente completo e diferencial.
+Verificacao do PST fica nos detalhes: integridade da copia nao comprova
+abertura no Outlook. A validacao logica de PST real nao e automatizada.
+Atualize tambem os clients pelo master antes de restaurar diferenciais.

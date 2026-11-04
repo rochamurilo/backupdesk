@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'disk-backup.mjs'
+      - 'backup-repository.mjs'
       - 'vss.mjs'
       - 'filesystem.mjs'
       - 'windows/update-application.ps1'
