@@ -226,7 +226,7 @@ function treeElement(node){
 }
 function renderFolderChildren(node,details){const children=details.querySelector(':scope > .restore-children');if(children.dataset.loaded)return false;children.dataset.loaded='true';for(const child of node.children)children.append(treeElement(child));return true}
 function updateRestoreSelection(){
- if(!restoreTree)return;for(const input of document.querySelectorAll('[data-restore-node]')){const state=selectionState(restoreTree.nodes.get(input.dataset.restoreNode),selectedRestoreFiles);input.checked=state.checked;input.indeterminate=state.indeterminate;input.disabled=restoringSelection}
+ if(!restoreTree||!$('restoreSelectionCount')){$('restoreSelected').disabled=true;return}for(const input of document.querySelectorAll('[data-restore-node]')){const state=selectionState(restoreTree.nodes.get(input.dataset.restoreNode),selectedRestoreFiles);input.checked=state.checked;input.indeterminate=state.indeterminate;input.disabled=restoringSelection}
  const rows=[...selectedRestoreFiles].map(i=>restoreTree.rows[i]),size=rows.reduce((sum,row)=>sum+row.file.size,0);$('restoreSelectionCount').textContent=rows.length+' arquivo(s) selecionado(s) · '+bytes(size);$('restoreSelected').disabled=restoringSelection||!rows.length;
  $('restoreFilePreview').textContent=rows.length===1?rows[0].file.path+' · '+bytes(rows[0].file.size)+' · Modificado em: '+(rows[0].file.modified_at?new Date(rows[0].file.modified_at).toLocaleString('pt-BR'):'data não registrada'):rows.length?'Pré-visualização: '+rows.length+' arquivo(s) selecionado(s), preservando sua estrutura de pastas.':'Selecione arquivos ou pastas para restaurar.';
 }
