@@ -1,6 +1,6 @@
 # Locaweb: painel web com backups locais ou em rede
 
-Este roteiro usa BackupDesk 0.15.0 e Ubuntu Server 24.04 LTS. O servidor do escritório não é necessário. A instalação na Locaweb recebe status, histórico, catálogo e relatórios; os arquivos criptografados são gravados pelo computador na pasta local, HD externo ou compartilhamento escolhido. Não existe transferência do conteúdo para o VPS nesse modo.
+Este roteiro usa BackupDesk 0.16.0 e Ubuntu Server 24.04 LTS. O servidor do escritório não é necessário. A instalação na Locaweb recebe status, histórico, catálogo e relatórios; os arquivos criptografados são gravados pelo computador na pasta local, HD externo ou compartilhamento escolhido. Não existe transferência do conteúdo para o VPS nesse modo.
 
 ## 1. Contratar
 
@@ -113,7 +113,7 @@ Para máquinas que já usam outro master local: não aponte simplesmente o token
 
 ## 7. Proteger o painel e testar a recuperação
 
-Ao gerar cada client, anote ou baixe sua chave de segurança. Depois, use **Restauração > Chave de segurança** para obter a chave de um computador registrado. Guarde as chaves fora do VPS e dos repositórios de backups. Faça também cópia externa consistente do banco e das chaves do volume `control-data`; configure snapshots/backups do VPS e teste a recuperação. Não basta ter somente uma cópia das chaves dentro do próprio servidor.
+Ao gerar cada client, anote ou baixe sua chave de segurança. Depois, use **Restauração > Restaurar Arquivos de Terceiro > Chave de segurança** para obter a chave de um computador registrado. Guarde as chaves fora do VPS e dos repositórios de backups. Faça também cópia externa consistente do banco e das chaves do volume `control-data`; configure snapshots/backups do VPS e teste a recuperação. Não basta ter somente uma cópia das chaves dentro do próprio servidor.
 
 Os backups antigos sem criptografia permanecem como estavam. Valide uma nova cópia criptografada e uma restauração antes de alterar retenção ou remover versões antigas. Ainda não há retenção automática; acompanhe espaço disponível nos destinos e no VPS.
 

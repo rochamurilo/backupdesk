@@ -1,4 +1,4 @@
-BACKUPDESK 0.15.0 - TESTE WINDOWS x64
+BACKUPDESK 0.16.0 - TESTE WINDOWS x64
 
 INSTALACAO
 Instale na mesma pasta para preservar cadastros e backups.
@@ -27,7 +27,7 @@ Para tentar novamente no mesmo dia, use Fazer backup agora.
 RESTAURACAO
 Escolha computador, local dos backups, dia no calendario e horario.
 A lista mostra todos os arquivos da ultima versao concluida ate esse instante.
-Escolha o destino de recuperacao e restaure pelo botao de cada arquivo.
+Escolha o destino, abra a estrutura de pastas, marque arquivos ou pastas e clique Restaurar no topo.
 O historico exibe so as dez ultimas execucoes; copias antigas sao preservadas.
 A recuperacao cria BackupDesk-Restaurado e nao sobrescreve os originais.
 Excluir/desativar uma rotina preserva seus backups anteriores.
@@ -74,7 +74,7 @@ Destino e a pasta que recebera o arquivo restaurado.
 A lista mostra a data original de modificacao (LastWriteTime), quando registrada.
 Copias antigas sem essa informacao mostram data nao registrada.
 A restauracao preserva a data de modificacao, sem substituir os originais.
-A restauracao pela tela e individual, pelo botao de cada arquivo.
+A restauracao recupera somente arquivos e pastas selecionados na arvore.
 
 Ao baixar um client no master, informe o nome do computador.
 O executavel leva nome, identificador e token de agente incorporados.
@@ -109,7 +109,7 @@ Diferenciais dependem do completo que deve estar nesse mesmo repositorio.
 Copie toda a pasta BackupDesk para preservar as bases.
 A leitura do catalogo nao modifica os arquivos do disco.
 
-CRIPTOGRAFIA - 0.15.0
+CRIPTOGRAFIA - 0.16.0
 Novos backups usam AES-256-GCM, incluindo conteudo e nomes dos arquivos.
 Uma chave de dados pode ser recuperada pelo computador ou pelo master.
 As chaves privadas do Windows usam DPAPI do usuario da instalacao.
@@ -135,14 +135,14 @@ O passo a passo do painel esta em deploy/LOCAWEB-PASSO-A-PASSO.md no repositorio
 VPS, dominio e servidor fisico ainda precisam ser contratados/configurados.
 O agendamento remoto ainda depende de conexao com o master configurado.
 
-MEDIDAS E ANDAMENTO - 0.15.0
+MEDIDAS E ANDAMENTO - 0.16.0
 Tamanhos em MB decimais: 1 MB = 1.000.000 bytes.
 O painel mostra velocidade em MB/s e tempo restante estimado.
 A velocidade de copia nao inclui os bytes contados na verificacao.
 Preparacao, falta de amostras e ausencia de avanco nao geram estimativa falsa.
 Tempo estimado pode variar; inclui trabalho de copia/verificacao da etapa atual.
 
-CHAVE DE SEGURANCA - 0.15.0
+CHAVE DE SEGURANCA - 0.16.0
 Baixar client pede somente o nome e mostra a chave para anotar ou baixar.
 Downloads repetidos da mesma identificacao mantem a chave.
 O endereco do painel web segue incorporado automaticamente, sem campo para digitar.
@@ -151,3 +151,10 @@ A chave de seguranca nao fica em texto aberto na configuracao instalada.
 Atualize/inicie agentes antigos para registrar sua carteira antes de obter a chave.
 Restauracao de terceiros consulta somente o computador e a chave informados.
 O calendario usa as copias existentes no compartilhamento selecionado.
+
+ARVORE DE RESTAURACAO - 0.16.0
+Abra Visualizar estrutura de pastas para pre-visualizar a data/hora selecionadas.
+Expanda as pastas e marque o que deseja recuperar. O botao Restaurar fica no topo.
+Expandir ou visualizar o catalogo nao restaura arquivos automaticamente.
+Os dados recuperados preservam as subpastas e nao substituem os originais.
+A chave de seguranca pode ser consultada dentro da janela de terceiros.

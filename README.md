@@ -1,6 +1,6 @@
-# BackupDesk 0.15.0 — versão de teste
+# BackupDesk 0.16.0 — versão de teste
 
-[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.15.0-x64.exe)
+[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.16.0-x64.exe)
 
 [Começar na Locaweb: contratação, instalação e primeiro client](deploy/LOCAWEB-PASSO-A-PASSO.md)
 
@@ -8,7 +8,7 @@
 
 Na aba **Preferências**, selecione o computador e cadastre uma ou mais pastas de destino (local, HD externo/USB ou rede). Todas as rotinas desse computador usam esses destinos automaticamente. O caminho pertence ao computador selecionado. No master local, Selecionar pasta abre a janela do Windows; para um client remoto, informe o caminho acessível naquela máquina. Depois, na aba **Backup**, escolha computador, dias, horário e pastas/arquivos de origem; não há seleção de destino por rotina.
 
-Salve e use **Fazer backup agora** para testar. O agendador usa o horário local do computador e executa cada rotina no máximo uma vez por dia agendado; dias perdidos com o computador desligado ainda não são recuperados automaticamente. Rotinas antigas podem ser ajustadas em **Editar**. Elas conservam o armazenamento legado até serem alteradas; não são movidas automaticamente. Atualize os clients para 0.15.0 pelo botão no canto inferior esquerdo do master antes de usar destinos em disco. Agentes antigos não recebem rotinas com esses destinos.
+Salve e use **Fazer backup agora** para testar. O agendador usa o horário local do computador e executa cada rotina no máximo uma vez por dia agendado; dias perdidos com o computador desligado ainda não são recuperados automaticamente. Rotinas antigas podem ser ajustadas em **Editar**. Elas conservam o armazenamento legado até serem alteradas; não são movidas automaticamente. Atualize os clients para 0.16.0 pelo botão no canto inferior esquerdo do master antes de usar destinos em disco. Agentes antigos não recebem rotinas com esses destinos.
 
 O motor em disco grava versões completas ou diferenciais em `DESTINO/BackupDesk/ID-COMPUTADOR/ID-ROTINA/ID-EXECUÇÃO`. Cada versão tem manifest.json com o catálogo lógico completo, hashes SHA-256 e referências à base completa. A pasta files contém apenas o conteúdo gravado naquela execução. Diretórios .partial-* são execuções incompletas e não são apresentados como backups válidos. O catálogo e os status continuam no master; os conteúdos desses backups ficam somente no destino escolhido.
 
@@ -186,3 +186,11 @@ A chave informada é enviada por HTTPS ao painel e envolvida para a chave públi
 Um instalador gerado no master local sem domínio/endereço público configurado ainda não tem como alcançar um futuro VPS. Ele gera nome/chave, mas o vínculo online requer o instalador gerado pelo painel web já configurado. Não é usado 127.0.0.1 como se fosse endereço de outra máquina.
 
 Validação 0.15.0: 69 testes locais e a checagem Chromium passaram. O teste portátil recuperou um arquivo de diferencial por nome/chave em outro master, com o servidor original desligado e seus dados removidos, ignorando outro computador no mesmo repositório; chave ou nome errados falharam. O navegador carregou o calendário e os arquivos de terceiros e validou o download em texto da chave, sem os campos antigos de endereço/recuperação em Preferências. O [workflow Windows 42066160496](https://github.com/rochamurilo/backupdesk/actions/runs/42066160496) passou: o instalador real usou a chave fornecida, não a deixou em agent-config.json, preservou chave/identidade na atualização e validou VSS, restauração e início automático. A imagem Linux gerou o instalador com apenas nome e endereço interno automático. O download público foi comparado byte a byte. Compartilhamento SMB físico e infraestrutura Locaweb permanecem sujeitos ao teste no ambiente real.
+
+## Árvore de restauração — 0.16.0
+
+A restauração mostra uma pré-visualização recolhida da estrutura existente na data/hora escolhidas, em vez de uma lista com um botão por arquivo. Abra Visualizar estrutura de pastas e expanda as pastas desejadas ou use Expandir todas as pastas. Marque arquivos ou pastas; o botão Restaurar no topo recebe somente essa seleção, preservando as subpastas. Nenhum arquivo é recuperado ao expandir ou visualizar o catálogo. Alterar o ponto de restauração limpa a seleção quando muda a versão disponível.
+
+Pastas e arquivos com nomes iguais em conjuntos diferentes permanecem separados. Seleção parcial usa checkboxes intermediários; o painel mostra quantidade, tamanho e a data original do arquivo selecionado. Seleções que incluem caminhos fora do catálogo são rejeitadas antes de criar a tarefa. Conjuntos diferentes são recuperados em sequência, em pastas de restauração separadas, sem substituir originais.
+
+O botão Restaurar Arquivos de Terceiro foi ajustado e a ação Restaurar ocupa o canto direito da linha superior. Chave de segurança continua disponível dentro da janela de terceiros, sem botão duplicado no cabeçalho. Os marcadores de sucesso nos calendários são maiores e verde grama.

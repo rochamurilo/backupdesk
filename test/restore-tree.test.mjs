@@ -1,0 +1,7 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import {buildRestoreTree,selectRestoreNode,selectionState,selectedCatalogFiles} from '../restore-tree.mjs';
+test('árvore mantém pastas, seleção parcial e arquivos homônimos de conjuntos separados',()=>{
+ const tree=buildRestoreTree([{run:{id:'a'},files:[{path:'pasta/sub/a.txt',size:1},{path:'pasta/b.txt',size:2},{path:'fora.txt',size:3}]},{run:{id:'b'},files:[{path:'pasta/sub/a.txt',size:4}]}]);assert.equal(tree.roots.length,2);const folder=tree.roots[0].children.find(n=>n.name==='pasta'),selected=new Set();selectRestoreNode(folder,selected,true);assert.deepEqual([...selected].sort(),[0,1]);assert.equal(selectionState(tree.roots[0],selected).indeterminate,true);assert.equal(selectionState(tree.roots[1],selected).checked,false);selectRestoreNode(folder.children.find(n=>n.name==='b.txt'),selected,false);assert.equal(selectionState(folder,selected).indeterminate,true);assert.deepEqual([...selected],[0]);assert.equal(tree.rows[0].run.id,'a');assert.equal(tree.rows[3].run.id,'b');
+});
+test('seleção de restauração é exata e rejeita caminhos fora do catálogo sem restaurar parcialmente',()=>{
+ const rows=[{path:'pasta/a.txt'},{path:'pasta/b.txt'},{path:'fora.txt'}];assert.deepEqual(selectedCatalogFiles(rows,['pasta/b.txt','pasta/a.txt','pasta/a.txt']),rows.slice(0,2));for(const paths of [[],['pasta'],['pasta/a.txt','../escape'],['fora.txt','ausente.txt'],null])assert.throws(()=>selectedCatalogFiles(rows,paths));
+});
