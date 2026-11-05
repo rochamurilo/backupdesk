@@ -1,4 +1,4 @@
-BACKUPDESK 0.13.0 - TESTE WINDOWS x64
+BACKUPDESK 0.14.0 - TESTE WINDOWS x64
 
 INSTALACAO
 Instale na mesma pasta para preservar cadastros e backups.
@@ -109,7 +109,7 @@ Diferenciais dependem do completo que deve estar nesse mesmo repositorio.
 Copie toda a pasta BackupDesk para preservar as bases.
 A leitura do catalogo nao modifica os arquivos do disco.
 
-CRIPTOGRAFIA - 0.13.0
+CRIPTOGRAFIA - 0.14.0
 Novos backups usam AES-256-GCM, incluindo conteudo e nomes dos arquivos.
 Uma chave de dados pode ser recuperada pelo computador ou pelo master.
 As chaves privadas do Windows usam DPAPI do usuario da instalacao.
@@ -135,3 +135,10 @@ Local concluido nao significa escritorio confirmado.
 O passo a passo do painel esta em deploy/LOCAWEB-PASSO-A-PASSO.md no repositorio.
 VPS, dominio e servidor fisico ainda precisam ser contratados/configurados.
 O agendamento remoto ainda depende de conexao com o master configurado.
+
+MEDIDAS E ANDAMENTO - 0.14.0
+Tamanhos em MB decimais: 1 MB = 1.000.000 bytes.
+O painel mostra velocidade em MB/s e tempo restante estimado.
+A velocidade de copia nao inclui os bytes contados na verificacao.
+Preparacao, falta de amostras e ausencia de avanco nao geram estimativa falsa.
+Tempo estimado pode variar; inclui trabalho de copia/verificacao da etapa atual.

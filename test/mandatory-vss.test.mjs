@@ -2,7 +2,7 @@ import {test} from 'node:test';import assert from 'node:assert/strict';import {D
 test('VSS obrigatório no Windows ignora opção antiga, corrige filas e migra rotinas',{timeout:20000},async()=>{
  const dir=await mkdtemp(join(tmpdir(),'backupdesk-required-vss-'));let child,db,token;
  async function start(){child=spawn(process.execPath,['server.mjs'],{env:{...process.env,PORT:'3193',DATA_DIR:dir,ADMIN_PASSWORD:'mandatory-vss-test'},stdio:['ignore','pipe','pipe']});await once(child.stdout,'data')}
- const api=async(p,b,t=token,method,platform,version='0.13.0')=>{const r=await fetch('http://127.0.0.1:3193/api/'+p,{method:method||(b?'POST':'GET'),headers:{Authorization:'Bearer '+t,'Content-Type':'application/json','X-BackupDesk-Version':version,...(platform?{'X-BackupDesk-Platform':platform}:{})},body:b?JSON.stringify(b):undefined});return {status:r.status,body:await r.json()}};
+ const api=async(p,b,t=token,method,platform,version='0.14.0')=>{const r=await fetch('http://127.0.0.1:3193/api/'+p,{method:method||(b?'POST':'GET'),headers:{Authorization:'Bearer '+t,'Content-Type':'application/json','X-BackupDesk-Version':version,...(platform?{'X-BackupDesk-Platform':platform}:{})},body:b?JSON.stringify(b):undefined});return {status:r.status,body:await r.json()}};
  try{
  await start();token=(await api('login',{name:'admin',password:'mandatory-vss-test'})).body.token;
  const device=(await api('devices',{name:'Windows desktop'})).body;await api('agent/config',null,device.token,undefined,'win32');

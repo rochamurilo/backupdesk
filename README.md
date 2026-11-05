@@ -1,6 +1,6 @@
-# BackupDesk 0.13.0 — versão de teste
+# BackupDesk 0.14.0 — versão de teste
 
-[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.13.0-x64.exe)
+[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.14.0-x64.exe)
 
 [Começar na Locaweb: contratação, instalação e primeiro client](deploy/LOCAWEB-PASSO-A-PASSO.md)
 
@@ -166,3 +166,7 @@ O client executa os backups em pasta local, HD externo ou unidade de rede e repo
 Consulte o [passo a passo completo da Locaweb](deploy/LOCAWEB-PASSO-A-PASSO.md), da contratação e DNS ao primeiro client. Comece apenas com o painel; o armazenamento do escritório pode ser contratado/preparado depois. Clients instalados por outro master não são transferidos automaticamente para um VPS novo; preserve recuperação e backups antes de migrar.
 
 Validação 0.13.0: 67 testes locais e a checagem Chromium passaram, incluindo painel web vazio, domínio automático no download, ausência do cadastro manual, primeiro contato de um agente real e backup criptografado em destino do tipo rede com relatórios e sem servidor do escritório. O [workflow Windows 41956431394](https://github.com/rochamurilo/backupdesk/actions/runs/41956431394) passou: instalação/atualização real do client com endereço incorporado e chaves preservadas, VSS com arquivo bloqueado, restauração e inicialização automática. A imagem Linux do master foi construída e iniciou com login obrigatório, domínio configurado e client incorporado. A configuração Compose foi validada e o instalador público foi comparado byte a byte. DNS/certificado público na Locaweb e compartilhamento SMB físico dependem da infraestrutura real, ainda não contratada nesta sessão.
+
+## Medidas e andamento — 0.14.0
+
+Tamanhos exibidos usam MB decimais (1 MB = 1.000.000 bytes), inclusive progresso, equipamentos, histórico, restauração e espaço disponível. Os arquivos e catálogos continuam registrando bytes exatos; a alteração é de apresentação. No painel superior aparecem a velocidade em MB/s e o tempo restante estimado da cópia/verificação atual. A velocidade de cópia é medida separadamente da verificação para não contar duas vezes os mesmos dados. Na preparação, sem amostras suficientes ou sem avanço recente, aparece Calculando; finalização não promete um horário exato. A estimativa reinicia quando muda a etapa, total ou destino e pode variar com a carga, rede e VSS. Atualize também os clients para usar a medição feita pelo agente.

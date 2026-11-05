@@ -32,7 +32,7 @@ export async function collectFiles(source,onFile){
      await visit(path.join(file,entry.name),await lstat(path.join(file,entry.name)));
     }
    }else if(info.isFile()){
-    if(info.size>16*1024*1024)throw Error('Limite do protótipo: arquivo acima de 16 MiB: '+file);
+    if(info.size>16*1024*1024)throw Error('Limite do protótipo: arquivo acima de 16,78 MB: '+file);
     const content=await readFile(file),after=await lstat(file);
     if(info.mtimeMs!==after.mtimeMs||info.size!==after.size)throw Error('Arquivo alterado durante leitura: '+file);
     const relative=path.relative(root,file)||path.basename(root);
