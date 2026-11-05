@@ -1,6 +1,6 @@
-# BackupDesk 0.18.0 — versão de teste
+# BackupDesk 0.19.0 — versão de teste
 
-[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.18.0-x64.exe)
+[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.19.0-x64.exe)
 
 [Começar na Locaweb: contratação, instalação e primeiro client](deploy/LOCAWEB-PASSO-A-PASSO.md)
 
@@ -221,3 +221,25 @@ As credenciais SMB opcionais são cifradas no banco com chave protegida pelo mas
 Senha vazia mantém a credencial somente para o mesmo usuário e conjunto de compartilhamentos; alterar o servidor/compartilhamento exige informar a senha novamente. Para remover a credencial salva, limpe usuário e senha e salve. A ferramenta não desconecta sessões SMB de outros programas: se houver conflito com outra conta e a sessão existente não tiver acesso, mostra o erro. Remover a credencial salva não encerra uma sessão de rede já aberta pelo Windows.
 
 Validação 0.18.0: 78 testes locais e a checagem Chromium passaram, incluindo preservação dos destinos, ordem dos submenus, isolamento por computador, senha ausente do estado público/banco/tarefas em texto aberto, troca de compartilhamento sem reaproveitamento da senha e limpeza da credencial. O [workflow Windows 42090327635](https://github.com/rochamurilo/backupdesk/actions/runs/42090327635) passou em todos os trabalhos: autenticação SMB real com usuário dedicado/senha Unicode e gravação/leitura pelo Node após o auxiliar encerrar, VSS, atualização, início automático e instalação identificada. Os arquivos empacotados, o client embutido e o download público foram comparados aos artefatos finais; a imagem web 0.18.0 foi construída e seu runtime/módulo conferidos. A validação não representa implantação na Locaweb nem no servidor externo do escritório.
+
+
+## Logs em duas pastas — 0.19.0
+
+Em **Preferências → Logs**, selecione o computador e informe **Pasta local** e **Pasta na nuvem**. Cada pasta tem usuário/senha opcionais e independentes, separados também das credenciais do Backup Local. A senha é cifrada no master e entregue cifrada somente ao agente correspondente; fica vazia na interface. Vazio mantém a senha do mesmo usuário/compartilhamento. Alterar o compartilhamento exige informar a senha novamente. Para remover uma credencial, limpe usuário e senha e salve.
+
+Os campos de pasta são caminhos acessíveis naquele computador, nunca URLs. A pasta de nuvem deve estar montada, sincronizada ou disponível por rede/VPN. O master precisa ler a mesma pasta; em **Leitura pelo master**, indique o caminho correspondente no master se ele for diferente (por exemplo, client Windows usando UNC e master Linux usando `/mnt/logs`). Em Linux, monte SMB com as permissões do serviço antes de informar o caminho; o aplicativo não monta compartilhamentos nem solicita elevação. As credenciais da pasta também são usadas para a leitura Windows pelo master; a conta precisa ter as permissões necessárias. Sessões Windows com contas diferentes no mesmo servidor continuam sujeitas ao limite do próprio SMB, sem desconexão forçada de outros programas.
+
+Cada computador grava `BackupDesk-Logs/ID-COMPUTADOR.json`, com atualização a cada minuto e nas mudanças de estado do backup. O arquivo JSON compacto tem no máximo 128 KiB e até 200 execuções recentes; reduz a janela se necessário para manter o limite. Contém identificação, versão, horários, resultado e volume; não contém senha, chave de recuperação, caminhos dos arquivos de origem nem conteúdo dos arquivos. A assinatura é verificada com a chave pública já registrada pelo computador. Um arquivo de log não cadastra uma identidade desconhecida: o client continua aparecendo automaticamente pelo vínculo existente.
+
+O master consulta as duas pastas aproximadamente a cada minuto ou pelo botão **Atualizar leitura no master**. A Visão Geral combina os registros verificados com as execuções recebidas diretamente, sem duplicá-las. O último status válido permanece quando uma pasta falha ou o arquivo é adulterado; a interface informa a falha em Logs. A leitura de um arquivo antigo não torna o computador online: o contato do arquivo expira após cinco minutos. Os resumos de log são usados para monitoramento; não criam catálogos de arquivos restauráveis.
+
+As duas gravações têm resultados independentes. A publicação usa arquivo temporário e substituição atômica; uma pasta indisponível não interrompe o backup nem impede gravar na outra. O estado recente fica no disco do agente para novas tentativas. Gravação/leitura remota ocorrem em processos separados com tempo limite. A consulta direta ao master e a fila de telemetria continuam funcionando. Esta versão não acrescenta agendamento offline: iniciar novos backups gerenciados continua exigindo alcançar o master.
+
+Atualize master e clients para **0.19.0** para usar Logs. Credenciais SMB de logs no Windows não exigem iniciar o painel como administrador. A instalação e o componente VSS conservam os requisitos de instalação existentes.
+
+
+## Contadores de resultados — 0.19.0
+
+Na Visão Geral, **Backups concluídos** e **Falhas registradas** contam somente resultados **não lidos dos últimos 30 dias**, pela data de conclusão (ou início, quando o registro legado não informa conclusão). Clique no cartão para listar os resultados desse período e marque cada um como lido. Ao ler todos os itens, o contador fica em zero. O recibo fica salvo no banco por usuário e execução; outros usuários mantêm seus próprios contadores. Ler um item não apaga backup, histórico ou marcadores do calendário. Resultados recebidos por log e pela conexão direta são unidos antes da contagem. O master acumula os resultados verificados dos arquivos, preservando o histórico que já importou mesmo quando o arquivo compacto passa a conter somente registros mais recentes.
+
+As descrições das cores após “Histórico dos últimos 28 dias” e a expressão “horários locais” foram removidas da Visão Geral. Os marcadores coloridos e seu significado permanecem.

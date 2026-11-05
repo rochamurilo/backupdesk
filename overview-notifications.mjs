@@ -1,0 +1,3 @@
+import {overviewRuns} from './overview-status.mjs';
+export const resultKey=r=>[r.device,r.id||r.run,r.status].join(':');
+export function recentResults(state,status,now=Date.now()){if(!['success','failed'].includes(status))return [];const read=new Set((state.notificationReads||[]).map(resultKey));return overviewRuns(state).filter(r=>r.status===status&&Number.isFinite(Date.parse(r.finished||r.started))&&Date.parse(r.finished||r.started)>=now-30*86400000&&Date.parse(r.finished||r.started)<=now+60000).map(r=>({...r,read:read.has(resultKey(r))})).sort((a,b)=>Date.parse(b.finished||b.started)-Date.parse(a.finished||a.started))}

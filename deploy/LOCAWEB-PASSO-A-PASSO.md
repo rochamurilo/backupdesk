@@ -1,6 +1,6 @@
 # Locaweb: painel web com backups locais ou em rede
 
-Este roteiro usa BackupDesk 0.18.0 e Ubuntu Server 24.04 LTS. O servidor do escritório não é necessário. A instalação na Locaweb recebe status, histórico, catálogo e relatórios; os arquivos criptografados são gravados pelo computador na pasta local, HD externo ou compartilhamento escolhido. Não existe transferência do conteúdo para o VPS nesse modo.
+Este roteiro usa BackupDesk 0.19.0 e Ubuntu Server 24.04 LTS. O servidor do escritório não é necessário. A instalação na Locaweb recebe status, histórico, catálogo e relatórios; os arquivos criptografados são gravados pelo computador na pasta local, HD externo ou compartilhamento escolhido. Não existe transferência do conteúdo para o VPS nesse modo.
 
 ## 1. Contratar
 
@@ -128,3 +128,10 @@ sudo docker compose --env-file deploy/central.env -f deploy/compose.central.yml 
 Preserve `deploy/central.env` e o volume. **Não use `down -v`**: isso remove o banco e as chaves do painel. Alterar `ADMIN_PASSWORD` no arquivo não redefine a senha de uma conta já criada.
 
 A cópia adicional no escritório pode ser ativada depois, usando o [roteiro do receptor](README.md#receptor-no-escritório). Contratar o VPS e instalar o painel não configura esse segundo armazenamento automaticamente.
+
+
+## Logs em pastas compartilhadas (opcional)
+
+Em Preferências → Logs, configure as duas pastas do computador e suas credenciais independentes, se necessárias. O painel pode continuar recebendo relatórios pela conexão HTTPS mesmo sem essas pastas. Para ler logs por arquivo no VPS, ele precisa alcançar a mesma pasta por rede/VPN/sincronização. Informe o caminho correspondente em Leitura pelo master. Um caminho UNC do client Windows não existe automaticamente no VPS Linux: monte o compartilhamento no host e disponibilize o diretório ao serviço `master` por volume Docker. A configuração de credenciais no formulário não instala cliente de sincronização nem cria uma montagem Linux. O UID do serviço no container precisa ter acesso de leitura ao diretório montado.
+
+O arquivo é assinado, leve e não contém os dados do backup. Logs não substituem a cópia dos arquivos nem fornecem autonomia para iniciar novos agendamentos com o master indisponível. A Visão Geral continua aproveitando também os relatórios diretos já existentes.

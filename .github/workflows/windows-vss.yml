@@ -15,6 +15,11 @@ on:
       - 'local-master.mjs'
       - 'preferences.mjs'
       - 'network-share.mjs'
+      - 'status-logs.mjs'
+      - 'log-settings.mjs'
+      - 'logs-io.mjs'
+      - 'overview-status.mjs'
+      - 'overview-notifications.mjs'
       - 'windows/network-share*'
       - 'test/windows-network-share.ps1'
       - 'bandwidth.mjs'
@@ -27,7 +32,7 @@ on:
       - 'windows/Configure.ps1'
       - 'test/windows-client-install.ps1'
       - 'test/client-package.test.mjs'
-      - 'dist/BackupDesk-Master-0.18.0-x64.exe'
+      - 'dist/BackupDesk-Master-0.19.0-x64.exe'
       - 'backup-repository.mjs'
       - 'vss.mjs'
       - 'filesystem.mjs'
@@ -105,7 +110,7 @@ jobs:
             !/*/
             /windows/
             /test/
-            /dist/BackupDesk-Master-0.18.0-x64.exe
+            /dist/BackupDesk-Master-0.19.0-x64.exe
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
