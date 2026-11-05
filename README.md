@@ -1,6 +1,6 @@
-# BackupDesk 0.14.0 — versão de teste
+# BackupDesk 0.15.0 — versão de teste
 
-[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.14.0-x64.exe)
+[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.15.0-x64.exe)
 
 [Começar na Locaweb: contratação, instalação e primeiro client](deploy/LOCAWEB-PASSO-A-PASSO.md)
 
@@ -172,3 +172,15 @@ Validação 0.13.0: 67 testes locais e a checagem Chromium passaram, incluindo p
 Tamanhos exibidos usam MB decimais (1 MB = 1.000.000 bytes), inclusive progresso, equipamentos, histórico, restauração e espaço disponível. Os arquivos e catálogos continuam registrando bytes exatos; a alteração é de apresentação. No painel superior aparecem a velocidade em MB/s e o tempo restante estimado da cópia/verificação atual. A velocidade de cópia é medida separadamente da verificação para não contar duas vezes os mesmos dados. Na preparação, sem amostras suficientes ou sem avanço recente, aparece Calculando; finalização não promete um horário exato. A estimativa reinicia quando muda a etapa, total ou destino e pode variar com a carga, rede e VSS. Atualize também os clients para usar a medição feita pelo agente.
 
 Validação 0.14.0: 68 testes locais e a checagem Chromium passaram, incluindo conversão decimal de MB, velocidade por fase sem duplicar verificação, ETA, ausência de estimativa sem amostras/avanço e reinício por destino. O [workflow Windows 42061215967](https://github.com/rochamurilo/backupdesk/actions/runs/42061215967) passou no pacote publicado: instalação/atualização do client, identidade/chaves preservadas, VSS com arquivo bloqueado, restauração e início automático. A imagem Linux do painel foi construída e forneceu o módulo de medidas ao navegador. O download público foi comparado byte a byte ao instalador gerado.
+
+## Nome e chave de segurança — 0.15.0
+
+Baixar client Windows pede somente o nome do computador. No painel web, o endereço já configurado no servidor é incorporado ao instalador, sem campo de endereço. É gerada uma chave aleatória de 256 bits por computador, exibida após o download para anotar ou baixar em texto. Repetir o download do mesmo cadastro mantém a chave. A chave corresponde aos dados criptografados do computador e permite recuperá-los sem o master original; guarde-a fora dos backups e trate também o instalador personalizado como confidencial. Não publique instaladores identificados.
+
+A chave é envolvida com RSA do master no banco e, na instalação, é protegida para as carteiras RSA do computador/master. O segredo em claro não é salvo em agent-config.json. A atualização conserva a chave existente; computadores de versões anteriores usam a chave já registrada, sem converter os arquivos. Se uma instalação antiga ainda não registrou sua carteira, atualize/inicie o agente para depois obter sua chave pelo botão Chave de segurança em Restauração. O registro de carteiras mantém a exigência de prova de posse.
+
+A seção Recuperação do master foi removida de Preferências. Em Restauração, Chave de segurança permite consultar/baixar a chave do computador selecionado. Restaurar arquivos de terceiro abre nome, chave e local dos backups, inicialmente preenchido com o destino selecionado. O computador que fará a leitura precisa ter acesso a esse compartilhamento. Nome e chave válidos carregam somente as versões correspondentes no calendário; chave errada não utiliza a recuperação master como alternativa silenciosa. Diferenciais continuam dependendo da base completa no mesmo repositório.
+
+A chave informada é enviada por HTTPS ao painel e envolvida para a chave pública do computador executor antes de entrar em tarefas/catálogos persistidos. Não fica em texto aberto em jobs, localStorage, sessionStorage ou relatórios. A autorização de restauração fica cifrada para aquele executor junto ao catálogo importado. Atualize o executor para 0.15.0. As APIs de recuperação master anteriores permanecem para compatibilidade administrativa, mas não são necessárias neste novo fluxo.
+
+Um instalador gerado no master local sem domínio/endereço público configurado ainda não tem como alcançar um futuro VPS. Ele gera nome/chave, mas o vínculo online requer o instalador gerado pelo painel web já configurado. Não é usado 127.0.0.1 como se fosse endereço de outra máquina.

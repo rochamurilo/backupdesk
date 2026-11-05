@@ -35,7 +35,7 @@ Os computadores precisam alcançar **HTTPS/443** no armazenamento. Preferir IP p
 
 Requisitos: VPS Linux atualizado, Docker Engine + Compose, DNS do painel apontando para seu IP e portas 80/443 disponíveis para Caddy emitir o certificado. A aplicação não publica a porta 3000 no host.
 
-1. Obter o repositório e o instalador master **0.14.0** publicado em dist. O Dockerfile extrai dele o client genérico para o botão de download; nenhum instalador personalizado é publicado na imagem.
+1. Obter o repositório e o instalador master **0.15.0** publicado em dist. O Dockerfile extrai dele o client genérico para o botão de download; nenhum instalador personalizado é publicado na imagem.
 2. Copiar deploy/central.env.example para deploy/central.env. Preencher domínio, ADMIN_PASSWORD (senha longa e exclusiva) e KEY_ENCRYPTION_PASSWORD (senha longa da chave privada). Guardar o arquivo fora do Git, com permissão 600. As duas senhas têm funções diferentes.
 3. Construir e iniciar:
 
@@ -44,7 +44,7 @@ docker compose --env-file deploy/central.env -f deploy/compose.central.yml up -d
 ```
 
 4. Entrar pelo domínio HTTPS com admin e a senha inicial. O modo online desativa a sessão local automática. No botão Baixar client Windows, informar o nome exclusivo do computador. O endereço HTTPS do painel é incorporado automaticamente e o computador aparece no primeiro contato após instalar, sem cadastro de usuário/senha no client. Cada client recebe somente seu token de agente e a chave pública de recuperação.
-5. Em Preferências, exportar a chave master com uma senha de recuperação e guardar o arquivo e a senha em locais separados. A senha de recuperação não é a senha de login nem a variável de proteção do servidor. Para exportar/importar é necessário confirmar a senha da conta master.
+5. Ao gerar cada client, baixar/anotar sua chave de segurança e guardá-la fora dos backups. Em Restauração, Chave de segurança permite obter a chave de um computador já registrado. Mantenha também cópia externa do volume do master, com banco e carteiras.
 6. Fazer cópia do volume control-data, incluindo banco e chaves. ADMIN_PASSWORD só cria o usuário inicialmente; alterar a variável não troca uma senha já cadastrada. Não apagar/recriar o volume para atualizar.
 
 Os relatórios usam HTTPS autenticado pelo token do computador, com eventos de backup, heartbeat e confirmação do escritório. São mantidos em SQLite e arquivos JSONL sob DATA_DIR/telemetry/CLIENTE/COMPUTADOR/data.jsonl. Receber um relatório não comprova sozinho a integridade de todos os backups: cada execução confirma sua cópia e o receptor confirma separadamente os objetos recebidos. Cinco minutos sem relatório são sinalizados no painel. Não há verificação de recuperação lógica do Outlook nem alertas por email nesta versão.
@@ -81,11 +81,11 @@ docker compose --env-file deploy/office.env -f deploy/compose.office.yml up -d
 
 Os dados ficam em OFFICE_STORAGE_PATH/tenants/CLIENTE/BackupDesk/COMPUTADOR/ROTINA/EXECUÇÃO. O receptor não recebe chaves privadas e não descriptografa arquivos. Objetos são enviados em blocos de até 4 MiB, com SHA-256, posição de retomada e confirmação do conjunto completo. Pastas pendentes só se tornam versões disponíveis após o commit. Cotas e erros mantêm a cópia local e a fila, sem confirmação falsa.
 
-Para recuperar no escritório nesta etapa, usar o repositório completo por um acesso administrativo seguro/montagem local/VPN e Abrir outro local na ferramenta; importar/autorizar a chave master quando necessário. O receptor permite leitura autenticada de objetos de cada computador, mas ainda não há uma experiência completa de navegação/restauração remota pela internet no painel. Não disponibilizar a árvore física publicamente.
+Para recuperar no escritório nesta etapa, usar o repositório completo por um acesso administrativo seguro/montagem local/VPN e Abrir outro local na ferramenta; usar Restaurar arquivos de terceiro com nome e chave de segurança. O receptor permite leitura autenticada de objetos de cada computador, mas ainda não há uma experiência completa de navegação/restauração remota pela internet no painel. Não disponibilizar a árvore física publicamente.
 
 ## Sequência recomendada de ativação
 
-1. Instalar a atualização criptografada em ambiente de teste e exportar a recuperação.
+1. Instalar a atualização em ambiente de teste e guardar a chave de segurança de cada computador.
 2. Contratar/configurar VPS e domínio; validar isolamento de quatro contas/clientes.
 3. Preparar conectividade, disco e HTTPS no escritório; cadastrar computadores.
 4. Testar uma cópia local + escritório, queda de rede, retomada e recuperação em outra instalação.

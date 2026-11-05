@@ -1,6 +1,6 @@
 # Locaweb: painel web com backups locais ou em rede
 
-Este roteiro usa BackupDesk 0.14.0 e Ubuntu Server 24.04 LTS. O servidor do escritório não é necessário. A instalação na Locaweb recebe status, histórico, catálogo e relatórios; os arquivos criptografados são gravados pelo computador na pasta local, HD externo ou compartilhamento escolhido. Não existe transferência do conteúdo para o VPS nesse modo.
+Este roteiro usa BackupDesk 0.15.0 e Ubuntu Server 24.04 LTS. O servidor do escritório não é necessário. A instalação na Locaweb recebe status, histórico, catálogo e relatórios; os arquivos criptografados são gravados pelo computador na pasta local, HD externo ou compartilhamento escolhido. Não existe transferência do conteúdo para o VPS nesse modo.
 
 ## 1. Contratar
 
@@ -109,11 +109,11 @@ O agente envia heartbeat e eventos aproximadamente a cada minuto. O painel mostr
 
 A configuração e o agendamento atuais consultam o master: esta versão precisa alcançar o painel para iniciar as execuções gerenciadas e registrar seu andamento. A fila persistente de relatórios não equivale a uma engine de agendamento inteiramente offline. Se o requisito for executar novos backups mesmo com o VPS/internet indisponível por dias, essa autonomia ainda exige uma etapa adicional. O servidor do escritório, por sua vez, é totalmente opcional.
 
-Para máquinas que já usam outro master local: não aponte simplesmente o token/chaves existentes para um VPS novo. São instalações master distintas. Exporte a recuperação antiga e preserve os backups; gere novos clients no painel web para a nova implantação. Migrar o master existente com banco e chaves DPAPI para Linux exige um procedimento específico. Atualizar o `.exe` local sozinho não cria nem vincula um VPS.
+Para máquinas que já usam outro master local: não aponte simplesmente o token/chaves existentes para um VPS novo. São instalações master distintas. Baixe as chaves de segurança dos computadores registrados e preserve os backups; gere novos clients no painel web para a nova implantação. Migrar o master existente com banco e chaves DPAPI para Linux exige um procedimento específico. Atualizar o `.exe` local sozinho não cria nem vincula um VPS.
 
 ## 7. Proteger o painel e testar a recuperação
 
-Em **Preferências**, exporte a chave de recuperação do master, protegida por uma terceira senha, e guarde arquivo e senha separadamente, fora do VPS e do repositório de backups. Faça também cópia externa consistente do banco e das chaves do volume `control-data`; configure snapshots/backups do VPS e teste a recuperação. Não basta ter somente uma cópia das chaves dentro do próprio servidor.
+Ao gerar cada client, anote ou baixe sua chave de segurança. Depois, use **Restauração > Chave de segurança** para obter a chave de um computador registrado. Guarde as chaves fora do VPS e dos repositórios de backups. Faça também cópia externa consistente do banco e das chaves do volume `control-data`; configure snapshots/backups do VPS e teste a recuperação. Não basta ter somente uma cópia das chaves dentro do próprio servidor.
 
 Os backups antigos sem criptografia permanecem como estavam. Valide uma nova cópia criptografada e uma restauração antes de alterar retenção ou remover versões antigas. Ainda não há retenção automática; acompanhe espaço disponível nos destinos e no VPS.
 

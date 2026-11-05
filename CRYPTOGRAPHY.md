@@ -1,4 +1,4 @@
-# Criptografia do BackupDesk 0.12.0
+# Criptografia do BackupDesk 0.15.0
 
 ## Modelo e limites de confiança
 
@@ -29,3 +29,13 @@ Backups antigos v1/v2 permanecem legíveis e não são apagados ou convertidos s
 Cada arquivo é autenticado e comparado por SHA-256 durante cópia e recuperação. A restauração descriptografa para um arquivo temporário; só publica o nome final depois de autenticar todos os blocos, validar o hash e reler o arquivo gravado. Falhas removem o temporário dessa restauração. O catálogo usa AES-GCM e guarda as referências dos diferenciais de forma criptografada. Manifestações de erro não gravam catálogos de nomes em claro no destino v3.
 
 A criptografia protege a cópia em repouso, mas não valida a estrutura lógica de um PST nem cria consistência de aplicação. VSS continua sujeito às condições documentadas. Use uma recuperação real no Outlook para validar PSTs de produção.
+
+## Chave portátil por computador (0.15.0)
+
+A chave de segurança exibida ao gerar um novo client é uma representação hexadecimal, agrupada e com prefixo BD1, de 256 bits aleatórios. Equivale à chave de dados desse computador; não é uma senha escolhida pelo usuário nem depende do nome da máquina para ganhar entropia. O nome identifica o conjunto no catálogo autenticado. Conhecer essa chave permite descriptografar o conjunto correspondente. Não compartilhe a chave nem o instalador personalizado que a incorpora; guarde o arquivo de chave separado dos backups.
+
+Novos clients recebem essa chave na inscrição do instalador. No banco do master, ela fica envolvida com RSA-OAEP; na instalação, vira a mesma chave de dados já protegida para computador/master. Não permanece em agent-config.json. Computadores antigos preservam a chave de dados existente, exportada pela nova interface após seu registro, em vez de gerar um segredo que não abriria suas cópias anteriores. Os formatos dos backups criptografados permanecem compatíveis.
+
+Para recuperar em outro computador/master, a posse da chave substitui a autorização de recuperação global: o painel envolve a chave para a RSA pública do executor e persiste somente esse grant. O agente valida a identificação SHA-256 da chave contra o cabeçalho e autentica o catálogo, além de conferir o nome de origem. Não há fallback para a chave master quando a chave informada está errada. O índice é separado por local/chave; uma importação não substitui o catálogo de outro computador na mesma pasta. O grant é reaproveitado para restaurar os arquivos desse catálogo e só pode ser aberto pelo executor autorizado.
+
+A interface antiga de exportação/importação master deixou Preferências. A API administrativa permanece para recuperar implantações antigas. Para uso comum, o operador baixa a chave de cada computador em Restauração. Perder a chave portátil e as duas carteiras privadas ainda pode tornar a cópia inacessível.

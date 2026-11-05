@@ -1,4 +1,4 @@
-BACKUPDESK 0.14.0 - TESTE WINDOWS x64
+BACKUPDESK 0.15.0 - TESTE WINDOWS x64
 
 INSTALACAO
 Instale na mesma pasta para preservar cadastros e backups.
@@ -109,7 +109,7 @@ Diferenciais dependem do completo que deve estar nesse mesmo repositorio.
 Copie toda a pasta BackupDesk para preservar as bases.
 A leitura do catalogo nao modifica os arquivos do disco.
 
-CRIPTOGRAFIA - 0.14.0
+CRIPTOGRAFIA - 0.15.0
 Novos backups usam AES-256-GCM, incluindo conteudo e nomes dos arquivos.
 Uma chave de dados pode ser recuperada pelo computador ou pelo master.
 As chaves privadas do Windows usam DPAPI do usuario da instalacao.
@@ -117,10 +117,9 @@ Atualizacoes preservam a identidade e as chaves. Nao apague a pasta data/keys.
 O primeiro backup criptografado e completo e exige espaco disponivel.
 Copias antigas continuam em texto aberto ate serem substituidas pelo responsavel.
 
-Em Preferencias, exporte a recuperacao do master com uma senha forte.
-Confirme a senha da conta master (inicialmente em data/initial-admin.txt).
-Guarde o arquivo e sua senha separados do computador e dos backups.
-Para recuperar outra maquina, autorize a recuperacao master em Preferencias.
+Em Restauracao, baixe a chave de seguranca do computador e guarde fora dos backups.
+Para recuperar outra maquina, use Restaurar arquivos de terceiro e informe nome,
+chave de seguranca e local dos backups. Nao exige senha administrativa do master.
 Reinstalacao do Windows/perfil pode exigir importar a recuperacao do master.
 A chave privada master nunca acompanha o instalador dos clients.
 
@@ -136,9 +135,19 @@ O passo a passo do painel esta em deploy/LOCAWEB-PASSO-A-PASSO.md no repositorio
 VPS, dominio e servidor fisico ainda precisam ser contratados/configurados.
 O agendamento remoto ainda depende de conexao com o master configurado.
 
-MEDIDAS E ANDAMENTO - 0.14.0
+MEDIDAS E ANDAMENTO - 0.15.0
 Tamanhos em MB decimais: 1 MB = 1.000.000 bytes.
 O painel mostra velocidade em MB/s e tempo restante estimado.
 A velocidade de copia nao inclui os bytes contados na verificacao.
 Preparacao, falta de amostras e ausencia de avanco nao geram estimativa falsa.
 Tempo estimado pode variar; inclui trabalho de copia/verificacao da etapa atual.
+
+CHAVE DE SEGURANCA - 0.15.0
+Baixar client pede somente o nome e mostra a chave para anotar ou baixar.
+Downloads repetidos da mesma identificacao mantem a chave.
+O endereco do painel web segue incorporado automaticamente, sem campo para digitar.
+Nao publique o instalador identificado: ele leva uma chave exclusiva do computador.
+A chave de seguranca nao fica em texto aberto na configuracao instalada.
+Atualize/inicie agentes antigos para registrar sua carteira antes de obter a chave.
+Restauracao de terceiros consulta somente o computador e a chave informados.
+O calendario usa as copias existentes no compartilhamento selecionado.
