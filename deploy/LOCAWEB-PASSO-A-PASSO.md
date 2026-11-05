@@ -1,6 +1,6 @@
 # Locaweb: painel web com backups locais ou em rede
 
-Este roteiro usa BackupDesk 0.17.0 e Ubuntu Server 24.04 LTS. O servidor do escritório não é necessário. A instalação na Locaweb recebe status, histórico, catálogo e relatórios; os arquivos criptografados são gravados pelo computador na pasta local, HD externo ou compartilhamento escolhido. Não existe transferência do conteúdo para o VPS nesse modo.
+Este roteiro usa BackupDesk 0.18.0 e Ubuntu Server 24.04 LTS. O servidor do escritório não é necessário. A instalação na Locaweb recebe status, histórico, catálogo e relatórios; os arquivos criptografados são gravados pelo computador na pasta local, HD externo ou compartilhamento escolhido. Não existe transferência do conteúdo para o VPS nesse modo.
 
 ## 1. Contratar
 
@@ -93,17 +93,17 @@ Confira DNS, portas, serviços e certificado. Não compartilhe senhas ou tokens 
 2. Informe um nome exclusivo para aquela máquina, por exemplo `CLIENTE-A-FINANCEIRO-01`.
 3. Baixe o `.exe` identificado e instale na máquina correspondente. Gere um nome/instalador diferente para cada máquina. Reutilizar o mesmo instalador para atualizar a mesma máquina preserva sua identificação.
 4. Com a máquina conectada à internet, o agente faz o primeiro contato automaticamente. O computador aparece no dashboard após esse contato; a tela atualiza a cada cinco segundos. Não há botão Vincular client nem cadastro de usuário/senha para esse processo.
-5. Em **Preferências**, selecione o computador e configure um ou mais destinos de backup: pasta local, HD externo ou caminho UNC, como `\\servidor\Backups`.
+5. Em **Preferências → Backup Local**, selecione o computador e configure um ou mais destinos de backup: pasta local, HD externo ou caminho UNC, como `\\servidor\Backups`.
 6. Em **Backup**, selecione o computador e crie a rotina com origem, dias e horário. Caminhos informados no painel web pertencem ao computador client, não ao VPS. O seletor nativo do Windows continua disponível no master local; no painel remoto, informe os caminhos da máquina correspondente.
 7. Clique em **Fazer backup agora**. Confirme o resultado no painel e teste a restauração de um arquivo.
 
-Para rede, o compartilhamento precisa estar acessível ao usuário Windows que executa o agente. Prefira UNC a letras mapeadas, que podem não existir em outra sessão. Nesta versão, VSS para arquivos abertos exige origem local NTFS; uma pasta de rede pode ser destino, mas origem UNC não oferece o mesmo snapshot local.
+Para rede, o compartilhamento precisa estar acessível ao usuário Windows que executa o agente ou às credenciais opcionais cadastradas em **Backup Local**. A senha cadastrada fica criptografada; não é necessário abrir o painel como administrador. Prefira UNC a letras mapeadas, que podem não existir em outra sessão. Nesta versão, VSS para arquivos abertos exige origem local NTFS; uma pasta de rede pode ser destino, mas origem UNC não oferece o mesmo snapshot local.
 
 O agente inicia automaticamente ao entrar no Windows e permanece em segundo plano. Sem um usuário conectado, este agente por usuário não substitui um serviço de backup sem sessão interativa.
 
 ## 6. Operar sem servidor do escritório
 
-Deixe **Cópia adicional no escritório** desativada. O backup local/rede, a criptografia e os relatórios para a Locaweb funcionam assim mesmo. Quando nenhum computador usa a cópia adicional, sua coluna fica oculta no dashboard.
+Em **Preferências → Destino do Backup**, deixe o envio ao servidor externo desativado enquanto não tiver um receptor. O backup local/rede, a criptografia e os relatórios para a Locaweb funcionam assim mesmo. Quando nenhum computador usa a cópia adicional, sua coluna fica oculta no dashboard.
 
 O agente envia heartbeat e eventos aproximadamente a cada minuto. O painel mostra ausência de contato após cinco minutos; eventos não entregues ficam em fila para reenvio. Relatórios são separados por identificação do computador. Instalar um client não dá acesso ao dashboard ou às informações das outras máquinas.
 
