@@ -1,4 +1,4 @@
-# Criptografia do BackupDesk 0.15.0
+# Criptografia do BackupDesk 0.17.0
 
 ## Modelo e limites de confiança
 
@@ -38,4 +38,6 @@ Novos clients recebem essa chave na inscrição do instalador. No banco do maste
 
 Para recuperar em outro computador/master, a posse da chave substitui a autorização de recuperação global: o painel envolve a chave para a RSA pública do executor e persiste somente esse grant. O agente valida a identificação SHA-256 da chave contra o cabeçalho e autentica o catálogo, além de conferir o nome de origem. Não há fallback para a chave master quando a chave informada está errada. O índice é separado por local/chave; uma importação não substitui o catálogo de outro computador na mesma pasta. O grant é reaproveitado para restaurar os arquivos desse catálogo e só pode ser aberto pelo executor autorizado.
 
-A interface antiga de exportação/importação master deixou Preferências. A API administrativa permanece para recuperar implantações antigas. Para uso comum, o operador baixa a chave de cada computador em Restauração. Perder a chave portátil e as duas carteiras privadas ainda pode tornar a cópia inacessível.
+A interface antiga de exportação/importação master deixou Preferências. A API administrativa permanece para recuperar implantações antigas. Para uso comum, o operador baixa a chave de cada computador em Preferências > Geral. Perder a chave portátil e as duas carteiras privadas ainda pode tornar a cópia inacessível.
+
+Em 0.17.0, a chave do computador selecionado é consultada somente ao abrir Geral em Preferências, por uma sessão master autenticada. Ela fica oculta por padrão e não é incluída no estado geral do dashboard. Sair do submenu limpa a referência e o campo da interface. A mudança de organização não altera chaves nem formatos dos backups.

@@ -1,4 +1,4 @@
-BACKUPDESK 0.16.0 - TESTE WINDOWS x64
+BACKUPDESK 0.17.0 - TESTE WINDOWS x64
 
 INSTALACAO
 Instale na mesma pasta para preservar cadastros e backups.
@@ -109,7 +109,7 @@ Diferenciais dependem do completo que deve estar nesse mesmo repositorio.
 Copie toda a pasta BackupDesk para preservar as bases.
 A leitura do catalogo nao modifica os arquivos do disco.
 
-CRIPTOGRAFIA - 0.16.0
+CRIPTOGRAFIA - 0.17.0
 Novos backups usam AES-256-GCM, incluindo conteudo e nomes dos arquivos.
 Uma chave de dados pode ser recuperada pelo computador ou pelo master.
 As chaves privadas do Windows usam DPAPI do usuario da instalacao.
@@ -117,7 +117,7 @@ Atualizacoes preservam a identidade e as chaves. Nao apague a pasta data/keys.
 O primeiro backup criptografado e completo e exige espaco disponivel.
 Copias antigas continuam em texto aberto ate serem substituidas pelo responsavel.
 
-Em Restauracao, baixe a chave de seguranca do computador e guarde fora dos backups.
+Em Preferencias > Geral, baixe a chave de seguranca do computador e guarde fora dos backups.
 Para recuperar outra maquina, use Restaurar arquivos de terceiro e informe nome,
 chave de seguranca e local dos backups. Nao exige senha administrativa do master.
 Reinstalacao do Windows/perfil pode exigir importar a recuperacao do master.
@@ -135,14 +135,14 @@ O passo a passo do painel esta em deploy/LOCAWEB-PASSO-A-PASSO.md no repositorio
 VPS, dominio e servidor fisico ainda precisam ser contratados/configurados.
 O agendamento remoto ainda depende de conexao com o master configurado.
 
-MEDIDAS E ANDAMENTO - 0.16.0
+MEDIDAS E ANDAMENTO - 0.17.0
 Tamanhos em MB decimais: 1 MB = 1.000.000 bytes.
 O painel mostra velocidade em MB/s e tempo restante estimado.
 A velocidade de copia nao inclui os bytes contados na verificacao.
 Preparacao, falta de amostras e ausencia de avanco nao geram estimativa falsa.
 Tempo estimado pode variar; inclui trabalho de copia/verificacao da etapa atual.
 
-CHAVE DE SEGURANCA - 0.16.0
+CHAVE DE SEGURANCA - 0.17.0
 Baixar client pede somente o nome e mostra a chave para anotar ou baixar.
 Downloads repetidos da mesma identificacao mantem a chave.
 O endereco do painel web segue incorporado automaticamente, sem campo para digitar.
@@ -152,9 +152,18 @@ Atualize/inicie agentes antigos para registrar sua carteira antes de obter a cha
 Restauracao de terceiros consulta somente o computador e a chave informados.
 O calendario usa as copias existentes no compartilhamento selecionado.
 
-ARVORE DE RESTAURACAO - 0.16.0
+ARVORE DE RESTAURACAO - 0.17.0
 Abra Visualizar estrutura de pastas para pre-visualizar a data/hora selecionadas.
 Expanda as pastas e marque o que deseja recuperar. O botao Restaurar fica no topo.
 Expandir ou visualizar o catalogo nao restaura arquivos automaticamente.
 Os dados recuperados preservam as subpastas e nao substituem os originais.
-A chave de seguranca pode ser consultada dentro da janela de terceiros.
+A chave de seguranca fica em Preferencias > Geral.
+
+PREFERENCIAS E CALENDARIOS - 0.17.0
+Geral: nome, chave, data de instalacao registrada, versao e ultimo contato.
+Destinos de backup e Preferencias de desempenho ficam em submenus proprios.
+A chave do computador nao aparece mais na janela de terceiros.
+Novas instalacoes guardam a data; atualizacoes nao alteram a data original.
+Instalacoes antigas sem registro mostram data nao registrada, sem inventar valores.
+Ambos os calendarios mostram sucesso, falha e execucao usando a mesma regra de data.
+Somente copias concluidas ficam disponiveis para restauracao.

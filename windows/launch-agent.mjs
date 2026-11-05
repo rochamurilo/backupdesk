@@ -16,7 +16,7 @@ const url=new URL(config.url);
 if(!['http:','https:'].includes(url.protocol)||url.username||url.password)throw Error('URL inválida');
 if(!config.token)throw Error('Configure o token antes de iniciar');
 process.env.BACKUPDESK_URL=url.href.replace(/\/$/,'');
-process.env.BACKUPDESK_TOKEN=config.token;
+process.env.BACKUPDESK_TOKEN=config.token;if(config.installed_at)process.env.BACKUPDESK_INSTALLED_AT=config.installed_at;
 process.env.BACKUPDESK_VSS_PRODUCT='client';process.env.BACKUPDESK_COMPUTER_NAME=config.name||'';process.env.BACKUPDESK_INSTALLATION_ID=config.installation_id;
 if(config.recovery_public_key)process.env.BACKUPDESK_RECOVERY_PUBLIC_KEY=config.recovery_public_key;process.env.BACKUPDESK_KEY_DIR=join(dir,'data');
 process.env.BACKUPDESK_AGENT_STATE=join(dir,'agent-state.json');

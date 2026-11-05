@@ -1,6 +1,6 @@
-# BackupDesk 0.16.0 — versão de teste
+# BackupDesk 0.17.0 — versão de teste
 
-[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.16.0-x64.exe)
+[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.17.0-x64.exe)
 
 [Começar na Locaweb: contratação, instalação e primeiro client](deploy/LOCAWEB-PASSO-A-PASSO.md)
 
@@ -8,7 +8,7 @@
 
 Na aba **Preferências**, selecione o computador e cadastre uma ou mais pastas de destino (local, HD externo/USB ou rede). Todas as rotinas desse computador usam esses destinos automaticamente. O caminho pertence ao computador selecionado. No master local, Selecionar pasta abre a janela do Windows; para um client remoto, informe o caminho acessível naquela máquina. Depois, na aba **Backup**, escolha computador, dias, horário e pastas/arquivos de origem; não há seleção de destino por rotina.
 
-Salve e use **Fazer backup agora** para testar. O agendador usa o horário local do computador e executa cada rotina no máximo uma vez por dia agendado; dias perdidos com o computador desligado ainda não são recuperados automaticamente. Rotinas antigas podem ser ajustadas em **Editar**. Elas conservam o armazenamento legado até serem alteradas; não são movidas automaticamente. Atualize os clients para 0.16.0 pelo botão no canto inferior esquerdo do master antes de usar destinos em disco. Agentes antigos não recebem rotinas com esses destinos.
+Salve e use **Fazer backup agora** para testar. O agendador usa o horário local do computador e executa cada rotina no máximo uma vez por dia agendado; dias perdidos com o computador desligado ainda não são recuperados automaticamente. Rotinas antigas podem ser ajustadas em **Editar**. Elas conservam o armazenamento legado até serem alteradas; não são movidas automaticamente. Atualize os clients para 0.17.0 pelo botão no canto inferior esquerdo do master antes de usar destinos em disco. Agentes antigos não recebem rotinas com esses destinos.
 
 O motor em disco grava versões completas ou diferenciais em `DESTINO/BackupDesk/ID-COMPUTADOR/ID-ROTINA/ID-EXECUÇÃO`. Cada versão tem manifest.json com o catálogo lógico completo, hashes SHA-256 e referências à base completa. A pasta files contém apenas o conteúdo gravado naquela execução. Diretórios .partial-* são execuções incompletas e não são apresentados como backups válidos. O catálogo e os status continuam no master; os conteúdos desses backups ficam somente no destino escolhido.
 
@@ -196,3 +196,13 @@ Pastas e arquivos com nomes iguais em conjuntos diferentes permanecem separados.
 O botão Restaurar Arquivos de Terceiro foi ajustado e a ação Restaurar ocupa o canto direito da linha superior. Chave de segurança continua disponível dentro da janela de terceiros, sem botão duplicado no cabeçalho. Os marcadores de sucesso nos calendários são maiores e verde grama.
 
 Validação 0.16.0: 71 testes locais e a checagem Chromium passaram. O navegador validou a árvore inicialmente recolhida, seleção parcial por pasta, data/hora, botões superiores e restauração real de uma subpasta, sem copiar o arquivo fora da seleção. As APIs rejeitaram seleções com caminhos inexistentes, inclusive em repositórios de terceiros, e restauraram subconjuntos de diferenciais. Os arquivos de interface e o módulo de árvore dentro do instalador foram comparados aos fontes finais. O [workflow Windows 42072605257](https://github.com/rochamurilo/backupdesk/actions/runs/42072605257) passou no pacote final, incluindo instalação/atualização, identidade/chaves, VSS, restauração e início automático. A imagem Linux foi construída e o download público foi comparado byte a byte. A pré-visualização usa o catálogo; não abre o conteúdo dos documentos antes da restauração.
+
+## Preferências e calendários — 0.17.0
+
+Preferências agora tem os submenus Geral, Destinos de backup, Preferências de desempenho e Cópia adicional no escritório. Geral mostra o nome, a data de instalação registrada, a versão e o último contato do computador selecionado, além de mostrar/baixar sua chave de segurança para o master. A chave saiu da janela de restauração de terceiros; fica oculta por padrão em Geral, e o campo e a referência usada pela interface são limpos ao sair desse submenu. O botão Restaurar Arquivos de Terceiro ficou menor.
+
+Novos clients registram a data na instalação, e as atualizações preservam esse valor. O cadastro/download do instalador não é usado como data de instalação. Versões anteriores que não registraram o dado mostram Não registrada em versões anteriores; atualizar não inventa uma data original. O master local registra seu primeiro preparo em novas instalações.
+
+Os calendários usam uma função comum para status e dia: data de conclusão quando registrada, senão início. A restauração antes considerava somente sucessos, escondendo falhas; agora inclui falhas e execuções em andamento do computador/local selecionados. Falhas antigas sem destino informado continuam visíveis para aquele computador. O vermelho tem o mesmo tamanho do verde e cor mais intensa. Uma falha não cria ponto restaurável: a árvore continua usando apenas cópias concluídas até a data e hora selecionadas.
+
+Visão geral agrega todos os equipamentos; Restauração respeita computador, local e contexto de terceiros. Por isso filtros diferentes podem ter contagens diferentes. Em repositórios importados sem histórico do master original, só podem ser exibidas as versões existentes e o histórico disponível; não são inventados registros de falha. Cópias importadas já presentes no histórico não duplicam o evento.

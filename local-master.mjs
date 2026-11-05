@@ -9,7 +9,7 @@ export function prepareLocalMaster(db){
   if(!owner)throw Error('Administrador master não encontrado');
   const id=randomBytes(32).toString('hex'),token=randomBytes(32).toString('hex');
   db.exec('BEGIN');
-  try{db.prepare('INSERT INTO devices(id,name,owner,token) VALUES(?,?,?,?)').run(id,hostname()+' (Master local)',owner.id,token);db.prepare("INSERT OR REPLACE INTO settings(name,value) VALUES('local_master_device',?)").run(id);db.exec('COMMIT')}catch(e){db.exec('ROLLBACK');throw e}
+  try{db.prepare('INSERT INTO devices(id,name,owner,token,installed_at) VALUES(?,?,?,?,?)').run(id,hostname()+' (Master local)',owner.id,token,new Date().toISOString());db.prepare("INSERT OR REPLACE INTO settings(name,value) VALUES('local_master_device',?)").run(id);db.exec('COMMIT')}catch(e){db.exec('ROLLBACK');throw e}
   device=db.prepare('SELECT * FROM devices WHERE id=?').get(id);
  }
  return device;

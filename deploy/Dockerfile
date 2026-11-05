@@ -12,10 +12,10 @@ CMD ["node", "office-receiver.mjs"]
 
 FROM node:24-bookworm-slim AS extract
 RUN apt-get update && apt-get install -y --no-install-recommends p7zip-full && rm -rf /var/lib/apt/lists/*
-COPY dist/BackupDesk-Master-0.16.0-x64.exe /tmp/master.exe
-RUN 7z x /tmp/master.exe -o/tmp/unpacked -y >/dev/null && find /tmp/unpacked -name 'BackupDesk-Client-0.16.0-x64.exe' -exec cp '{}' /tmp/client.exe \; && test -s /tmp/client.exe
+COPY dist/BackupDesk-Master-0.17.0-x64.exe /tmp/master.exe
+RUN 7z x /tmp/master.exe -o/tmp/unpacked -y >/dev/null && find /tmp/unpacked -name 'BackupDesk-Client-0.17.0-x64.exe' -exec cp '{}' /tmp/client.exe \; && test -s /tmp/client.exe
 
 FROM application AS master
-COPY --chown=node:node --from=extract /tmp/client.exe ./dist/BackupDesk-Client-0.16.0-x64.exe
+COPY --chown=node:node --from=extract /tmp/client.exe ./dist/BackupDesk-Client-0.17.0-x64.exe
 ENV BACKUPDESK_CLOUD_MODE=1
 CMD ["node", "server.mjs"]

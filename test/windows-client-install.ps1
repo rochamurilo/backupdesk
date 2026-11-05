@@ -1,6 +1,6 @@
 ﻿$ErrorActionPreference='Stop'
 $repo=Split-Path $PSScriptRoot -Parent
-$master=Join-Path $repo 'dist\BackupDesk-Master-0.16.0-x64.exe'
+$master=Join-Path $repo 'dist\BackupDesk-Master-0.17.0-x64.exe'
 if(-not (Test-Path -LiteralPath $master)){'Instalador ainda não publicado; teste de pacote será executado na publicação.';return}
 $root=Join-Path $env:TEMP ('BackupDesk Client Test '+[guid]::NewGuid().ToString('N'))
 $extract=Join-Path $root 'extracted'
@@ -12,7 +12,7 @@ New-Item -ItemType Directory -Path $root | Out-Null
 try{
  $null=& $sevenZip x $master ('-o'+$extract) -y
  if($LASTEXITCODE -ne 0){throw 'Falha ao extrair o pacote publicado.'}
- $generic=Get-ChildItem -LiteralPath $extract -Filter 'BackupDesk-Client-0.16.0-x64.exe' -Recurse | Select-Object -First 1
+ $generic=Get-ChildItem -LiteralPath $extract -Filter 'BackupDesk-Client-0.17.0-x64.exe' -Recurse | Select-Object -First 1
  if(-not $generic){throw 'Master não contém o client esperado.'}
  $env:BACKUPDESK_TEST_CLIENT_BASE=$generic.FullName
  $env:BACKUPDESK_TEST_CLIENT_NAMED=$renamed
@@ -26,6 +26,8 @@ try{
  if($config.name -ne 'Financeiro São Paulo' -or $config.device_id -ne ('d'*64) -or -not $config.installation_id){throw 'Identidade não foi instalada automaticamente.'}
  if($config.url -ne 'http://127.0.0.1:3339'){throw 'Conexão automática não foi incorporada no instalador.'}
  $instance=$config.installation_id
+ $installedAt=$config.installed_at
+ if(-not $installedAt){throw 'A data de instalação não foi registrada.'}
  $crypto=Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $target 'data\keys\computer.json') | ConvertFrom-Json
  if($crypto.protected.scheme -ne 'windows-dpapi-current-user'){throw 'Chave do computador não está protegida por DPAPI.'}
  $dataKey=Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $target 'data\keys\device.json') | ConvertFrom-Json
@@ -37,6 +39,7 @@ try{
  if($process.ExitCode -ne 0){throw 'Atualização identificada falhou.'}
  $updated=Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $target 'agent-config.json') | ConvertFrom-Json
  if((Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $target 'data\keys\device.json') | ConvertFrom-Json).header.key_id -ne $keyId){throw 'A atualização trocou a chave de dados.'}
+ if($updated.installed_at -ne $installedAt){throw 'A atualização alterou a data original de instalação.'}
  if($updated.installation_id -ne $instance){throw 'A atualização mudou a identificação da instalação.'}
  if(-not (Test-Path -LiteralPath (Join-Path $target 'client-package.mjs'))){throw 'Módulo de identificação não foi incluído no pacote.'}
  'Instalador NSIS real: CRC preservado com identificação incorporada, nome independente do arquivo e vínculo mantido na atualização: OK.'
