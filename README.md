@@ -1,6 +1,6 @@
-# BackupDesk 0.19.0 — versão de teste
+# BackupDesk 0.20.0 — versão de teste
 
-[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.19.0-x64.exe)
+[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.20.0-x64.exe)
 
 [Começar na Locaweb: contratação, instalação e primeiro client](deploy/LOCAWEB-PASSO-A-PASSO.md)
 
@@ -245,3 +245,10 @@ Na Visão Geral, **Backups concluídos** e **Falhas registradas** contam somente
 As descrições das cores após “Histórico dos últimos 28 dias” e a expressão “horários locais” foram removidas da Visão Geral. Os marcadores coloridos e seu significado permanecem.
 
 Validação 0.19.0: 86 testes locais e a checagem Chromium passaram. Foram cobertos dois destinos de log, credenciais cifradas independentes, assinatura/adulteração, Unicode, limite de tamanho, destino indisponível sem falhar o backup, leitura de status sem telemetria direta, acumulação de histórico e isolamento por usuário. Os cartões de 30 dias foram testados com marcação individual, reinício, deduplicação e chegada posterior do log sem reabrir resultados lidos. O [workflow Windows 42124578006](https://github.com/rochamurilo/backupdesk/actions/runs/42124578006) passou: logs assinados em duas pastas SMB lidos por processos separados, senha Unicode, VSS, atualização, início automático e instalador identificado. O conteúdo empacotado, o client embutido e o download público foram comparados aos arquivos finais; a imagem web foi construída e iniciou com login e estado de logs/notificações. Não houve implantação na Locaweb nem configuração de pastas externas reais.
+
+
+## Organização das telas — 0.20.0
+
+A navegação usa **Visão Geral**, o título da página de backup é **Opções de Backup**, os cartões/janelas usam **Backups Concluídos** e **Falhas Registradas**, e a descrição lateral é **PROTEÇÃO DE DADOS**. As últimas 10 execuções passaram da Restauração para o menu Backup; **Ver arquivos** abre a Restauração com a versão correspondente selecionada.
+
+O aviso informativo de validação do PST saiu do histórico e da tela de Restauração. Falhas reais não são apagadas nem transformadas em sucesso: sua mensagem é exibida em **Falhas Registradas**, preservando o período de 30 dias e a marcação como lido. A cópia com VSS, a verificação de integridade e os metadados de PST continuam sendo produzidos pelo motor. Clients 0.19.0 continuam compatíveis com Logs; esta reorganização exige atualizar o painel.

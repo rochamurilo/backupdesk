@@ -7,16 +7,16 @@ Unicode True
 Var VssOwnerSid
 !ifdef CLIENT
   !define PRODUCT "BackupDesk Client"
-  !define VERSION "0.19.0"
+  !define VERSION "0.20.0"
   !define KEY "BackupDeskClient"
   !define FOLDER "BackupDeskClient"
-  OutFile "../windows/build/BackupDesk-Client-0.19.0-x64.exe"
+  OutFile "../windows/build/BackupDesk-Client-0.20.0-x64.exe"
 !else
   !define PRODUCT "BackupDesk Master"
-  !define VERSION "0.19.0"
+  !define VERSION "0.20.0"
   !define KEY "BackupDesk"
   !define FOLDER "BackupDesk"
-  OutFile "../dist/BackupDesk-Master-0.19.0-x64.exe"
+  OutFile "../dist/BackupDesk-Master-0.20.0-x64.exe"
 !endif
 Name "${PRODUCT} (teste local)"
 InstallDir "$LOCALAPPDATA\${FOLDER}"
@@ -149,7 +149,7 @@ Section "${PRODUCT}" Main
  File "../public/app.js"
  File "../public/style.css"
  SetOutPath "$INSTDIR\dist"
- File "build/BackupDesk-Client-0.19.0-x64.exe"
+ File "build/BackupDesk-Client-0.20.0-x64.exe"
  SetOutPath "$INSTDIR"
  nsExec::ExecToStack '"$INSTDIR\node.exe" "$INSTDIR\server.mjs" --prepare-master'
  Pop $0
@@ -217,7 +217,7 @@ Section "Uninstall"
  Delete "$INSTDIR\public\app.js"
  Delete "$INSTDIR\public\style.css"
  RMDir "$INSTDIR\public"
- Delete "$INSTDIR\dist\BackupDesk-Client-0.19.0-x64.exe"
+ Delete "$INSTDIR\dist\BackupDesk-Client-0.20.0-x64.exe"
  RMDir "$INSTDIR\dist"
 !else
  Delete "$DESKTOP\BackupDesk Client.lnk"
