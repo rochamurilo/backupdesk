@@ -1,6 +1,6 @@
-# BackupDesk 0.17.0 — versão de teste
+# BackupDesk 0.18.0 — versão de teste
 
-[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.17.0-x64.exe)
+[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.18.0-x64.exe)
 
 [Começar na Locaweb: contratação, instalação e primeiro client](deploy/LOCAWEB-PASSO-A-PASSO.md)
 
@@ -8,7 +8,7 @@
 
 Na aba **Preferências**, selecione o computador e cadastre uma ou mais pastas de destino (local, HD externo/USB ou rede). Todas as rotinas desse computador usam esses destinos automaticamente. O caminho pertence ao computador selecionado. No master local, Selecionar pasta abre a janela do Windows; para um client remoto, informe o caminho acessível naquela máquina. Depois, na aba **Backup**, escolha computador, dias, horário e pastas/arquivos de origem; não há seleção de destino por rotina.
 
-Salve e use **Fazer backup agora** para testar. O agendador usa o horário local do computador e executa cada rotina no máximo uma vez por dia agendado; dias perdidos com o computador desligado ainda não são recuperados automaticamente. Rotinas antigas podem ser ajustadas em **Editar**. Elas conservam o armazenamento legado até serem alteradas; não são movidas automaticamente. Atualize os clients para 0.17.0 pelo botão no canto inferior esquerdo do master antes de usar destinos em disco. Agentes antigos não recebem rotinas com esses destinos.
+Salve e use **Fazer backup agora** para testar. O agendador usa o horário local do computador e executa cada rotina no máximo uma vez por dia agendado; dias perdidos com o computador desligado ainda não são recuperados automaticamente. Rotinas antigas podem ser ajustadas em **Editar**. Elas conservam o armazenamento legado até serem alteradas; não são movidas automaticamente. Atualize os clients para 0.18.0 pelo botão no canto inferior esquerdo do master antes de usar destinos em disco. Agentes antigos não recebem rotinas com esses destinos.
 
 O motor em disco grava versões completas ou diferenciais em `DESTINO/BackupDesk/ID-COMPUTADOR/ID-ROTINA/ID-EXECUÇÃO`. Cada versão tem manifest.json com o catálogo lógico completo, hashes SHA-256 e referências à base completa. A pasta files contém apenas o conteúdo gravado naquela execução. Diretórios .partial-* são execuções incompletas e não são apresentados como backups válidos. O catálogo e os status continuam no master; os conteúdos desses backups ficam somente no destino escolhido.
 
@@ -208,3 +208,14 @@ Os calendários usam uma função comum para status e dia: data de conclusão qu
 Visão geral agrega todos os equipamentos; Restauração respeita computador, local e contexto de terceiros. Por isso filtros diferentes podem ter contagens diferentes. Em repositórios importados sem histórico do master original, só podem ser exibidas as versões existentes e o histórico disponível; não são inventados registros de falha. Cópias importadas já presentes no histórico não duplicam o evento.
 
 Validação 0.17.0: 76 testes locais e a checagem Chromium passaram. Os testes compararam a falha no mesmo dia nos dois calendários, histórico legado sem destino, conclusão após a meia-noite, horário de São Paulo e cópia importada sem duplicação. O navegador validou submenus, chave oculta em Geral com download, limpeza do campo ao sair e ausência da chave na janela de terceiros. A data foi transmitida por um agente real, preservada em novo contato/atualização e mantida desconhecida para configuração antiga sem registro. O [workflow Windows 42080938053](https://github.com/rochamurilo/backupdesk/actions/runs/42080938053) passou, incluindo data original na instalação/atualização real do client, identidade/chaves, VSS, restauração e início automático. A imagem Linux foi construída; os arquivos empacotados e o download público foram comparados aos arquivos finais gerados.
+
+
+## Preferências e acesso à rede — 0.18.0
+
+Submenus na ordem **Geral**, **Destino do Backup**, **Backup Local** e **Desempenho**. Backup Local mantém as pastas locais/USB/UNC já cadastradas e oferece somente destino, seletor de pasta e usuário/senha opcionais do compartilhamento. Para preservar vários destinos existentes, o campo aceita um caminho por linha. Todas as rotinas continuam herdando esses locais.
+
+Destino do Backup configura o servidor externo por HTTPS; requer o receptor implantado e acessível. A transferência externa permanece uma cópia posterior ao backup local. O monitoramento online não depende desse receptor e funciona sem ele. Renomear o submenu não implanta infraestrutura nem transforma caminhos locais existentes em servidores externos.
+
+As credenciais SMB opcionais são cifradas no banco com chave protegida pelo master e transmitidas cifradas para a chave pública do próprio agente. A API de estado retorna somente usuário e indicação de credencial cadastrada; nunca devolve senha ao navegador. A senha chega ao auxiliar Windows por stdin, sem argumentos de linha de comando. A conta precisa de acesso ao compartilhamento e às permissões NTFS; o painel permanece como usuário comum. Utilize uma conta exclusiva com as permissões necessárias. O uso de credenciais UNC exige o client 0.18.0; em Linux, monte SMB no sistema e informe o caminho montado.
+
+Senha vazia mantém a credencial somente para o mesmo usuário e conjunto de compartilhamentos; alterar o servidor/compartilhamento exige informar a senha novamente. Para remover a credencial salva, limpe usuário e senha e salve. A ferramenta não desconecta sessões SMB de outros programas: se houver conflito com outra conta e a sessão existente não tiver acesso, mostra o erro. Remover a credencial salva não encerra uma sessão de rede já aberta pelo Windows.

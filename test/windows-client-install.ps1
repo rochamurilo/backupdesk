@@ -1,6 +1,6 @@
 ﻿$ErrorActionPreference='Stop'
 $repo=Split-Path $PSScriptRoot -Parent
-$master=Join-Path $repo 'dist\BackupDesk-Master-0.17.0-x64.exe'
+$master=Join-Path $repo 'dist\BackupDesk-Master-0.18.0-x64.exe'
 if(-not (Test-Path -LiteralPath $master)){'Instalador ainda não publicado; teste de pacote será executado na publicação.';return}
 $root=Join-Path $env:TEMP ('BackupDesk Client Test '+[guid]::NewGuid().ToString('N'))
 $extract=Join-Path $root 'extracted'
@@ -12,7 +12,7 @@ New-Item -ItemType Directory -Path $root | Out-Null
 try{
  $null=& $sevenZip x $master ('-o'+$extract) -y
  if($LASTEXITCODE -ne 0){throw 'Falha ao extrair o pacote publicado.'}
- $generic=Get-ChildItem -LiteralPath $extract -Filter 'BackupDesk-Client-0.17.0-x64.exe' -Recurse | Select-Object -First 1
+ $generic=Get-ChildItem -LiteralPath $extract -Filter 'BackupDesk-Client-0.18.0-x64.exe' -Recurse | Select-Object -First 1
  if(-not $generic){throw 'Master não contém o client esperado.'}
  $env:BACKUPDESK_TEST_CLIENT_BASE=$generic.FullName
  $env:BACKUPDESK_TEST_CLIENT_NAMED=$renamed

@@ -14,6 +14,9 @@ on:
       - 'calendar-events.mjs'
       - 'local-master.mjs'
       - 'preferences.mjs'
+      - 'network-share.mjs'
+      - 'windows/network-share*'
+      - 'test/windows-network-share.ps1'
       - 'bandwidth.mjs'
       - 'repository-catalog.mjs'
       - 'repository-store.mjs'
@@ -24,7 +27,7 @@ on:
       - 'windows/Configure.ps1'
       - 'test/windows-client-install.ps1'
       - 'test/client-package.test.mjs'
-      - 'dist/BackupDesk-Master-0.17.0-x64.exe'
+      - 'dist/BackupDesk-Master-0.18.0-x64.exe'
       - 'backup-repository.mjs'
       - 'vss.mjs'
       - 'filesystem.mjs'
@@ -102,7 +105,7 @@ jobs:
             !/*/
             /windows/
             /test/
-            /dist/BackupDesk-Master-0.17.0-x64.exe
+            /dist/BackupDesk-Master-0.18.0-x64.exe
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -117,5 +120,27 @@ jobs:
           catch {
             $detail=($_.Exception.Message+' '+$_.ScriptStackTrace+' '+$_.InvocationInfo.PositionMessage).Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
             Write-Output "::error title=Windows client diagnostic::$detail"
+            throw
+          }
+
+  native-network:
+    runs-on: windows-2025
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            windows
+            test
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Test authenticated SMB destination
+        shell: powershell
+        run: |
+          try { ./test/windows-network-share.ps1 }
+          catch {
+            $detail=($_.Exception.Message+' '+$_.ScriptStackTrace+' '+$_.InvocationInfo.PositionMessage).Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
+            Write-Output "::error title=Windows SMB diagnostic::$detail"
             throw
           }
