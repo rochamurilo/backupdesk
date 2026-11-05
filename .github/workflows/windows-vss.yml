@@ -5,6 +5,12 @@ on:
     branches: [main]
     paths:
       - 'disk-backup.mjs'
+      - 'crypto-vault.mjs'
+      - 'encrypted-files.mjs'
+      - 'office-client.mjs'
+      - 'office-receiver.mjs'
+      - 'windows/protect-key.ps1'
+      - 'windows/encrypted-backup-check.mjs'
       - 'preferences.mjs'
       - 'bandwidth.mjs'
       - 'repository-catalog.mjs'
@@ -16,7 +22,7 @@ on:
       - 'windows/Configure.ps1'
       - 'test/windows-client-install.ps1'
       - 'test/client-package.test.mjs'
-      - 'dist/BackupDesk-Master-0.11.0-x64.exe'
+      - 'dist/BackupDesk-Master-0.12.0-x64.exe'
       - 'backup-repository.mjs'
       - 'vss.mjs'
       - 'filesystem.mjs'
@@ -94,7 +100,7 @@ jobs:
             !/*/
             /windows/
             /test/
-            /dist/BackupDesk-Master-0.11.0-x64.exe
+            /dist/BackupDesk-Master-0.12.0-x64.exe
       - uses: actions/setup-node@v4
         with:
           node-version: '24'

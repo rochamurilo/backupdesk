@@ -1,0 +1,35 @@
+services:
+  master:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      target: master
+    restart: unless-stopped
+    environment:
+      DATA_DIR: /data
+      HOST: 0.0.0.0
+      PORT: 3000
+      BACKUPDESK_CLOUD_MODE: '1'
+      BACKUPDESK_KEY_PASSWORD: ${KEY_ENCRYPTION_PASSWORD:?Defina uma senha longa para a chave do master}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Defina a senha inicial do master}
+    volumes:
+      - control-data:/data
+    expose:
+      - '3000'
+  https:
+    image: caddy:2
+    restart: unless-stopped
+    environment:
+      CONTROL_DOMAIN: ${CONTROL_DOMAIN:?Defina o dominio do painel}
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    volumes:
+      - ./Caddyfile.central:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+volumes:
+  control-data:
+  caddy-data:
+  caddy-config:

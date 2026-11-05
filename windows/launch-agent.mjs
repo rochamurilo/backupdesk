@@ -18,5 +18,6 @@ if(!config.token)throw Error('Configure o token antes de iniciar');
 process.env.BACKUPDESK_URL=url.href.replace(/\/$/,'');
 process.env.BACKUPDESK_TOKEN=config.token;
 process.env.BACKUPDESK_VSS_PRODUCT='client';process.env.BACKUPDESK_COMPUTER_NAME=config.name||'';process.env.BACKUPDESK_INSTALLATION_ID=config.installation_id;
+if(config.recovery_public_key)process.env.BACKUPDESK_RECOVERY_PUBLIC_KEY=config.recovery_public_key;process.env.BACKUPDESK_KEY_DIR=join(dir,'data');
 process.env.BACKUPDESK_AGENT_STATE=join(dir,'agent-state.json');
 if(lock){mkdirSync(join(dir,'data'),{recursive:true});const fd=openSync(join(dir,'data','agent.log'),'a');const worker=supervise(process.execPath,[join(dir,'agent.mjs')],{cwd:dir,env:process.env,stdio:['ignore',fd,fd],windowsHide:true});for(const signal of ['SIGINT','SIGTERM'])process.on(signal,()=>{worker.stop();lock.close(()=>process.exit(0))})}

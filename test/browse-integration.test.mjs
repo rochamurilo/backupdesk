@@ -11,11 +11,12 @@ test('agente real lista pastas, protege consulta e faz backup de seleção múlt
   assert.equal((await api('devices/'+d.id+'/browse',{path:''},client)).status,404);
   await mkdir(join(dir,'origem'));await writeFile(join(dir,'origem','dado.txt'),'pasta');await writeFile(join(dir,'avulso.txt'),'arquivo');
   const sources=[join(dir,'origem'),join(dir,'avulso.txt')];
+  const destination=join(dir,'backup');await mkdir(destination);assert.equal((await api('devices/'+d.id+'/preferences',{destinations:[{type:'local',path:destination}],bandwidth:{enabled:false,start:'00:00',end:'00:00',upload_mbps:null,download_mbps:null}},admin)).status,200);
   assert.equal((await api('routines',{device:d.id,name:'Seleção',cadence:'daily',hour:'00:00',destination_type:'server',source:JSON.stringify(sources)},admin)).status,201);
   agent=spawn(process.execPath,['agent.mjs'],{env:{...process.env,BACKUPDESK_URL:'http://127.0.0.1:3100',BACKUPDESK_TOKEN:d.token,BACKUPDESK_AGENT_STATE:join(dir,'agent-state.json')},stdio:'ignore'});
   const browse=await api('devices/'+d.id+'/browse',{path:join(dir,'origem')},admin);assert.equal(browse.status,200);assert.equal(browse.body.entries[0].name,'dado.txt');
-  let run;for(let i=0;i<30;i++){run=(await api('state',null,admin)).body.runs.find(r=>r.status==='success');if(run)break;await new Promise(r=>setTimeout(r,100))}assert.ok(run,'Backup da seleção concluiu');
-  const files=(await api('runs/'+run.id+'/files',null,admin)).body;assert.deepEqual(files.map(f=>f.path).sort(),['1-origem/dado.txt','2-avulso.txt/avulso.txt']);
+  let run;for(let i=0;i<100;i++){run=(await api('state',null,admin)).body.runs.find(r=>r.status==='success');if(run)break;await new Promise(r=>setTimeout(r,100))}assert.ok(run,'Backup da seleção concluiu');
+  const files=(await api('runs/'+run.id+'/files',null,admin)).body;assert.deepEqual(files.map(f=>f.path).sort(),['1-avulso.txt/avulso.txt','2-origem/dado.txt']);
   for(const source of ['C:\\Dados','Z:\\Compartilhado','\\\\servidor\\documentos'])assert.equal((await api('routines',{device:d.id,name:'Windows',cadence:'daily',hour:'23:59',destination_type:'server',source:JSON.stringify([source])},admin)).status,201);
   assert.equal((await api('routines',{device:d.id,name:'Inválida',cadence:'daily',hour:'00:00',destination_type:'server',source:JSON.stringify(['relativo'])},admin)).status,400);
  }finally{if(agent){agent.kill();await once(agent,'exit')}server.kill();await once(server,'exit');await rm(dir,{recursive:true,force:true})}

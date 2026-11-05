@@ -14,3 +14,6 @@ test('preferências validam destinos independentes e velocidades, sem duplicar c
  for(const destinations of [[{type:'local',path:'relative'}],[{type:'local',path:'E:\\Backups'},{type:'external',path:'e:/backups/'}],[{type:'local',path:'/backups'},{type:'local',path:'/backups/sub'}]])assert.throws(()=>validatePreferences({...p,destinations}));
  assert.throws(()=>validatePreferences({...p,bandwidth:{...p.bandwidth,upload_mbps:-1}}));assert.throws(()=>validatePreferences({...p,bandwidth:{...p.bandwidth,start:'24:00'}}));assert.equal(validatePreferences({...p,bandwidth:{...p.bandwidth,upload_mbps:0}}).bandwidth.upload_mbps,null);
 });
+test('cópia local e envio ao escritório compartilham o limite sem duplicar orçamento',async()=>{
+ let time=0;const throttle=createBandwidthLimiter({getPolicy:()=>({...policy,start:'00:00',end:'00:00'}),now:()=>time,date:()=>new Date(),wait:async ms=>{time+=ms}});await Promise.all([throttle(125000,'upload'),throttle(125000,'upload')]);assert.ok(time>=2000);const start=time;const faster=createBandwidthLimiter({getPolicy:()=>({...policy,start:'00:00',end:'00:00',upload_mbps:50}),now:()=>time,date:()=>new Date(),wait:async ms=>{time+=ms}});await faster(4*1024*1024,'upload');assert.ok(time-start>=4*1024*1024/(50*1000000/8)*1000);assert.ok(time-start<1000);
+});

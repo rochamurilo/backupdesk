@@ -1,4 +1,4 @@
-BACKUPDESK 0.11.0 - TESTE WINDOWS x64
+BACKUPDESK 0.12.0 - TESTE WINDOWS x64
 
 INSTALACAO
 Instale na mesma pasta para preservar cadastros e backups.
@@ -43,7 +43,8 @@ Valide uma copia restaurada no Outlook e mantenha seu backup atual.
 Se o VSS falhar, o backup para e registra o erro; nao copia o arquivo vivo.
 
 LIMITES
-Versao de teste, sem retencao automatica, criptografia ou assinatura digital.
+Versao de teste, sem retencao automatica ou assinatura digital.
+Novos backups sao criptografados; backups antigos nao sao convertidos.
 USB/SMB reais, PST com Outlook e recuperacao precisam ser validados no seu ambiente.
 Logs do aplicativo: data\startup.log e data\agent.log (client).
 A desinstalacao remove a tarefa automatica com autorizacao do Windows.
@@ -107,3 +108,29 @@ E possivel restaurar de um repositorio movido, mesmo com outra letra de unidade.
 Diferenciais dependem do completo que deve estar nesse mesmo repositorio.
 Copie toda a pasta BackupDesk para preservar as bases.
 A leitura do catalogo nao modifica os arquivos do disco.
+
+CRIPTOGRAFIA - 0.12.0
+Novos backups usam AES-256-GCM, incluindo conteudo e nomes dos arquivos.
+Uma chave de dados pode ser recuperada pelo computador ou pelo master.
+As chaves privadas do Windows usam DPAPI do usuario da instalacao.
+Atualizacoes preservam a identidade e as chaves. Nao apague a pasta data/keys.
+O primeiro backup criptografado e completo e exige espaco disponivel.
+Copias antigas continuam em texto aberto ate serem substituidas pelo responsavel.
+
+Em Preferencias, exporte a recuperacao do master com uma senha forte.
+Confirme a senha da conta master (inicialmente em data/initial-admin.txt).
+Guarde o arquivo e sua senha separados do computador e dos backups.
+Para recuperar outra maquina, autorize a recuperacao master em Preferencias.
+Reinstalacao do Windows/perfil pode exigir importar a recuperacao do master.
+A chave privada master nunca acompanha o instalador dos clients.
+
+PAINEL ONLINE E ESCRITORIO
+Relatorios e heartbeat sao enviados aproximadamente a cada minuto.
+A fila de relatorios persiste para reenvio. Sem contato por cinco minutos gera aviso.
+O envio ao escritorio e separado da copia local e precisa de HTTPS e token proprio.
+Configure em Preferencias quando o servidor existir.
+O envio ao escritorio usa fila, retomada e confirmacao de armazenamento.
+Local concluido nao significa escritorio confirmado.
+Os servicos e a receita de hospedagem estao no repositorio, em deploy/README.md.
+VPS, dominio e servidor fisico ainda precisam ser contratados/configurados.
+O agendamento remoto ainda depende de conexao com o master configurado.

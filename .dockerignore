@@ -1,0 +1,14 @@
+.git
+node_modules
+data
+office-data
+keys
+*.log
+*.env
+deploy/*.env
+deploy/*env.example
+test
+checks
+windows
+dist/*
+!dist/BackupDesk-Master-0.12.0-x64.exe

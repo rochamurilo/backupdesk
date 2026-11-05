@@ -1,0 +1,3 @@
+import {randomBytes,scryptSync,timingSafeEqual} from 'node:crypto';
+export function passwordHash(password){const salt=randomBytes(16).toString('hex');return 'scrypt$'+salt+'$'+scryptSync(password,salt,32).toString('hex')}
+export function checkPassword(password,encoded){if(typeof password!=='string'||password.length>1024||typeof encoded!=='string')return false;try{const parts=encoded.split('$'),actual=parts.length===3?scryptSync(password,parts[1],32):scryptSync(password,'backupdesk-local-v1',32),expected=Buffer.from(parts.length===3?parts[2]:encoded,'hex');return expected.length===actual.length&&timingSafeEqual(actual,expected)}catch{return false}}

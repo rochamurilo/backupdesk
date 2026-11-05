@@ -1,0 +1,31 @@
+services:
+  office:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      target: office
+    restart: unless-stopped
+    environment:
+      OFFICE_DATA_DIR: /data
+      HOST: 0.0.0.0
+      PORT: 3100
+    volumes:
+      - ${OFFICE_STORAGE_PATH:?Defina a pasta do armazenamento fisico}:/data
+    expose:
+      - '3100'
+  https:
+    image: caddy:2
+    restart: unless-stopped
+    environment:
+      OFFICE_DOMAIN: ${OFFICE_DOMAIN:?Defina o dominio do armazenamento}
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    volumes:
+      - ./Caddyfile.office:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+volumes:
+  caddy-data:
+  caddy-config:

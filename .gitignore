@@ -3,3 +3,8 @@ node_modules/
 *.log
 dist/
 windows/build/
+
+keys/
+*Recovery*.json
+office-data/
+*.env

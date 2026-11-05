@@ -1,12 +1,12 @@
-# BackupDesk 0.11.0 — versão de teste
+# BackupDesk 0.12.0 — versão de teste
 
-[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.11.0-x64.exe)
+[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.12.0-x64.exe)
 
 ## Criar ou ajustar uma rotina
 
 Na aba **Preferências**, selecione o computador e cadastre uma ou mais pastas de destino (local, HD externo/USB ou rede). Todas as rotinas desse computador usam esses destinos automaticamente. O caminho pertence ao computador selecionado. No master local, Selecionar pasta abre a janela do Windows; para um client remoto, informe o caminho acessível naquela máquina. Depois, na aba **Backup**, escolha computador, dias, horário e pastas/arquivos de origem; não há seleção de destino por rotina.
 
-Salve e use **Fazer backup agora** para testar. O agendador usa o horário local do computador e executa cada rotina no máximo uma vez por dia agendado; dias perdidos com o computador desligado ainda não são recuperados automaticamente. Rotinas antigas podem ser ajustadas em **Editar**. Elas conservam o armazenamento legado até serem alteradas; não são movidas automaticamente. Atualize os clients para 0.11.0 pelo botão no canto inferior esquerdo do master antes de usar destinos em disco. Agentes antigos não recebem rotinas com esses destinos.
+Salve e use **Fazer backup agora** para testar. O agendador usa o horário local do computador e executa cada rotina no máximo uma vez por dia agendado; dias perdidos com o computador desligado ainda não são recuperados automaticamente. Rotinas antigas podem ser ajustadas em **Editar**. Elas conservam o armazenamento legado até serem alteradas; não são movidas automaticamente. Atualize os clients para 0.12.0 pelo botão no canto inferior esquerdo do master antes de usar destinos em disco. Agentes antigos não recebem rotinas com esses destinos.
 
 O motor em disco grava versões completas ou diferenciais em `DESTINO/BackupDesk/ID-COMPUTADOR/ID-ROTINA/ID-EXECUÇÃO`. Cada versão tem manifest.json com o catálogo lógico completo, hashes SHA-256 e referências à base completa. A pasta files contém apenas o conteúdo gravado naquela execução. Diretórios .partial-* são execuções incompletas e não são apresentados como backups válidos. O catálogo e os status continuam no master; os conteúdos desses backups ficam somente no destino escolhido.
 
@@ -20,7 +20,7 @@ Na aba Restauração, selecione computador, local onde os backups estão salvos,
 
 No Windows, os backups em disco usam VSS automaticamente para ler o snapshot do volume, com as condições descritas abaixo. Ainda não oferece consistência da aplicação validada nem backup de caixas Microsoft 365. OST é cache e não deve ser considerado o backup principal da caixa postal. Falhas durante cópia preservam versões anteriores.
 
-Use dados de teste. Não há criptografia em repouso, instalador assinado, serviço Windows antes do login, alertas, retomada por blocos, revogação de tokens ou política automática de retenção. A autenticação remota ainda precisa de endurecimento. Não publicar diretamente na internet nem usar como única cópia de dados de produção. Consulte [critérios de validação](BACKUP-VALIDATION.md).
+Use dados de teste. Novas cópias em disco são criptografadas. Ainda não há instalador assinado, serviço do agente antes do login, alertas por email, revogação abrangente de credenciais ou retenção automática de backups. A autenticação remota ainda precisa de endurecimento. A preparação de hospedagem usa HTTPS e autenticação, mas requer validação de implantação, conectividade e recuperação antes de produção. Não usar como única cópia de dados de produção. Consulte [critérios de validação](BACKUP-VALIDATION.md).
 
 ## Instalar e abrir
 
@@ -135,3 +135,20 @@ O catálogo importado é separado das execuções de backup; indexar não regist
 A restauração procura a base completa dentro do próprio repositório selecionado. A letra da unidade e o caminho podem mudar; ela não volta ao caminho original ou a outro disco para preencher arquivos que faltam. Sem a base necessária, a restauração falha explicitamente. Originais e versões existentes não são sobrescritos. Prefira copiar todo o diretório BackupDesk para preservar as bases. As permissões do usuário continuam valendo para USB/SMB.
 
 Validação 0.11.0: 54 testes locais e a checagem Chromium passaram. O [workflow Windows 41922120363](https://github.com/rochamurilo/backupdesk/actions/runs/41922120363) passou no pacote publicado: instalação/atualização real do client, identidade persistente, horários do limitador, VSS em arquivo bloqueado com limitação aplicada no fluxo, restauração de diferencial com repositório movido, encerramento para atualização e início automático. O teste integrado com agente também mediu o tempo mínimo de transferência para duas cópias, verificou falha parcial com um disco desconectado, importação em lotes, reindexação sem duplicar catálogo e restauração com o caminho original indisponível. O download público foi comparado byte a byte ao instalador gerado. USB/SMB físicos e PST real com Outlook continuam sujeitos à validação no ambiente de uso.
+
+
+## Criptografia, acompanhamento e escritório — 0.12.0
+
+Novos backups em disco usam **AES-256-GCM em blocos autenticados**, com nomes aleatórios e catálogo também criptografado. O computador tem sua chave privada protegida por DPAPI no Windows. Cada chave de dados pode ser recuperada tanto pelo computador quanto pelo master, por envelopes RSA-3072/OAEP-SHA256. A chave privada do master não é distribuída aos clients. Atualizações preservam as chaves existentes. O registro exige prova de posse da chave de dados, evitando que outro computador copie um cabeçalho para pedir sua recuperação.
+
+**Antes de depender da nova versão, exporte a recuperação em Preferências.** A senha da conta master está inicialmente em `%LOCALAPPDATA%\BackupDesk\data\initial-admin.txt`. Ela confirma operações de recuperação; o painel local continua abrindo como antes. Escolha outra senha longa para proteger o arquivo exportado e guarde ambos separadamente. Em outra instalação, importe esse arquivo. Para carregar backups criptografados de outro computador no painel local, autorize a recuperação master por 15 minutos antes de iniciar a consulta. Há detalhes em [CRYPTOGRAPHY.md](CRYPTOGRAPHY.md).
+
+O primeiro backup criptografado é completo; não depende de uma base sem criptografia. **Arquivos antigos v1/v2 continuam legíveis e não são convertidos ou apagados automaticamente.** A restauração de formatos antigos permanece disponível. O armazenamento precisa ter espaço para a nova cópia completa.
+
+O agente envia eventos e heartbeat aproximadamente a cada minuto, com fila persistente de relatórios. O master mantém logs por cliente/computador e sinaliza ausência de contato após cinco minutos. Quatro contas/empresas com tokens distintos são exercitadas nos testes. A conta master vê todos; cada conta de cliente vê somente seus dispositivos e cada token de computador só opera sua identificação. Ao gerar um client, selecione seu proprietário. Senhas novas usam scrypt com sal individual; hashes legados são migrados após login válido.
+
+O **Servidor do escritório** é configurado separadamente em Preferências, com URL HTTPS e token exclusivo daquele computador. O receptor disponível em `office-receiver.mjs` mantém repositórios separados por cliente, recebe apenas objetos criptografados, permite retomada por blocos e só confirma versões completas após conferir hashes. A API de agente não apaga nem substitui versões confirmadas. O receptor não tem chaves privadas de recuperação. O envio local + escritório compartilha o limite de banda. A fila persiste e usa tentativas com espera; o indicador do escritório continua pendente ou falho até receber confirmação real. Não se deve confundir o sucesso local com confirmação da cópia remota.
+
+O painel e o receptor foram preparados para execução em Linux/Docker, com Caddy para HTTPS. Consulte [implantação e plano Locaweb](deploy/README.md). Não foram contratados VPS/domínio nem configurado um servidor real do escritório. A recomendação inicial é VPS Linux 4 vCPU / 8 GB RAM / 80–100 GB SSD para controle, e servidor Linux com discos dimensionados para retenção no escritório. Preços e franquias atuais devem ser confirmados na contratação.
+
+Para o cenário completo ainda é necessário definir domínio, conectividade (IP público ou túnel), capacidade e retenção, implantar ambos os serviços e testar com a rede real. MFA, operação autônoma do agendamento com o painel remoto indisponível, rotação abrangente de credenciais e navegação/restauração remota completa são etapas adicionais explicitadas no documento de implantação. A fila de telemetria não deve ser confundida com agendamento offline autônomo.
