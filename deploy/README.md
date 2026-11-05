@@ -2,6 +2,8 @@
 
 Esta versão entrega componentes testáveis, não provisiona uma conta Locaweb nem altera o roteador do escritório. Domínios, VPS, armazenamento, credenciais e conectividade ainda devem ser definidos pelo proprietário.
 
+Para começar apenas com o painel online e backups locais/rede, siga o [passo a passo Locaweb](LOCAWEB-PASSO-A-PASSO.md). O receptor do escritório é opcional; não é requisito para relatórios.
+
 ```mermaid
 flowchart LR
   A[Computadores de clientes distintos] -->|HTTPS: relatório a cada minuto| P[Locaweb: painel, usuários e catálogo]
@@ -33,7 +35,7 @@ Os computadores precisam alcançar **HTTPS/443** no armazenamento. Preferir IP p
 
 Requisitos: VPS Linux atualizado, Docker Engine + Compose, DNS do painel apontando para seu IP e portas 80/443 disponíveis para Caddy emitir o certificado. A aplicação não publica a porta 3000 no host.
 
-1. Obter o repositório e o instalador master **0.12.0** publicado em dist. O Dockerfile extrai dele o client genérico para o botão de download; nenhum instalador personalizado é publicado na imagem.
+1. Obter o repositório e o instalador master **0.13.0** publicado em dist. O Dockerfile extrai dele o client genérico para o botão de download; nenhum instalador personalizado é publicado na imagem.
 2. Copiar deploy/central.env.example para deploy/central.env. Preencher domínio, ADMIN_PASSWORD (senha longa e exclusiva) e KEY_ENCRYPTION_PASSWORD (senha longa da chave privada). Guardar o arquivo fora do Git, com permissão 600. As duas senhas têm funções diferentes.
 3. Construir e iniciar:
 
@@ -41,7 +43,7 @@ Requisitos: VPS Linux atualizado, Docker Engine + Compose, DNS do painel apontan
 docker compose --env-file deploy/central.env -f deploy/compose.central.yml up -d --build
 ```
 
-4. Entrar pelo domínio HTTPS com admin e a senha inicial. O modo online desativa a sessão local automática. Criar uma conta por cliente e, ao gerar o instalador, selecionar o proprietário e o nome do computador. Informar o endereço HTTPS do painel. Cada client recebe somente seu token de agente e a chave pública de recuperação.
+4. Entrar pelo domínio HTTPS com admin e a senha inicial. O modo online desativa a sessão local automática. No botão Baixar client Windows, informar o nome exclusivo do computador. O endereço HTTPS do painel é incorporado automaticamente e o computador aparece no primeiro contato após instalar, sem cadastro de usuário/senha no client. Cada client recebe somente seu token de agente e a chave pública de recuperação.
 5. Em Preferências, exportar a chave master com uma senha de recuperação e guardar o arquivo e a senha em locais separados. A senha de recuperação não é a senha de login nem a variável de proteção do servidor. Para exportar/importar é necessário confirmar a senha da conta master.
 6. Fazer cópia do volume control-data, incluindo banco e chaves. ADMIN_PASSWORD só cria o usuário inicialmente; alterar a variável não troca uma senha já cadastrada. Não apagar/recriar o volume para atualizar.
 

@@ -10,6 +10,7 @@ services:
       HOST: 0.0.0.0
       PORT: 3000
       BACKUPDESK_CLOUD_MODE: '1'
+      BACKUPDESK_PUBLIC_URL: https://${CONTROL_DOMAIN:?Defina o dominio do painel}
       BACKUPDESK_KEY_PASSWORD: ${KEY_ENCRYPTION_PASSWORD:?Defina uma senha longa para a chave do master}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Defina a senha inicial do master}
     volumes:

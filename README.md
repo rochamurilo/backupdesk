@@ -1,12 +1,14 @@
-# BackupDesk 0.12.0 — versão de teste
+# BackupDesk 0.13.0 — versão de teste
 
-[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.12.0-x64.exe)
+[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.13.0-x64.exe)
+
+[Começar na Locaweb: contratação, instalação e primeiro client](deploy/LOCAWEB-PASSO-A-PASSO.md)
 
 ## Criar ou ajustar uma rotina
 
 Na aba **Preferências**, selecione o computador e cadastre uma ou mais pastas de destino (local, HD externo/USB ou rede). Todas as rotinas desse computador usam esses destinos automaticamente. O caminho pertence ao computador selecionado. No master local, Selecionar pasta abre a janela do Windows; para um client remoto, informe o caminho acessível naquela máquina. Depois, na aba **Backup**, escolha computador, dias, horário e pastas/arquivos de origem; não há seleção de destino por rotina.
 
-Salve e use **Fazer backup agora** para testar. O agendador usa o horário local do computador e executa cada rotina no máximo uma vez por dia agendado; dias perdidos com o computador desligado ainda não são recuperados automaticamente. Rotinas antigas podem ser ajustadas em **Editar**. Elas conservam o armazenamento legado até serem alteradas; não são movidas automaticamente. Atualize os clients para 0.12.0 pelo botão no canto inferior esquerdo do master antes de usar destinos em disco. Agentes antigos não recebem rotinas com esses destinos.
+Salve e use **Fazer backup agora** para testar. O agendador usa o horário local do computador e executa cada rotina no máximo uma vez por dia agendado; dias perdidos com o computador desligado ainda não são recuperados automaticamente. Rotinas antigas podem ser ajustadas em **Editar**. Elas conservam o armazenamento legado até serem alteradas; não são movidas automaticamente. Atualize os clients para 0.13.0 pelo botão no canto inferior esquerdo do master antes de usar destinos em disco. Agentes antigos não recebem rotinas com esses destinos.
 
 O motor em disco grava versões completas ou diferenciais em `DESTINO/BackupDesk/ID-COMPUTADOR/ID-ROTINA/ID-EXECUÇÃO`. Cada versão tem manifest.json com o catálogo lógico completo, hashes SHA-256 e referências à base completa. A pasta files contém apenas o conteúdo gravado naquela execução. Diretórios .partial-* são execuções incompletas e não são apresentados como backups válidos. O catálogo e os status continuam no master; os conteúdos desses backups ficam somente no destino escolhido.
 
@@ -154,3 +156,11 @@ O painel e o receptor foram preparados para execução em Linux/Docker, com Cadd
 Para o cenário completo ainda é necessário definir domínio, conectividade (IP público ou túnel), capacidade e retenção, implantar ambos os serviços e testar com a rede real. MFA, operação autônoma do agendamento com o painel remoto indisponível, rotação abrangente de credenciais e navegação/restauração remota completa são etapas adicionais explicitadas no documento de implantação. A fila de telemetria não deve ser confundida com agendamento offline autônomo.
 
 Validação 0.12.0: 66 testes locais e a checagem Chromium passaram. O [workflow Windows 41945332031](https://github.com/rochamurilo/backupdesk/actions/runs/41945332031) passou no instalador publicado: DPAPI em usuário comum, duas formas de recuperação, VSS com arquivo bloqueado, diferencial criptografado, restauração de repositório movido, preservação de chaves na atualização real do client e início automático. O teste integrado confirmou o recibo no receptor antes de sinalizar a cópia remota, a retomada após perda de ACK e o isolamento de quatro contas de cliente. As imagens Docker Linux do painel e receptor foram construídas; o painel iniciou como usuário sem privilégios, exigiu login online e manteve a chave protegida por senha. O download público foi comparado byte a byte ao pacote gerado. Certificados HTTPS públicos e conectividade entre redes reais dependem da implantação futura; PST real com Outlook continua exigindo teste de recuperação.
+
+## Instalação automática do client — 0.13.0
+
+O botão Vincular client e o cadastro de usuário/senha foram removidos da interface. Baixar client Windows pede somente o nome exclusivo da máquina no painel online; o domínio configurado é incorporado no executável com sua identificação. Depois de instalar e conectar, o agente se apresenta sozinho e aparece no dashboard, atualizado a cada cinco segundos. Um download ainda não instalado não conta como computador ativo. Atualizações mantêm identidade e chaves.
+
+O client executa os backups em pasta local, HD externo ou unidade de rede e reporta ao master na Locaweb, sem depender de cópia adicional no escritório. A coluna dessa cópia só aparece quando utilizada. O agendamento gerenciado ainda consulta o master e requer conectividade para iniciar execuções; não é um agendador totalmente offline.
+
+Consulte o [passo a passo completo da Locaweb](deploy/LOCAWEB-PASSO-A-PASSO.md), da contratação e DNS ao primeiro client. Comece apenas com o painel; o armazenamento do escritório pode ser contratado/preparado depois. Clients instalados por outro master não são transferidos automaticamente para um VPS novo; preserve recuperação e backups antes de migrar.

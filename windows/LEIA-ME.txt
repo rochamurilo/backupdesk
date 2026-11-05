@@ -1,4 +1,4 @@
-BACKUPDESK 0.12.0 - TESTE WINDOWS x64
+BACKUPDESK 0.13.0 - TESTE WINDOWS x64
 
 INSTALACAO
 Instale na mesma pasta para preservar cadastros e backups.
@@ -25,9 +25,9 @@ A tentativa agendada ocorre uma vez por dia elegivel, inclusive em caso de falha
 Para tentar novamente no mesmo dia, use Fazer backup agora.
 
 RESTAURACAO
-Escolha computador, origem/destino, dia no calendario e horario.
+Escolha computador, local dos backups, dia no calendario e horario.
 A lista mostra todos os arquivos da ultima versao concluida ate esse instante.
-Escolha uma pasta de recuperacao e restaure um ou todos os arquivos.
+Escolha o destino de recuperacao e restaure pelo botao de cada arquivo.
 O historico exibe so as dez ultimas execucoes; copias antigas sao preservadas.
 A recuperacao cria BackupDesk-Restaurado e nao sobrescreve os originais.
 Excluir/desativar uma rotina preserva seus backups anteriores.
@@ -81,11 +81,11 @@ O executavel leva nome, identificador e token de agente incorporados.
 Renomear o arquivo .exe nao muda o nome cadastrado.
 Atualizacoes do mesmo client preservam sua identificacao.
 Use um instalador identificado diferente para cada computador.
-Se o endereco HTTPS do master nao foi informado no download, configure-o
-no client depois de instalar. O nome e o token ja estarao preenchidos.
+O endereco HTTPS do painel web acompanha o instalador automaticamente.
+Nao ha cadastro de usuario/senha nem token para digitar na instalacao.
+Ao conectar depois de instalar, o computador aparece sozinho no dashboard.
 127.0.0.1 aponta somente para o proprio computador, nao para outro master.
-O cadastro nao significa que o client esta online ou que um backup foi feito.
-O repositorio de logs na internet ainda nao foi implementado.
+O primeiro contato nao comprova backup: confira o historico e teste a restauracao.
 
 PREFERENCIAS - 0.11.0
 Cadastre destinos local/USB/rede em Preferencias, por computador.
@@ -109,7 +109,7 @@ Diferenciais dependem do completo que deve estar nesse mesmo repositorio.
 Copie toda a pasta BackupDesk para preservar as bases.
 A leitura do catalogo nao modifica os arquivos do disco.
 
-CRIPTOGRAFIA - 0.12.0
+CRIPTOGRAFIA - 0.13.0
 Novos backups usam AES-256-GCM, incluindo conteudo e nomes dos arquivos.
 Uma chave de dados pode ser recuperada pelo computador ou pelo master.
 As chaves privadas do Windows usam DPAPI do usuario da instalacao.
@@ -128,9 +128,10 @@ PAINEL ONLINE E ESCRITORIO
 Relatorios e heartbeat sao enviados aproximadamente a cada minuto.
 A fila de relatorios persiste para reenvio. Sem contato por cinco minutos gera aviso.
 O envio ao escritorio e separado da copia local e precisa de HTTPS e token proprio.
-Configure em Preferencias quando o servidor existir.
+Esse servidor e opcional. Backup local/rede e relatorios ao painel nao dependem dele.
+Configure a copia adicional em Preferencias quando o servidor existir.
 O envio ao escritorio usa fila, retomada e confirmacao de armazenamento.
 Local concluido nao significa escritorio confirmado.
-Os servicos e a receita de hospedagem estao no repositorio, em deploy/README.md.
+O passo a passo do painel esta em deploy/LOCAWEB-PASSO-A-PASSO.md no repositorio.
 VPS, dominio e servidor fisico ainda precisam ser contratados/configurados.
 O agendamento remoto ainda depende de conexao com o master configurado.
