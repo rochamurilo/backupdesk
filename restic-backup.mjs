@@ -8,9 +8,19 @@ async function withResticPaths(roots,useVss,operation){
  if(process.platform!=='win32'||!useVss)return operation(roots,p=>p);
  const temp=await mkdtemp(path.join(tmpdir(),'backupdesk-restic-vss-')),mounts=new Map();
  try{
-  for(const root of roots){const match=/^(\\\\\?\\GLOBALROOT\\Device\\HarddiskVolumeShadowCopy\d+)(?:\\|$)/i.exec(root);if(!match)throw Error('Origem VSS inválida para Restic.');const device=match[1];if(!mounts.has(device.toLowerCase())){const link=path.join(temp,'volume-'+mounts.size);await symlink(device+'\\',link,'junction');mounts.set(device.toLowerCase(),{device,link})}}
-  const map=p=>{const mount=[...mounts.values()].find(m=>p.toLowerCase()===m.device.toLowerCase()||p.toLowerCase().startsWith(m.device.toLowerCase()+'\\'));if(!mount)throw Error('Arquivo fora dos snapshots VSS.');return path.join(mount.link,p.slice(mount.device.length))};
-  const mapped=[];for(const root of roots){const alias=map(root);if([...mounts.values()].some(m=>m.link===alias)){for(const name of await readdir(alias))mapped.push(path.join(alias,name))}else mapped.push(alias)}
+  for(const root of roots){
+   const match=/^(\\\\\?\\GLOBALROOT\\Device\\HarddiskVolumeShadowCopy\d+)(?:\\|$)/i.exec(root);
+   if(!match)throw Error('Origem VSS inválida para Restic.');
+   const device=match[1];let base=path.dirname(root);
+   if(base.toLowerCase()===device.toLowerCase()){
+    if(!(await lstat(root)).isDirectory())throw Error('No piloto Restic, selecione arquivos dentro de uma pasta, fora da raiz da unidade.');
+    base=root;
+   }
+   if(root.toLowerCase()===device.toLowerCase())throw Error('No piloto Restic, selecione pastas dentro da unidade, em vez da unidade inteira.');
+   if(!mounts.has(base.toLowerCase())){const link=path.join(temp,'source-'+mounts.size);await symlink(base+path.sep,link,'junction');mounts.set(base.toLowerCase(),{base,link})}
+  }
+  const map=p=>{const mount=[...mounts.values()].sort((a,b)=>b.base.length-a.base.length).find(m=>p.toLowerCase()===m.base.toLowerCase()||p.toLowerCase().startsWith(m.base.toLowerCase()+path.sep));if(!mount)throw Error('Arquivo fora dos snapshots VSS.');return path.join(mount.link,p.slice(mount.base.length))};
+  const mapped=[];for(const root of roots){const alias=map(root);if([...mounts.values()].some(m=>m.link===alias)){const names=await readdir(alias);if(!names.length)mapped.push(alias);else for(const name of names)mapped.push(path.join(alias,name))}else mapped.push(alias)}
   return await operation(mapped,map);
  }finally{for(const {link} of [...mounts.values()].reverse())await rmdir(link);await rmdir(temp)}
 }
