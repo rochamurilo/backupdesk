@@ -56,6 +56,11 @@ try{
  $info.FileName=$powerShell;$info.Arguments='-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "'+(Join-Path $testRoot 'run.ps1')+'"'
  $info.UserName=$userName;$info.Domain=$env:COMPUTERNAME;$info.Password=$password;$info.LoadUserProfile=$true
  $info.UseShellExecute=$false;$info.CreateNoWindow=$true;$info.WorkingDirectory=$testRoot
+ # A child started with alternate credentials otherwise inherits the runner administrator's TEMP.
+ # Give the real standard-user process a writable temporary folder, as in a normal Windows logon.
+ $userTemp=Join-Path $testRoot 'user-temp'
+ New-Item -ItemType Directory -Path $userTemp -Force | Out-Null
+ $info.EnvironmentVariables['TEMP']=$userTemp;$info.EnvironmentVariables['TMP']=$userTemp
  $info.RedirectStandardOutput=$true;$info.RedirectStandardError=$true
  $child=New-Object System.Diagnostics.Process;$child.StartInfo=$info
  try{
