@@ -1,6 +1,6 @@
-# BackupDesk 0.20.0 — versão de teste
+# BackupDesk 0.21.0 — versão de teste
 
-[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.20.0-x64.exe)
+[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.21.0-x64.exe)
 
 [Começar na Locaweb: contratação, instalação e primeiro client](deploy/LOCAWEB-PASSO-A-PASSO.md)
 
@@ -254,3 +254,24 @@ A navegação usa **Visão Geral**, o título da página de backup é **Opções
 O aviso informativo de validação do PST saiu do histórico e da tela de Restauração. Falhas reais não são apagadas nem transformadas em sucesso: sua mensagem é exibida em **Falhas Registradas**, preservando o período de 30 dias e a marcação como lido. A cópia com VSS, a verificação de integridade e os metadados de PST continuam sendo produzidos pelo motor. Clients 0.19.0 continuam compatíveis com Logs; esta reorganização exige atualizar o painel.
 
 Validação 0.20.0: 86 testes locais e a checagem Chromium passaram. O navegador confirmou os títulos/capitalização, o histórico com 10 itens somente em Backup, a navegação de Ver arquivos para a versão selecionada, a ausência do aviso informativo PST e a mensagem de erro real dentro de Falhas Registradas. O [workflow Windows 42125460163](https://github.com/rochamurilo/backupdesk/actions/runs/42125460163) passou em todos os trabalhos, incluindo instalador identificado/atualização, VSS, início automático e logs assinados em duas pastas SMB. Os arquivos empacotados, o client embutido e o download público foram comparados aos artefatos finais; a imagem web 0.20.0 foi construída e seus títulos/versão conferidos.
+
+
+## Piloto Restic e política de cinco dias — 0.21.0
+
+Ative por computador em **Preferências → Desempenho → Motor de backup → Restic — piloto por blocos**, salve e execute uma rotina em uma pasta de teste. Instalações existentes mantêm o motor anterior; backups antigos permanecem restauráveis. O Restic 0.19.1 é distribuído com versão e SHA-256 fixados e seus avisos de licença. `tools/fetch-restic.sh` prepara os executáveis de desenvolvimento/build; `tools/fetch-restic.ps1` prepara os testes Windows.
+
+No Restic, cada execução é um **snapshot completo lógico** e grava blocos ausentes do repositório. Não significa nova cópia física independente. A política aprovada passa a ser: primeiro snapshot de cada repositório recebe **check --read-data**; repetir na primeira execução elegível após cinco dias desde o último check aprovado. Uma execução interrompida ou verificação com falha não avança o registro de integridade nem publica um ponto aprovado no catálogo do BackupDesk. O estado de integridade é autenticado/cifrado; ausência, adulteração ou data futura exigem nova verificação. Verificação não é validação interna do PST no Outlook. Não foi acrescentada exclusão automática de versões ou `prune`.
+
+O repositório de blocos fica em `DESTINO/BackupDesk/ID-COMPUTADOR/.restic/ID-CHAVE`; os catálogos criptografados por rotina/execução ficam no layout anterior e referenciam snapshots por ID. Todos os dados necessários devem acompanhar o transporte do disco: copie **toda a pasta BackupDesk, inclusive .restic**. Apagar uma pasta de execução não elimina de maneira controlada os blocos que ela usa; apagar objetos de .restic pode inutilizar várias versões. Nenhuma rotina de limpeza automática foi implementada neste piloto.
+
+O processo Restic usa senha derivada da chave aleatória do computador, com domínio/identificação próprios, transmitida somente no ambiente do processo filho. Não há senha em argumentos, catálogos públicos ou logs. A recuperação pelo master e por nome/chave BD1 continua usando os envelopes atuais e o catálogo versionado novo; nomes, datas e hashes finais de arquivos ficam no catálogo criptografado. Restaurar usa dump em fluxo para arquivo temporário, verifica tamanho/SHA-256 antes de publicar e preserva a data de modificação. Arquivos não selecionados não são restaurados.
+
+O Windows continua usando o auxiliar restrito de VSS já instalado, sem pedir elevação por execução. O instalador encerra apenas Node/Restic da própria instalação ao atualizar; executáveis de outras pastas são preservados.
+
+**Escopo do piloto:** pastas locais, HD externo e compartilhamentos UNC, com repositório independente em cada destino. O envio HTTPS ao receptor antigo do escritório é incompatível e a combinação é bloqueada, em vez de declarar uma cópia remota que não aconteceu. O controle/log online continua funcionando. O limite configurado é aplicado conservadoramente à operação inteira Restic; o horário de ativação/desativação não é reavaliado durante o processo. Limites inferiores a 0,009 Mbit/s são recusados no piloto. A verificação integral pode ler todo o repositório e demorar em rede; reutilizar blocos não garante reduzir na mesma proporção a leitura da origem.
+
+Teste recomendado: primeiro backup, alteração de uma parte de arquivo grande, segundo snapshot com poucos bytes novos, restauração de ambas as versões, restauração em outra instalação pelas duas formas de chave, interrupção/destino indisponível e corrupção de uma cópia de teste. Compare hashes e, para PST, abra uma cópia restaurada no Outlook. Nunca faça o teste de corrupção sobre o único backup válido. Use 7–14 dias de piloto e restaure dados reais antes de trocar todas as máquinas.
+
+No piloto, limites de velocidade são capturados ao iniciar a operação Restic; alterações nas preferências valem para a próxima operação. O horário de limitação não interrompe nem reinicia uma cópia em andamento.
+
+O BackupDesk não acrescenta `unlock` nem `--remove-all`: mantém o protocolo normal de locks do próprio Restic. Conflitos são reportados como falha; o teste de interrupção verifica a preservação de locks ativos, a retomada permitida pelo protocolo oficial e a restauração dos snapshots anteriores.

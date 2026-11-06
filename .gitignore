@@ -8,3 +8,5 @@ keys/
 *Recovery*.json
 office-data/
 *.env
+bin/
+windows/restic.exe

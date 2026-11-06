@@ -8,15 +8,21 @@ try{
  foreach($root in @($target,$other)){
   New-Item -ItemType Directory -Path $root -Force | Out-Null
   Copy-Item -LiteralPath (Get-Command node.exe).Source -Destination (Join-Path $root 'node.exe')
+  New-Item -ItemType Directory -Path (Join-Path $root 'windows') -Force | Out-Null
+  Copy-Item -LiteralPath (Get-Command node.exe).Source -Destination (Join-Path $root 'windows\restic.exe')
   Set-Content -LiteralPath (Join-Path $root 'agent.mjs') -Value 'setInterval(()=>{},1000);'
   Set-Content -LiteralPath (Join-Path $root 'server.mjs') -Value 'setInterval(()=>{},1000);'
  }
  Set-Content -LiteralPath (Join-Path $target 'master.mjs') -Value "import {spawn} from 'node:child_process';spawn(process.execPath,['server.mjs'],{stdio:'ignore'});setInterval(()=>{},1000);"
  $process=Start-Process -FilePath (Join-Path $target 'node.exe') -ArgumentList 'master.mjs' -WorkingDirectory $target -PassThru -WindowStyle Hidden
  $unrelated=Start-Process -FilePath (Join-Path $other 'node.exe') -ArgumentList 'server.mjs' -WorkingDirectory $other -PassThru -WindowStyle Hidden
+ $resticProcess=Start-Process -FilePath (Join-Path $target 'windows\restic.exe') -ArgumentList (Join-Path $target 'agent.mjs') -PassThru -WindowStyle Hidden
+ $otherRestic=Start-Process -FilePath (Join-Path $other 'windows\restic.exe') -ArgumentList (Join-Path $other 'agent.mjs') -PassThru -WindowStyle Hidden
  Start-Sleep -Seconds 2
  Stop-BackupDeskInstallation $target
  if(Get-CimInstance Win32_Process -Filter "Name='node.exe'" | Where-Object {$_.ExecutablePath -eq (Join-Path $target 'node.exe')}){throw 'Os processos da instalação continuaram ativos.'}
+ $resticProcess.Refresh();if(-not $resticProcess.HasExited){throw 'O Restic da instalação permaneceu ativo.'}
+ $otherRestic.Refresh();if($otherRestic.HasExited){throw 'Um Restic de outra instalação foi encerrado.'}
  $unrelated.Refresh();if($unrelated.HasExited){throw 'Um processo Node.js de outra pasta foi encerrado.'}
  if(-not (Test-Path -LiteralPath (Join-Path $target 'data\update-lock.json'))){throw 'Proteção contra reinício não foi criada.'}
  Register-BackupDeskStartup $target $sid 'master'
@@ -31,7 +37,7 @@ try{
  'Windows: atualização encerra supervisor e agentes elevados da própria pasta, preserva outros Node.js e registra início automático sem elevação: OK.'
 }finally{
  Remove-BackupDeskStartup $sid 'master'
- foreach($root in @($target,$other)){Get-CimInstance Win32_Process -Filter "Name='node.exe'" | Where-Object {$_.ExecutablePath -eq (Join-Path $root 'node.exe')} | ForEach-Object {Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue}}
+ foreach($root in @($target,$other)){Get-CimInstance Win32_Process -Filter "Name='node.exe' OR Name='restic.exe'" | Where-Object {$_.ExecutablePath -eq (Join-Path $root 'node.exe') -or $_.ExecutablePath -eq (Join-Path $root 'windows\restic.exe')} | ForEach-Object {Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue}}
  Start-Sleep -Milliseconds 500
  if(Test-Path -LiteralPath $dir){Remove-Item -LiteralPath $dir -Recurse -Force}
 }

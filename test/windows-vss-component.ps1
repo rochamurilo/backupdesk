@@ -40,8 +40,9 @@ try{
  $task=Get-ScheduledTask -TaskName ('BackupDeskVSS-master-'+$sid)
  if($task.Principal.UserId -notin @('SYSTEM','S-1-5-18')){throw 'A conta do componente não é SYSTEM.'}
  New-Item -ItemType Directory -Path (Join-Path $testRoot 'agent\windows') -Force | Out-Null
- foreach($file in @('disk-backup.mjs','crypto-vault.mjs','encrypted-files.mjs','backup-repository.mjs','repository-catalog.mjs','bandwidth.mjs','filesystem.mjs','vss.mjs')){Copy-Item -LiteralPath (Join-Path $repo $file) -Destination (Join-Path $testRoot 'agent')}
+ foreach($file in @('disk-backup.mjs','restic-backup.mjs','restic-runner.mjs','restic-policy.mjs','restic-release.mjs','crypto-vault.mjs','encrypted-files.mjs','backup-repository.mjs','repository-catalog.mjs','bandwidth.mjs','filesystem.mjs','vss.mjs')){Copy-Item -LiteralPath (Join-Path $repo $file) -Destination (Join-Path $testRoot 'agent')}
  Copy-Item -LiteralPath (Join-Path $repo 'windows\encrypted-backup-check.mjs') -Destination (Join-Path $testRoot 'agent\windows-encrypted-backup.mjs')
+ Copy-Item -LiteralPath (Join-Path $repo 'windows\restic.exe') -Destination (Join-Path $testRoot 'agent\windows')
  Copy-Item -LiteralPath (Join-Path $repo 'windows\protect-key.ps1') -Destination (Join-Path $testRoot 'agent\windows')
  Copy-Item -LiteralPath (Join-Path $repo 'windows\vss-client.ps1') -Destination (Join-Path $testRoot 'agent\windows')
  Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'windows-vss-user.ps1') -Destination (Join-Path $testRoot 'run.ps1')

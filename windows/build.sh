@@ -4,6 +4,7 @@ cd "$(dirname "$0")/.."
 version=24.19.0
 archive="node-v${version}-win-x64.zip"
 mkdir -p windows/build dist
+bash tools/fetch-restic.sh
 build_tmp=$(mktemp -d)
 trap 'rm -rf "$build_tmp"' EXIT
 curl --fail --location "https://nodejs.org/dist/v${version}/${archive}" -o "$build_tmp/$archive"
@@ -14,8 +15,8 @@ unzip -p "$build_tmp/$archive" "node-v${version}-win-x64/LICENSE" > windows/buil
 "${MAKENSIS:-makensis}" -DCLIENT windows/launcher.nsi
 "${MAKENSIS:-makensis}" -DCLIENT windows/vss-component.nsi
 "${MAKENSIS:-makensis}" -DCLIENT windows/installer.nsi
-cp windows/build/BackupDesk-Client-0.20.0-x64.exe dist/
+cp windows/build/BackupDesk-Client-0.21.0-x64.exe dist/
 "${MAKENSIS:-makensis}" windows/launcher.nsi
 "${MAKENSIS:-makensis}" windows/vss-component.nsi
 "${MAKENSIS:-makensis}" windows/installer.nsi
-(cd dist; sha256sum BackupDesk-Master-0.20.0-x64.exe > SHA256SUMS.txt)
+(cd dist; sha256sum BackupDesk-Master-0.21.0-x64.exe > SHA256SUMS.txt)

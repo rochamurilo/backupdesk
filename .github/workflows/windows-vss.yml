@@ -5,6 +5,9 @@ on:
     branches: [main]
     paths:
       - 'disk-backup.mjs'
+      - 'restic*.mjs'
+      - 'tools/fetch-restic*'
+      - 'test/restic*.mjs'
       - 'crypto-vault.mjs'
       - 'encrypted-files.mjs'
       - 'office-client.mjs'
@@ -32,7 +35,7 @@ on:
       - 'windows/Configure.ps1'
       - 'test/windows-client-install.ps1'
       - 'test/client-package.test.mjs'
-      - 'dist/BackupDesk-Master-0.20.0-x64.exe'
+      - 'dist/BackupDesk-Master-0.21.0-x64.exe'
       - 'backup-repository.mjs'
       - 'vss.mjs'
       - 'filesystem.mjs'
@@ -55,9 +58,13 @@ jobs:
           sparse-checkout: |
             windows
             test
+            tools
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - name: Fetch pinned Restic
+        shell: powershell
+        run: ./tools/fetch-restic.ps1
       - name: Test protected automatic component and locked file snapshot
         shell: powershell
         run: |
@@ -85,6 +92,7 @@ jobs:
           sparse-checkout: |
             windows
             test
+            tools
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -110,7 +118,7 @@ jobs:
             !/*/
             /windows/
             /test/
-            /dist/BackupDesk-Master-0.20.0-x64.exe
+            /dist/BackupDesk-Master-0.21.0-x64.exe
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -137,6 +145,7 @@ jobs:
           sparse-checkout: |
             windows
             test
+            tools
       - uses: actions/setup-node@v4
         with:
           node-version: '24'

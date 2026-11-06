@@ -9,6 +9,8 @@ function Get-BackupDeskDirectory([string]$Directory){
 function Stop-BackupDeskInstallation([string]$Directory){
  $root=Get-BackupDeskDirectory $Directory
  $node=Join-Path $root 'node.exe'
+ $restic=Join-Path $root 'windows\restic.exe'
+ $executables=@($node,$restic)
  if(-not (Test-Path -LiteralPath $node)){return}
  if(-not (Test-Path -LiteralPath (Join-Path $root 'agent.mjs')) -or (-not (Test-Path -LiteralPath (Join-Path $root 'server.mjs')) -and -not (Test-Path -LiteralPath (Join-Path $root 'launch-agent.mjs')))){throw 'A pasta não foi reconhecida como uma instalação do BackupDesk. Nenhum processo foi encerrado.'}
  New-Item -ItemType Directory -Path (Join-Path $root 'data') -Force | Out-Null
@@ -44,11 +46,11 @@ namespace BackupDesk {
 '@
  }
  for($attempt=0;$attempt -lt 30;$attempt++){
-  $targets=@(Get-CimInstance Win32_Process -Filter "Name='node.exe'" | Where-Object {$_.ExecutablePath -and [string]::Equals([IO.Path]::GetFullPath($_.ExecutablePath),$node,[StringComparison]::OrdinalIgnoreCase)} | Sort-Object @{Expression={if($_.CommandLine -match 'master\.mjs|launch-agent\.mjs'){0}elseif($_.CommandLine -match 'server\.mjs'){1}else{2}}})
-  foreach($process in $targets){$null=[BackupDesk.UpdateProcesses]::Stop([int]$process.ProcessId,$node)}
+  $targets=@(Get-CimInstance Win32_Process -Filter "Name='node.exe' OR Name='restic.exe'" | Where-Object {$_.ExecutablePath -and ($executables -icontains [IO.Path]::GetFullPath($_.ExecutablePath))} | Sort-Object @{Expression={if($_.CommandLine -match 'master\.mjs|launch-agent\.mjs'){0}elseif($_.CommandLine -match 'server\.mjs'){1}else{2}}})
+  foreach($process in $targets){$null=[BackupDesk.UpdateProcesses]::Stop([int]$process.ProcessId,[IO.Path]::GetFullPath($process.ExecutablePath))}
   if(-not $targets.Count){
    $file=$null
-   try{$file=[IO.File]::Open($node,[IO.FileMode]::Open,[IO.FileAccess]::ReadWrite,[IO.FileShare]::Read);return}catch{if($attempt -eq 29){throw 'O executável ainda está bloqueado. Nenhum arquivo do aplicativo foi substituído.'}}finally{if($file){$file.Dispose()}}
+   try{foreach($executable in $executables){if(Test-Path -LiteralPath $executable){$file=[IO.File]::Open($executable,[IO.FileMode]::Open,[IO.FileAccess]::ReadWrite,[IO.FileShare]::Read);$file.Dispose();$file=$null}};return}catch{if($attempt -eq 29){throw 'O executável ainda está bloqueado. Nenhum arquivo do aplicativo foi substituído.'}}finally{if($file){$file.Dispose()}}
   }
   Start-Sleep -Milliseconds 500
  }

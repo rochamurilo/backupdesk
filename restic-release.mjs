@@ -1,0 +1,2 @@
+export const RESTIC_VERSION='0.19.1';
+export const RESTIC_BINARIES={linux:'20d4142678d0d95ec11a4759def1b73fd9190abc9ca19e4b62d067c0b387e639',win32:'b0dd1fd21eea5d8fe1325f55f7118213c21f36de8a261e04c0624a5ab9fd7830'};

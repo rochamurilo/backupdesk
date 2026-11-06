@@ -10,7 +10,7 @@ const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 test('client identificado aparece sozinho no master web e reporta backup em rede sem servidor do escritório',{timeout:40000},async()=>{
  const root=await mkdtemp(join(tmpdir(),'backupdesk-auto-client-')),url='http://127.0.0.1:3202';let server,agent;
  try{
-  for(const file of await readdir('.'))if(file.endsWith('.mjs'))await copyFile(file,join(root,file));await cp('public',join(root,'public'),{recursive:true});await mkdir(join(root,'dist'));await writeFile(join(root,'dist','BackupDesk-Client-0.20.0-x64.exe'),'MZ-test');
+  for(const file of await readdir('.'))if(file.endsWith('.mjs'))await copyFile(file,join(root,file));await cp('public',join(root,'public'),{recursive:true});await mkdir(join(root,'dist'));await writeFile(join(root,'dist','BackupDesk-Client-0.21.0-x64.exe'),'MZ-test');
   server=spawn(process.execPath,[join(root,'server.mjs')],{cwd:root,env:{...process.env,PORT:'3202',HOST:'127.0.0.1',DATA_DIR:join(root,'data'),ADMIN_PASSWORD:'automatic-master-password',BACKUPDESK_CLOUD_MODE:'1',BACKUPDESK_KEY_PASSWORD:'server-private-key-password',BACKUPDESK_PUBLIC_URL:url}});await once(server.stdout,'data');
   let token;const api=async(p,b)=>{const r=await fetch(url+'/api/'+p,{method:b?'POST':'GET',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:b?JSON.stringify(b):undefined});return {status:r.status,body:await r.json()}};
   token=(await api('login',{name:'admin',password:'automatic-master-password'})).body.token;
