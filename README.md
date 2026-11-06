@@ -1,6 +1,6 @@
-# BackupDesk 0.21.0 — versão de teste
+# BackupDesk 0.22.0 — versão de teste
 
-[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.21.0-x64.exe)
+[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.22.0-x64.exe)
 
 [Começar na Locaweb: contratação, instalação e primeiro client](deploy/LOCAWEB-PASSO-A-PASSO.md)
 
@@ -281,3 +281,18 @@ O roteiro detalhado de aprovação do piloto está em [TESTAR-RESTIC.md](TESTAR-
 Validação 0.21.0: 90 testes locais e Chromium aprovados, incluindo Restic real, redução de bytes após pequena alteração, verificação na fronteira de cinco dias, falha de integridade sem aprovação do snapshot, recuperação pelo computador/master/BD1, transporte do repositório e interrupção sem remoção forçada de locks. O [workflow Windows 42143493723](https://github.com/rochamurilo/backupdesk/actions/runs/42143493723) passou nos quatro trabalhos: instalação/atualização, VSS e dois compartilhamentos SMB com logs assinados. O teste VSS exercitou Restic como usuário comum com arquivo bloqueado, múltiplas origens, subpastas, repetição sem novo check e restauração master. O teste não substitui a abertura de um PST real restaurado no Outlook.
 
 Conferência do pacote final 0.21.0: [workflow Windows 42144086013](https://github.com/rochamurilo/backupdesk/actions/runs/42144086013) aprovado em todos os trabalhos. Os módulos do instalador foram extraídos e comparados ao código validado, o client embutido foi comparado ao pacote gerado e o SHA-256 do Restic Windows foi conferido. A imagem web final passou em backup real, verificação integral e restauração master. O instalador público foi baixado e comparado byte a byte ao artefato local; SHA-256 `f95cbe0d241b40d2f8f1214ef2a89d94f9fe7b76ed5b1aaf9b3d1ed59a32608b`.
+
+
+## Client local independente — 0.22.0
+
+O client gerado no master local funciona sem endereço do painel. Ele abre seu próprio painel somente em `127.0.0.1:3001`, guarda rotinas e preferências na própria máquina, executa os agendamentos com o master desligado e inicia ao entrar no Windows. O master mantém a função de acompanhamento pelos logs; para essas máquinas, configure rotinas, destinos, Restic e credenciais de gravação no próprio client. O master não envia comandos pela pasta de logs.
+
+1. Atualize o master para 0.22.0.
+2. Em **Preferências → Logs**, selecione a pasta da rede que o master vai consultar, com credenciais de leitura se necessárias. Há duas pastas independentes, local e nuvem/montada.
+3. Gere novamente o client pelo botão **Baixar client Windows**, informando o nome da máquina. Instale esse executável na máquina correspondente. Uma atualização da mesma identidade preserva chave, nome, data original e configurações existentes.
+4. No atalho **BackupDesk Client**, configure destinos e rotinas. Confira **Preferências → Logs**: os caminhos do master são sugeridos na primeira instalação, sem copiar senhas. Ajuste o caminho acessível pelo client e, se necessário, preencha as credenciais de gravação de cada pasta separadamente. Para máquinas diferentes, prefira caminhos UNC como `\\servidor\LogsBackup`.
+5. Execute um backup e confira o arquivo `BackupDesk-Logs/ID-COMPUTADOR.json`. O client atualiza o status a cada minuto e nos backups. O master consulta a mesma pasta a cada minuto e inclui a máquina na Visão Geral após validar o primeiro log.
+
+O arquivo contém status compacto, assinatura e prova de posse da chave escolhida no cadastro; não contém senha de rede, token do agente ou chave BD1 em texto aberto. O master só admite computadores para os quais gerou instalador e valida a prova contra a chave preservada no cadastro. Uma chave pública autodeclarada, um log adulterado ou outro identificador de instalação não autoriza um novo vínculo. O indicador de conexão considera a data de geração do log, sem tornar uma máquina online apenas porque o master releu um arquivo antigo.
+
+O client vê somente sua máquina e não dispõe das funções de cadastrar usuários ou gerar instaladores. As chaves dos backups continuam permitindo recuperação pelo computador e pelo master de origem, inclusive quando o primeiro contato ocorre pela rede de arquivos. Instalações anteriores que já usam endereço incorporado continuam no modo online; instaladores gerados pelo painel web com `BACKUPDESK_PUBLIC_URL` também mantêm conexão automática. Não há campo obrigatório de URL no fluxo local.

@@ -1,6 +1,6 @@
 ﻿$ErrorActionPreference='Stop'
 $repo=Split-Path $PSScriptRoot -Parent
-$master=Join-Path $repo 'dist\BackupDesk-Master-0.21.0-x64.exe'
+$master=Join-Path $repo 'dist\BackupDesk-Master-0.22.0-x64.exe'
 if(-not (Test-Path -LiteralPath $master)){'Instalador ainda não publicado; teste de pacote será executado na publicação.';return}
 $root=Join-Path $env:TEMP ('BackupDesk Client Test '+[guid]::NewGuid().ToString('N'))
 $extract=Join-Path $root 'extracted'
@@ -12,19 +12,56 @@ New-Item -ItemType Directory -Path $root | Out-Null
 try{
  $null=& $sevenZip x $master ('-o'+$extract) -y
  if($LASTEXITCODE -ne 0){throw 'Falha ao extrair o pacote publicado.'}
- $generic=Get-ChildItem -LiteralPath $extract -Filter 'BackupDesk-Client-0.21.0-x64.exe' -Recurse | Select-Object -First 1
+ $generic=Get-ChildItem -LiteralPath $extract -Filter 'BackupDesk-Client-0.22.0-x64.exe' -Recurse | Select-Object -First 1
  if(-not $generic){throw 'Master não contém o client esperado.'}
+ $env:BACKUPDESK_TEST_LOG_LOCAL=Join-Path $root 'logs local';$env:BACKUPDESK_TEST_LOG_CLOUD=Join-Path $root 'logs cloud'
+ New-Item -ItemType Directory -Path $env:BACKUPDESK_TEST_LOG_LOCAL,$env:BACKUPDESK_TEST_LOG_CLOUD | Out-Null
  $env:BACKUPDESK_TEST_CLIENT_BASE=$generic.FullName
  $env:BACKUPDESK_TEST_CLIENT_NAMED=$renamed
  Set-Location $repo
- & node --input-type=module -e "import {readFile,writeFile} from 'node:fs/promises';import {enrollmentTrailer} from './client-package.mjs';const {generateKeyPairSync}=await import('node:crypto');const publicKey=generateKeyPairSync('rsa',{modulusLength:3072,publicKeyEncoding:{type:'spki',format:'pem'},privateKeyEncoding:{type:'pkcs8',format:'pem'}}).publicKey;const config={security_key:'07'.repeat(32),recovery_public_key:publicKey,format:'backupdesk-client-v1',device_id:'d'.repeat(64),name:'Financeiro São Paulo',url:'http://127.0.0.1:3339',token:'a'.repeat(64)};await writeFile(process.env.BACKUPDESK_TEST_CLIENT_NAMED,Buffer.concat([await readFile(process.env.BACKUPDESK_TEST_CLIENT_BASE),enrollmentTrailer(config)]));"
+ & node --input-type=module -e "import {readFile,writeFile} from 'node:fs/promises';import {enrollmentTrailer} from './client-package.mjs';const {generateKeyPairSync}=await import('node:crypto');const publicKey=generateKeyPairSync('rsa',{modulusLength:3072,publicKeyEncoding:{type:'spki',format:'pem'},privateKeyEncoding:{type:'pkcs8',format:'pem'}}).publicKey;const config={security_key:'07'.repeat(32),recovery_public_key:publicKey,format:'backupdesk-client-v1',device_id:'d'.repeat(64),name:'Financeiro São Paulo',mode:'local',url:null,log_defaults:{local:{path:process.env.BACKUPDESK_TEST_LOG_LOCAL},cloud:{path:process.env.BACKUPDESK_TEST_LOG_CLOUD}},token:'a'.repeat(64)};await writeFile(process.env.BACKUPDESK_TEST_CLIENT_NAMED,Buffer.concat([await readFile(process.env.BACKUPDESK_TEST_CLIENT_BASE),enrollmentTrailer(config)]));"
  if($LASTEXITCODE -ne 0){throw 'Falha ao incorporar identificação no instalador.'}
  $process=Start-Process -FilePath $renamed -ArgumentList @('/S',('/D='+$target)) -PassThru
  if(-not $process.WaitForExit(180000)){$process.Kill();throw 'Instalação identificada excedeu o prazo.'}
  if($process.ExitCode -ne 0){throw ('Instalador retornou '+$process.ExitCode)}
  $config=Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $target 'agent-config.json') | ConvertFrom-Json
  if($config.name -ne 'Financeiro São Paulo' -or $config.device_id -ne ('d'*64) -or -not $config.installation_id){throw 'Identidade não foi instalada automaticamente.'}
- if($config.url -ne 'http://127.0.0.1:3339'){throw 'Conexão automática não foi incorporada no instalador.'}
+ if($config.url -or $config.mode -ne 'local'){throw 'O client local não pode exigir endereço do master.'}
+ $panel='http://127.0.0.1:3001'
+ $script:clientSession=$null
+ function Invoke-LocalClient($Path,$Body=$null){
+  $headers=@{Origin=$panel};if($script:clientSession){$headers.Authorization='Bearer '+$script:clientSession}
+  if($null -eq $Body){return Invoke-RestMethod -Uri ($panel+'/api/'+$Path) -Headers $headers -TimeoutSec 5}
+  return Invoke-RestMethod -Uri ($panel+'/api/'+$Path) -Method Post -ContentType 'application/json' -Body ($Body | ConvertTo-Json -Depth 12 -Compress) -Headers $headers -TimeoutSec 10
+ }
+ function Wait-LocalClient {
+  $ready=$false
+  for($attempt=0;$attempt -lt 100;$attempt++){try{$health=Invoke-LocalClient 'health';if($health.mode -eq 'client' -and $health.device -eq $config.device_id){$ready=$true;break}}catch{};Start-Sleep -Milliseconds 300}
+  if(-not $ready){throw 'O painel local do client não iniciou sem endereço do master.'}
+  $script:clientSession=(Invoke-LocalClient 'local-session' @{}).token
+  for($attempt=0;$attempt -lt 100;$attempt++){$state=Invoke-LocalClient 'state';if($state.devices[0].version -eq '0.22.0'){return $state};Start-Sleep -Milliseconds 200}
+  throw 'O agente local do client não iniciou.'
+ }
+ $localState=Wait-LocalClient
+ if($localState.user.role -ne 'client' -or $localState.devices.Count -ne 1 -or $localState.localDeviceId -ne $config.device_id){throw 'O client expôs controles master ou outra máquina.'}
+ $source=Join-Path $root 'source';$destination=Join-Path $root 'backups';$restore=Join-Path $root 'restored'
+ New-Item -ItemType Directory -Path $source,$destination,$restore | Out-Null
+ [IO.File]::WriteAllText((Join-Path $source 'sample.txt'),'backup independente do master')
+ $null=Invoke-LocalClient ('devices/'+$config.device_id+'/preferences') @{engine='restic';destinations=@(@{path=$destination;type='local'});bandwidth=@{enabled=$false;start='00:00';end='00:00';upload_mbps=50;download_mbps=$null}}
+ $routine=Invoke-LocalClient 'routines' @{device=$config.device_id;name='Rotina do client';source=(ConvertTo-Json -InputObject @($source) -Compress);cadence='daily';hour='23:59'}
+ function Wait-ClientJob($Job){
+  for($attempt=0;$attempt -lt 200;$attempt++){$result=Invoke-LocalClient ('jobs/'+$Job.id);if($result.status -eq 'failed'){throw ('Tarefa local falhou: '+$result.error)};if($result.status -eq 'success'){return $result.result};Start-Sleep -Milliseconds 300}
+  throw 'A tarefa local não concluiu.'
+ }
+ $backup=Wait-ClientJob (Invoke-LocalClient 'jobs' @{kind='backup';routine_id=$routine.id})
+ if($backup.backup_type -ne 'snapshot' -or -not $backup.integrity.checked_this_run){throw 'O Restic local não confirmou snapshot e check integral.'}
+ $recovered=Wait-ClientJob (Invoke-LocalClient 'jobs' @{kind='restore';run=$backup.run;path='sample.txt';target=$restore})
+ if([IO.File]::ReadAllText((Join-Path $recovered.destination 'sample.txt')) -ne 'backup independente do master'){throw 'A restauração pelo client local divergiu da origem.'}
+ foreach($folder in @($env:BACKUPDESK_TEST_LOG_LOCAL,$env:BACKUPDESK_TEST_LOG_CLOUD)){
+  $file=Join-Path (Join-Path $folder 'BackupDesk-Logs') ($config.device_id+'.json');$found=$false
+  for($attempt=0;$attempt -lt 100;$attempt++){if(Test-Path -LiteralPath $file){$document=Get-Content -Raw -Encoding UTF8 -LiteralPath $file | ConvertFrom-Json;$payload=$document.payload | ConvertFrom-Json;if($payload.runs | Where-Object {$_.id -eq $backup.run -and $_.status -eq 'success'}){$found=$true;break}};Start-Sleep -Milliseconds 200}
+  if(-not $found -or -not $document.registration.publicKey){throw 'O client não publicou o resultado com prova de identificação nas duas pastas.'}
+ }
  $instance=$config.installation_id
  $installedAt=$config.installed_at
  if(-not $installedAt){throw 'A data de instalação não foi registrada.'}
@@ -37,12 +74,20 @@ try{
  $process=Start-Process -FilePath $renamed -ArgumentList @('/S',('/D='+$target)) -PassThru
  if(-not $process.WaitForExit(180000)){$process.Kill();throw 'Atualização do client excedeu o prazo.'}
  if($process.ExitCode -ne 0){throw 'Atualização identificada falhou.'}
+ $afterUpdate=Wait-LocalClient
+ if($afterUpdate.routines.Count -ne 1){throw 'A atualização perdeu a rotina local.'}
  $updated=Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $target 'agent-config.json') | ConvertFrom-Json
  if((Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $target 'data\keys\device.json') | ConvertFrom-Json).header.key_id -ne $keyId){throw 'A atualização trocou a chave de dados.'}
  if($updated.installed_at -ne $installedAt){throw 'A atualização alterou a data original de instalação.'}
  if($updated.installation_id -ne $instance){throw 'A atualização mudou a identificação da instalação.'}
  if(-not (Test-Path -LiteralPath (Join-Path $target 'client-package.mjs'))){throw 'Módulo de identificação não foi incluído no pacote.'}
+ 'Client local Windows: sem endereço, painel isolado, Restic/VSS, backup, restauração, duas pastas de logs e atualização preservando rotina: OK.'
  'Instalador NSIS real: CRC preservado com identificação incorporada, nome independente do arquivo e vínculo mantido na atualização: OK.'
+}catch{
+ $detail=$_.Exception.Message
+ $log=Join-Path $target 'data\agent.log'
+ if(Test-Path -LiteralPath $log){$detail+=' '+((Get-Content -LiteralPath $log -Tail 25) -join [Environment]::NewLine)}
+ throw $detail
 }finally{
  $uninstall=Join-Path $target 'Uninstall.exe'
  if(Test-Path -LiteralPath $uninstall){$process=Start-Process -FilePath $uninstall -ArgumentList @('/S',('_?='+$target)) -PassThru;if(-not $process.WaitForExit(60000)){$process.Kill();throw 'Desinstalação do teste excedeu o prazo.'}}

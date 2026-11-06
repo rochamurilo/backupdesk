@@ -7,16 +7,16 @@ Unicode True
 Var VssOwnerSid
 !ifdef CLIENT
   !define PRODUCT "BackupDesk Client"
-  !define VERSION "0.21.0"
+  !define VERSION "0.22.0"
   !define KEY "BackupDeskClient"
   !define FOLDER "BackupDeskClient"
-  OutFile "../windows/build/BackupDesk-Client-0.21.0-x64.exe"
+  OutFile "../windows/build/BackupDesk-Client-0.22.0-x64.exe"
 !else
   !define PRODUCT "BackupDesk Master"
-  !define VERSION "0.21.0"
+  !define VERSION "0.22.0"
   !define KEY "BackupDesk"
   !define FOLDER "BackupDesk"
-  OutFile "../dist/BackupDesk-Master-0.21.0-x64.exe"
+  OutFile "../dist/BackupDesk-Master-0.22.0-x64.exe"
 !endif
 Name "${PRODUCT} (teste local)"
 InstallDir "$LOCALAPPDATA\${FOLDER}"
@@ -140,25 +140,25 @@ Section "${PRODUCT}" Main
   Abort
  ${EndIf}
 !endif
- File "LEIA-ME.txt"
- CreateDirectory "$SMPROGRAMS\${FOLDER}"
-!ifndef CLIENT
  File "../server.mjs"
  File "../native-picker.mjs"
+ File "../local-master.mjs"
  SetOutPath "$INSTDIR\windows"
  File "folder-picker.ps1"
- SetOutPath "$INSTDIR"
- File "../local-master.mjs"
- File "../master.mjs"
- File "Painel.cmd"
- File "build/BackupDesk.exe"
- File /oname=VSSComponentSetup.exe "build/BackupDeskVSSComponent.exe"
  SetOutPath "$INSTDIR\public"
  File "../public/index.html"
  File "../public/app.js"
  File "../public/style.css"
+ SetOutPath "$INSTDIR"
+ File "LEIA-ME.txt"
+ CreateDirectory "$SMPROGRAMS\${FOLDER}"
+!ifndef CLIENT
+ File "../master.mjs"
+ File "Painel.cmd"
+ File "build/BackupDesk.exe"
+ File /oname=VSSComponentSetup.exe "build/BackupDeskVSSComponent.exe"
  SetOutPath "$INSTDIR\dist"
- File "build/BackupDesk-Client-0.21.0-x64.exe"
+ File "build/BackupDesk-Client-0.22.0-x64.exe"
  SetOutPath "$INSTDIR"
  nsExec::ExecToStack '"$INSTDIR\node.exe" "$INSTDIR\server.mjs" --prepare-master'
  Pop $0
@@ -208,6 +208,14 @@ Section "Uninstall"
 !else
  DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "BackupDeskMaster"
 !endif
+ Delete "$INSTDIR\server.mjs"
+ Delete "$INSTDIR\native-picker.mjs"
+ Delete "$INSTDIR\local-master.mjs"
+ Delete "$INSTDIR\windows\folder-picker.ps1"
+ Delete "$INSTDIR\public\index.html"
+ Delete "$INSTDIR\public\app.js"
+ Delete "$INSTDIR\public\style.css"
+ RMDir "$INSTDIR\public"
 !ifndef CLIENT
  Delete "$DESKTOP\BackupDesk.lnk"
  Delete "$SMPROGRAMS\BackupDesk.lnk"
@@ -226,7 +234,7 @@ Section "Uninstall"
  Delete "$INSTDIR\public\app.js"
  Delete "$INSTDIR\public\style.css"
  RMDir "$INSTDIR\public"
- Delete "$INSTDIR\dist\BackupDesk-Client-0.21.0-x64.exe"
+ Delete "$INSTDIR\dist\BackupDesk-Client-0.22.0-x64.exe"
  RMDir "$INSTDIR\dist"
 !else
  Delete "$DESKTOP\BackupDesk Client.lnk"
