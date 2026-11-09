@@ -1,6 +1,6 @@
 ﻿$ErrorActionPreference='Stop'
 $repo=Split-Path $PSScriptRoot -Parent
-$master=Join-Path $repo 'dist\BackupDesk-Master-0.24.0-x64.exe'
+$master=Join-Path $repo 'dist\BackupDesk-Master-0.25.0-x64.exe'
 if(-not (Test-Path -LiteralPath $master)){'Instalador ainda não publicado; teste de pacote será executado na publicação.';return}
 $root=Join-Path $env:TEMP ('BackupDesk Client Test '+[guid]::NewGuid().ToString('N'))
 $extract=Join-Path $root 'extracted'
@@ -12,7 +12,7 @@ New-Item -ItemType Directory -Path $root | Out-Null
 try{
  $null=& $sevenZip x $master ('-o'+$extract) -y
  if($LASTEXITCODE -ne 0){throw 'Falha ao extrair o pacote publicado.'}
- $generic=Get-ChildItem -LiteralPath $extract -Filter 'BackupDesk-Client-0.24.0-x64.exe' -Recurse | Select-Object -First 1
+ $generic=Get-ChildItem -LiteralPath $extract -Filter 'BackupDesk-Client-0.25.0-x64.exe' -Recurse | Select-Object -First 1
  if(-not $generic){throw 'Master não contém o client esperado.'}
  $env:BACKUPDESK_TEST_LOG_LOCAL=Join-Path $root 'logs local';$env:BACKUPDESK_TEST_LOG_CLOUD=Join-Path $root 'logs cloud'
  New-Item -ItemType Directory -Path $env:BACKUPDESK_TEST_LOG_LOCAL,$env:BACKUPDESK_TEST_LOG_CLOUD | Out-Null
@@ -39,7 +39,7 @@ try{
   for($attempt=0;$attempt -lt 100;$attempt++){try{$health=Invoke-LocalClient 'health';if($health.mode -eq 'client' -and $health.device -eq $config.device_id){$ready=$true;break}}catch{};Start-Sleep -Milliseconds 300}
   if(-not $ready){throw 'O painel local do client não iniciou sem endereço do master.'}
   $script:clientSession=(Invoke-LocalClient 'local-session' @{}).token
-  for($attempt=0;$attempt -lt 100;$attempt++){$state=Invoke-LocalClient 'state';if($state.devices[0].version -eq '0.24.0'){return $state};Start-Sleep -Milliseconds 200}
+  for($attempt=0;$attempt -lt 100;$attempt++){$state=Invoke-LocalClient 'state';if($state.devices[0].version -eq '0.25.0'){return $state};Start-Sleep -Milliseconds 200}
   throw 'O agente local do client não iniciou.'
  }
  $localState=Wait-LocalClient

@@ -11,3 +11,7 @@ test('velocidade separa bytes de cópia e verificação; ETA acompanha trabalho 
  m.report({stage:'copying',processedBytes:0,totalBytes:10000000});assert.equal(m.snapshot().speedBytesPerSecond,null);assert.equal(m.snapshot().etaSeconds,null);
  assert.equal(megabytes(1000000),'1 MB');assert.equal(megabytes(1048576),'1,05 MB');assert.equal(remainingTime(null),'Calculando…');assert.equal(remainingTime(61),'1 min 1 s');assert.equal(remainingTime(3661),'1 h 1 min');
 });
+
+test('velocidade Restic usa bytes transferidos, mesmo quando deduplicação avança volume lógico',{timeout:1000},async()=>{
+ const {createProgressMeasurement}=await import('../progress.mjs');let clock=0;const m=createProgressMeasurement(()=>clock);m.report({stage:'copying',processedBytes:0,totalBytes:100000000,transferredBytes:0});clock=2000;m.report({stage:'copying',processedBytes:50000000,transferredBytes:1000000});assert.equal(m.snapshot().speedBytesPerSecond,500000);assert.equal(m.snapshot().etaSeconds,2);clock=4000;m.report({stage:'copying',processedBytes:90000000,transferredBytes:2000000});assert.equal(m.snapshot().speedBytesPerSecond,500000);
+});

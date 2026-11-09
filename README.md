@@ -1,6 +1,6 @@
-# BackupDesk 0.24.0 — versão de teste
+# BackupDesk 0.25.0 — versão de teste
 
-[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.24.0-x64.exe)
+[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.25.0-x64.exe)
 
 [Começar na Locaweb: contratação, instalação e primeiro client](deploy/LOCAWEB-PASSO-A-PASSO.md)
 
@@ -229,9 +229,9 @@ Em **Preferências → Logs**, selecione o computador e informe **Pasta local** 
 
 Os campos de pasta são caminhos acessíveis naquele computador, nunca URLs. A pasta de nuvem deve estar montada, sincronizada ou disponível por rede/VPN. O master precisa ler a mesma pasta; em **Leitura pelo master**, indique o caminho correspondente no master se ele for diferente (por exemplo, client Windows usando UNC e master Linux usando `/mnt/logs`). Em Linux, monte SMB com as permissões do serviço antes de informar o caminho; o aplicativo não monta compartilhamentos nem solicita elevação. As credenciais da pasta também são usadas para a leitura Windows pelo master; a conta precisa ter as permissões necessárias. Sessões Windows com contas diferentes no mesmo servidor continuam sujeitas ao limite do próprio SMB, sem desconexão forçada de outros programas.
 
-Cada computador grava `BackupDesk-Logs/ID-COMPUTADOR.json`, com atualização a cada minuto e nas mudanças de estado do backup. O arquivo JSON compacto tem no máximo 128 KiB e até 200 execuções recentes; reduz a janela se necessário para manter o limite. Contém identificação, versão, horários, resultado e volume; não contém senha, chave de recuperação, caminhos dos arquivos de origem nem conteúdo dos arquivos. A assinatura é verificada com a chave pública já registrada pelo computador. Um arquivo de log não cadastra uma identidade desconhecida: o client continua aparecendo automaticamente pelo vínculo existente.
+Cada computador grava `BackupDesk-Logs/ID-COMPUTADOR.json`, com publicação inicial e nas mudanças de estado do backup, sem regravação periódica durante ociosidade. O arquivo JSON compacto tem no máximo 128 KiB e até 200 execuções recentes; reduz a janela se necessário para manter o limite. Contém identificação, versão, horários, resultado e volume; não contém senha, chave de recuperação, caminhos dos arquivos de origem nem conteúdo dos arquivos. A assinatura é verificada com a chave pública já registrada pelo computador. Um arquivo de log não cadastra uma identidade desconhecida: o client continua aparecendo automaticamente pelo vínculo existente.
 
-O master consulta as duas pastas aproximadamente a cada minuto ou pelo botão **Atualizar leitura no master**. A Visão Geral combina os registros verificados com as execuções recebidas diretamente, sem duplicá-las. O último status válido permanece quando uma pasta falha ou o arquivo é adulterado; a interface informa a falha em Logs. A leitura de um arquivo antigo não torna o computador online: o contato do arquivo expira após cinco minutos. Os resumos de log são usados para monitoramento; não criam catálogos de arquivos restauráveis.
+O master consulta as duas pastas aproximadamente a cada minuto ou pelo botão **Atualizar leitura no master**. A Visão Geral combina os registros verificados com as execuções recebidas diretamente, sem duplicá-las. O último status válido permanece quando uma pasta falha ou o arquivo é adulterado; a interface informa a falha em Logs. Nos clients 0.25.0, o arquivo informa o status do último backup, sem presumir conexão atual; a conexão direta é identificada pelas consultas do agente. Logs de versões anteriores conservam a janela de contato de cinco minutos. Os resumos de log são usados para monitoramento; não criam catálogos de arquivos restauráveis.
 
 As duas gravações têm resultados independentes. A publicação usa arquivo temporário e substituição atômica; uma pasta indisponível não interrompe o backup nem impede gravar na outra. O estado recente fica no disco do agente para novas tentativas. Gravação/leitura remota ocorrem em processos separados com tempo limite. A consulta direta ao master e a fila de telemetria continuam funcionando. Esta versão não acrescenta agendamento offline: iniciar novos backups gerenciados continua exigindo alcançar o master.
 
@@ -272,7 +272,7 @@ O Windows continua usando o auxiliar restrito de VSS já instalado, sem pedir el
 
 Teste recomendado: primeiro backup, alteração de uma parte de arquivo grande, segundo snapshot com poucos bytes novos, restauração de ambas as versões, restauração em outra instalação pelas duas formas de chave, interrupção/destino indisponível e corrupção de uma cópia de teste. Compare hashes e, para PST, abra uma cópia restaurada no Outlook. Nunca faça o teste de corrupção sobre o único backup válido. Use 7–14 dias de piloto e restaure dados reais antes de trocar todas as máquinas.
 
-No piloto, limites de velocidade são capturados ao iniciar a operação Restic; alterações nas preferências valem para a próxima operação. O horário de limitação não interrompe nem reinicia uma cópia em andamento.
+O Restic usa o transporte REST oficial por uma conexão autenticada restrita ao próprio computador para limitar as leituras e gravações reais no repositório local/UNC. O formato em disco e as chaves continuam compatíveis. Os limites e os horários acompanham as preferências salvas sem reiniciar a cópia.
 
 O BackupDesk não acrescenta `unlock` nem `--remove-all`: mantém o protocolo normal de locks do próprio Restic. Conflitos são reportados como falha; o teste de interrupção verifica a preservação de locks ativos, a retomada permitida pelo protocolo oficial e a restauração dos snapshots anteriores.
 
@@ -333,3 +333,16 @@ Esses bloqueios protegem a atualização do software; não substituem a cópia d
 Validação final 0.24.0: 103 testes locais e Chromium aprovados. O [workflow Windows 42667059387](https://github.com/rochamurilo/backupdesk/actions/runs/42667059387) passou nos quatro trabalhos. O instalador real recusou um pacote com outra chave antes de substituir o marcador no programa ou encerrar o servidor em execução; configuração e arquivos do cofre conservaram os mesmos hashes. Um cofre incompleto também foi recusado sem recriação do arquivo ausente. A atualização legítima preservou exatamente os arquivos da chave, a identidade, a data original e a rotina, e restaurou o backup anterior pelo Restic. Os testes locais exercitaram a mesma preservação com o motor anterior e a adoção do registro de proteção para instalações antigas sem regravar as chaves.
 
 Foram conferidos os 45 arquivos de produção de cada pacote, o client embutido e todos os módulos/Node/DPAPI do verificador executado antes da instalação. A imagem web passou em backup, verificação integral e restauração master. O download público é idêntico ao instalador gerado; SHA-256 `af890119afb9e1b18dc862b740610d72e8c491fec4995fd691f97eb8e1db8b0a`.
+
+
+## 0.25.0 — Parada, Velocidade e Logs por Rotina
+
+O botão **Parar Backup** no aviso de andamento atende backups manuais e agendados. A solicitação é recebida pelo agente em sua próxima consulta; arquivos em cópia e processos Restic são interrompidos, seguidos da limpeza VSS. A rotina permanece ativa para o próximo dia. A execução aparece como **Interrompido**, sem entrar em Falhas Registradas nem ficar disponível para restauração. Versões anteriores são preservadas. Para clientes locais monitorados por logs, use o painel do próprio client.
+
+A velocidade é limitada sobre os bytes transferidos, inclusive no repositório Restic em disco/rede, com orçamento compartilhado entre arquivos e destinos e unidades Mbit/s ou MB/s. O fluxo criptografado anterior passa a gravar em pequenos trechos para evitar rajadas de blocos inteiros. O transporte privado Restic só escuta em 127.0.0.1, exige segredo aleatório por processo, permite apenas os objetos do repositório, mantém gravações atômicas e não permite apagar dados de backup.
+
+Logs assinados são publicados no registro inicial e ao iniciar, concluir, falhar ou interromper uma rotina. Não são renovados a cada minuto quando não há mudança. Uma publicação que falhou é tentada novamente sem regravar o destino já entregue. A leitura no master continua automática. Computadores que só reportam por arquivo mostram **Status pelo Último Backup**, pois um log de evento não comprova conexão atual. Atualize master e clients para esta versão.
+
+Títulos e submenus seguem iniciais maiúsculas, incluindo **Equipamentos Protegidos**, **Calendário de Execuções** e **Últimas 10 Execuções**.
+
+Validação local da 0.25.0: 110 testes passaram, incluindo parada pela API em backups manuais e agendados, isolamento entre usuários, preservação de backups anteriores nos dois motores, logs por evento e limite de bytes reais em upload/download do Restic. Chromium validou o botão com backup Restic real e os títulos; foram conferidos 47 arquivos por instalador, os sete módulos de pré-verificação do client e a cópia embutida do instalador. A imagem web realizou backup, verificação integral e restauração.

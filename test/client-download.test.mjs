@@ -1,7 +1,7 @@
 import {test} from 'node:test';import assert from 'node:assert/strict';import {spawn} from 'node:child_process';import {once} from 'node:events';import {mkdtemp,mkdir,writeFile,readFile,readdir,copyFile,cp,rm} from 'node:fs/promises';import {tmpdir} from 'node:os';import {join} from 'node:path';import {readEnrollment,installEnrollment} from '../client-package.mjs';
 test('download pede nome, gera executável identificado, reaproveita cadastro e isola instalações',{timeout:15000},async()=>{
  const dir=await mkdtemp(join(tmpdir(),'backupdesk-named-api-'));let child;try{
- for(const file of await readdir('.'))if(file.endsWith('.mjs'))await copyFile(file,join(dir,file));await cp('public',join(dir,'public'),{recursive:true});await mkdir(join(dir,'dist'));await writeFile(join(dir,'dist','BackupDesk-Client-0.24.0-x64.exe'),'MZ-fixture');
+ for(const file of await readdir('.'))if(file.endsWith('.mjs'))await copyFile(file,join(dir,file));await cp('public',join(dir,'public'),{recursive:true});await mkdir(join(dir,'dist'));await writeFile(join(dir,'dist','BackupDesk-Client-0.25.0-x64.exe'),'MZ-fixture');
  child=spawn(process.execPath,[join(dir,'server.mjs')],{cwd:dir,env:{...process.env,PORT:'3195',DATA_DIR:join(dir,'data'),ADMIN_PASSWORD:'named-client-test'}});await once(child.stdout,'data');
  const request=async(p,data,token,method)=>fetch('http://127.0.0.1:3195/api/'+p,{method:method||(data?'POST':'GET'),headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:data?JSON.stringify(data):undefined});
  const admin=(await(await request('login',{name:'admin',password:'named-client-test'})).json()).token;

@@ -25,6 +25,6 @@ export function logSettingsStore(db,getMaster,{io=runLogIO,now=()=>new Date(),fa
    accept(task.device,document,key);access(task.device,task.kind,'read','success');
   }catch(e){if(signature(task.device,task.reader)===task.signature)access(task.device,task.kind,'read','failed',e.message)}}}))
  }finally{busy=false;if(pendingScan){pendingScan=false;setImmediate(()=>scan().catch(()=>{}))}}}
- function reports(visible){return db.prepare('SELECT * FROM log_snapshots').all().filter(r=>visible(r.device)).map(r=>{const report=JSON.parse(r.report),history=db.prepare('SELECT record FROM log_run_history WHERE device=?').all(r.device);if(history.length)report.runs=history.map(h=>JSON.parse(h.record));return {...report,received:r.received,online:now().getTime()-Date.parse(report.generated_at)<300000}})}
+ function reports(visible){return db.prepare('SELECT * FROM log_snapshots').all().filter(r=>visible(r.device)).map(r=>{const report=JSON.parse(r.report),history=db.prepare('SELECT record FROM log_run_history WHERE device=?').all(r.device);if(history.length)report.runs=history.map(h=>JSON.parse(h.record));return {...report,received:r.received,online:!report.event_only&&now().getTime()-Date.parse(report.generated_at)<300000}})}
  return {get,set,forAgent,writeStatus,scan,accept,reports,defaults(device){const config=raw(device);return Object.fromEntries(['local','cloud'].map(k=>[k,{path:config[k].path}]))}};
 }
