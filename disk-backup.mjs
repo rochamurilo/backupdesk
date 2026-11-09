@@ -4,7 +4,7 @@ import {readdir,lstat,stat,realpath,open,unlink,mkdir,rename,writeFile,statfs,ut
 import {createReadStream,createWriteStream} from 'node:fs';
 import {Transform} from 'node:stream';import {pipeline} from 'node:stream/promises';
 import {createHash,randomUUID} from 'node:crypto';import path from 'node:path';import {execFile} from 'node:child_process';import {promisify} from 'node:util';
-import {parseSources} from './filesystem.mjs';
+import {parseSources,excludedLinkNotice} from './filesystem.mjs';
 import {withVssSources} from './vss.mjs';
 import {writeEncryptedManifest,manifestKey,fileAAD,resolveBaseSnapshot,scopeIdentity,identityPath,modifiedDate,findFullBaseline,verifyFullBaseline,readManifest,storedFile} from './backup-repository.mjs';
 const execute=promisify(execFile);
@@ -16,16 +16,16 @@ async function outlookCheck(files){
  const {stdout}=await execute('tasklist.exe',['/FI','IMAGENAME eq OUTLOOK.EXE','/FO','CSV','/NH'],{windowsHide:true,timeout:15000});
  if(/"OUTLOOK\.EXE"/i.test(stdout))throw Error('Esta rotina está sem VSS. Para copiar PST/OST, feche o Outlook ou edite a rotina, marque Usar VSS e salve. O componente automático utiliza a autorização concedida na instalação. O VSS continua experimental e exige validar a restauração do PST.');
 }
-async function plan(source,onProgress=()=>{}){onProgress({stage:'scanning',currentFile:'',processedBytes:0,totalBytes:null,filesDone:0,totalFiles:null});const roots=parseSources(source),files=[],directories=[];for(let i=0;i<roots.length;i++){
+async function plan(source,onProgress=()=>{}){onProgress({stage:'scanning',currentFile:'',processedBytes:0,totalBytes:null,filesDone:0,totalFiles:null});const roots=parseSources(source),files=[],directories=[],excluded_links=[];for(let i=0;i<roots.length;i++){
  const root=path.resolve(roots[i]),rootInfo=await lstat(root,{bigint:true});if(rootInfo.isSymbolicLink())throw Error('Selecione a pasta real, não um link: '+root);
  const prefix=roots.length>1?`${i+1}-${path.basename(root)||'unidade'}/`:'';
- async function visit(file,info){onProgress({stage:'scanning',currentFile:file,filesFound:files.length});if(info.isSymbolicLink())throw Error('Link simbólico encontrado; selecione o destino real: '+file);if(info.isDirectory()){directories.push({absolute:file,mtime:info.mtimeNs});for(const e of await readdir(file,{withFileTypes:true}))await visit(path.join(file,e.name),await lstat(path.join(file,e.name),{bigint:true}))}else if(info.isFile()){const relative=path.relative(root,file)||path.basename(root);files.push({absolute:file,path:prefix+relative.split(path.sep).join('/'),size:info.size,mtime:info.mtimeNs})}else throw Error('Arquivo especial não suportado: '+file)}
+ async function visit(file,info){onProgress({stage:'scanning',currentFile:file,filesFound:files.length});if(info.isSymbolicLink()){excluded_links.push({source:i,path:prefix+path.relative(root,file).split(path.sep).join('/'),reason:'symbolic_link'});return}if(info.isDirectory()){directories.push({absolute:file,mtime:info.mtimeNs});for(const e of await readdir(file,{withFileTypes:true}))await visit(path.join(file,e.name),e.isSymbolicLink()?e:await lstat(path.join(file,e.name),{bigint:true}))}else if(info.isFile()){const relative=path.relative(root,file)||path.basename(root);files.push({absolute:file,path:prefix+relative.split(path.sep).join('/'),size:info.size,mtime:info.mtimeNs})}else throw Error('Arquivo especial não suportado: '+file)}
  await visit(root,rootInfo);
- }return {roots,files,directories}}
+ }return {roots,files,directories,excluded_links}}
 export async function validateDestination(source,destination,{useVss=false,onProgress=()=>{},deferCapacity=false,allowEmpty=false}={}){
  if(typeof destination!=='string'||!path.isAbsolute(destination))throw Error('Selecione uma pasta de destino com caminho absoluto.');
  const target=await realpath(destination);if(!(await stat(target)).isDirectory())throw Error('O destino não é uma pasta.');
- const {roots,files,directories}=await plan(source,onProgress);onProgress({stage:'checking_destination',currentFile:'',totalFiles:files.length});
+ const {roots,files,directories,excluded_links}=await plan(source,onProgress);onProgress({stage:'checking_destination',currentFile:'',totalFiles:files.length});
  // Shadow devices have no DOS mount point; realpath() may fail even though files are readable.
  // Live source containment was checked in vssPreflight before creating this snapshot.
  for(const root of roots){
@@ -39,7 +39,7 @@ export async function validateDestination(source,destination,{useVss=false,onPro
  const probe=path.join(target,'.backupdesk-check-'+randomUUID());let handle;
  try{handle=await open(probe,'wx');await handle.writeFile('BackupDesk');await handle.sync()}finally{await handle?.close();if(handle)await unlink(probe)}
  if(!useVss)await outlookCheck(files);
- return {target,files,directories,requiredBytes:estimated.toString(),availableBytes:available.toString()};
+ return {target,files,directories,excluded_links,requiredBytes:estimated.toString(),availableBytes:available.toString()};
 }
 async function copyVerified(source,destination,expected,onBytes=()=>{},onPhase=()=>{},throttle=async()=>{},verifyThrottle=async()=>{}){onPhase('copying');
  const before=await lstat(source,{bigint:true});if(before.isSymbolicLink()||!before.isFile())throw Error('A origem deixou de ser um arquivo regular.');
@@ -85,7 +85,7 @@ async function copyLegacy({source,destination,device,routine,run,onFile=()=>{},o
  if(BigInt(checked.availableBytes)<required)throw Error('Espaço insuficiente no destino para os arquivos desta versão.');
  const partial=path.join(parent,'.partial-'+run),snapshot=path.join(parent,run),changedNames=new Set(changed.map(f=>f.path)),currentNames=new Set(checked.files.map(f=>f.path));await mkdir(partial,{recursive:false});
  const pst=checked.files.filter(f=>/\.(pst|ost)$/i.test(f.path)).map(f=>f.path);
- const manifest={format:encryption?'backupdesk-files-v3':'backupdesk-files-v2',encryption_id:encryption?.header.key_id||null,device,device_name:deviceName||null,routine,run,created:captured.toISOString(),captured_at:captured.toISOString(),sources:originalSources,destination:checked.target,scope_key:scopeKey,backup_type:type,base_run:baseline?.manifest.run||null,base_snapshot:baseline?.snapshot||null,base_rejected:baseRejected,consistency:useVss?'vss-crash-consistent-no-writers':'closed-file-copy',vss:snapshots.map(s=>({id:s.id,volume:s.volume})),warning:baseRejected?'A base anterior estava indisponível; um novo backup completo foi criado.':null,pst_validation:pst.length?{copy_integrity:'sha256',outlook:'not-tested',files:pst}:null,deleted:baseline?.manifest.files.filter(f=>!currentNames.has(f.path)).map(f=>f.path)||[],files:[],status:'running'};
+ const manifest={format:encryption?'backupdesk-files-v3':'backupdesk-files-v2',encryption_id:encryption?.header.key_id||null,device,device_name:deviceName||null,routine,run,created:captured.toISOString(),captured_at:captured.toISOString(),sources:originalSources,destination:checked.target,scope_key:scopeKey,backup_type:type,base_run:baseline?.manifest.run||null,base_snapshot:baseline?.snapshot||null,base_rejected:baseRejected,consistency:useVss?'vss-crash-consistent-no-writers':'closed-file-copy',vss:snapshots.map(s=>({id:s.id,volume:s.volume})),excluded_links:checked.excluded_links,warning:[baseRejected?'A base anterior estava indisponível; um novo backup completo foi criado.':null,excludedLinkNotice(checked.excluded_links)].filter(Boolean).join(' ')||null,pst_validation:pst.length?{copy_integrity:'sha256',outlook:'not-tested',files:pst}:null,deleted:baseline?.manifest.files.filter(f=>!currentNames.has(f.path)).map(f=>f.path)||[],files:[],status:'running'};
  processedBytes=0;totalBytes=changed.reduce((sum,f)=>sum+Number(f.size)*2,0);stage='copying';currentFile='';report();
  try{
   await onPlan({backup_type:type,base_run:manifest.base_run,scope_key:scopeKey,scope_sources:JSON.stringify(originalSources),scope_destination:checked.target,captured_at:manifest.captured_at,encryption_id:manifest.encryption_id});
@@ -105,7 +105,7 @@ async function copyLegacy({source,destination,device,routine,run,onFile=()=>{},o
   if(!useVss)await outlookCheck(checked.files);
   manifest.changed_files=changed.length;manifest.logical_bytes=checked.files.reduce((n,f)=>n+Number(f.size),0);manifest.stored_bytes=changed.reduce((n,f)=>n+Number(f.size),0);manifest.status='success';manifest.finished=clock().toISOString();
   if(encryption)await writeEncryptedManifest(partial,manifest,encryption);else await writeFile(path.join(partial,'manifest.json'),JSON.stringify(manifest,null,2),{flag:'wx',flush:true});await rename(partial,snapshot);
-  return {snapshot,encryption_id:manifest.encryption_id,files:manifest.files,consistency:manifest.consistency,warning:manifest.warning,pst_validation:manifest.pst_validation,backup_type:type,base_run:manifest.base_run,scope_key:scopeKey,scope_sources:manifest.sources,scope_destination:checked.target,captured_at:manifest.captured_at,logical_bytes:manifest.logical_bytes,stored_bytes:manifest.stored_bytes,changed_files:changed.length};
+  return {excluded_links:manifest.excluded_links,snapshot,encryption_id:manifest.encryption_id,files:manifest.files,consistency:manifest.consistency,warning:manifest.warning,pst_validation:manifest.pst_validation,backup_type:type,base_run:manifest.base_run,scope_key:scopeKey,scope_sources:manifest.sources,scope_destination:checked.target,captured_at:manifest.captured_at,logical_bytes:manifest.logical_bytes,stored_bytes:manifest.stored_bytes,changed_files:changed.length};
  }catch(e){manifest.status='failed';manifest.error=e.message;if(!encryption)await writeFile(path.join(partial,'manifest.failed.json'),JSON.stringify(manifest,null,2)).catch(()=>{});throw e}
 }
 export async function restoreFromDisk({snapshot,files,target,job,onProgress=()=>{},throttle=async()=>{},getKey,policy}){onProgress({stage:'preparing',processedBytes:0,totalBytes:null});

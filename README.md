@@ -1,6 +1,6 @@
-# BackupDesk 0.22.0 — versão de teste
+# BackupDesk 0.23.0 — versão de teste
 
-[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.22.0-x64.exe)
+[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.23.0-x64.exe)
 
 [Começar na Locaweb: contratação, instalação e primeiro client](deploy/LOCAWEB-PASSO-A-PASSO.md)
 
@@ -301,3 +301,14 @@ O client vê somente sua máquina e não dispõe das funções de cadastrar usu�
 Validação final 0.22.0: 91 testes locais e Chromium aprovados. O [workflow Windows 42313661149](https://github.com/rochamurilo/backupdesk/actions/runs/42313661149) passou nos quatro trabalhos: instalação do client, VSS, atualização/início automático e compartilhamentos de rede. O instalador real do client iniciou sem endereço do master, executou backup Restic com VSS, restaurou o conteúdo, publicou os resultados nas duas pastas de logs e preservou a rotina e a identidade na atualização. O teste de funcionamento independente também manteve o master desligado durante backup, restauração e agendamento, confirmou o primeiro vínculo pelos logs e rejeitou chave/instalação divergentes.
 
 Foram comparados 44 arquivos de produção em cada pacote (master/client), conferidos o client embutido e o SHA-256 do Restic Windows. A imagem web passou em backup, verificação integral e restauração master. O download público foi comparado byte a byte ao instalador local; SHA-256 `0ca7ea5c391881c863d7b80538c7ef0b66252f8664cb9e265f817d7b5c8f24e3`.
+
+
+## Atalhos internos e estado do agendamento — 0.23.0
+
+Links simbólicos e junctions encontrados **dentro** da origem, inclusive os atalhos de compatibilidade de Documentos no Windows, deixam de abortar a cópia. O programa não percorre os links: copia os arquivos reais e registra as exclusões no catálogo criptografado. O histórico de Backup mostra a quantidade e uma lista expansível dos caminhos ignorados; o resultado e o log de rede também informam a exclusão. Para incluir o conteúdo apontado por um link, selecione a pasta real como outra origem. Arquivos `.lnk` comuns continuam sendo copiados como arquivos.
+
+O Restic recebe somente os caminhos dos arquivos aprovados no planejamento, sem percorrer diretórios inteiros que contenham junctions. Origens sem arquivos reais usam apenas um diretório temporário vazio como âncora do snapshot; não recebem dados dos alvos ignorados. Cópias sem arquivos reais continuam informando zero arquivos e as exclusões existentes. Erros reais de leitura/permissão continuam provocando falha.
+
+O estado das tentativas agendadas passa a ser gravado por troca atômica com confirmação em disco. Um arquivo inválido é preservado para diagnóstico e reconstruído usando as tentativas agendadas do próprio computador registradas no painel; execuções manuais não marcam o agendamento como realizado. Isso evita o ciclo de falha de inicialização por JSON interrompido sem repetir uma tentativa já registrada no dia. O disparo e a falha do agendamento passam a incluir data/hora e identificação da rotina no `agent.log`. Também foi corrigido o filtro de compatibilidade que impedia clients Restic anteriores de receber rotinas agendadas de um master atualizado.
+
+Esta correção não altera a inicialização por sessão do Windows nem confirma, sem os logs do equipamento, a causa de uma execução específica ausente. Atualize master e clients para 0.23.0 e teste uma execução manual, a lista de exclusões e a restauração dos arquivos reais. Backups e chaves anteriores permanecem preservados.

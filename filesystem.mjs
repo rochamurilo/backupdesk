@@ -42,3 +42,5 @@ export async function collectFiles(source,onFile){
   await visit(root,info);
  }
 }
+
+export function excludedLinkNotice(entries=[]){return entries.length?entries.length+' atalho(s) de arquivo/pasta ignorado(s); o conteúdo apontado não foi copiado. Para incluí-lo, selecione a pasta real como outra origem.':null}

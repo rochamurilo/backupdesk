@@ -11,6 +11,6 @@ test
 checks
 windows
 dist/*
-!dist/BackupDesk-Master-0.22.0-x64.exe
+!dist/BackupDesk-Master-0.23.0-x64.exe
 
 bin
