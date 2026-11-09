@@ -1,6 +1,6 @@
 ﻿$ErrorActionPreference='Stop'
 $repo=Split-Path $PSScriptRoot -Parent
-$master=Join-Path $repo 'dist\BackupDesk-Master-0.23.0-x64.exe'
+$master=Join-Path $repo 'dist\BackupDesk-Master-0.24.0-x64.exe'
 if(-not (Test-Path -LiteralPath $master)){'Instalador ainda não publicado; teste de pacote será executado na publicação.';return}
 $root=Join-Path $env:TEMP ('BackupDesk Client Test '+[guid]::NewGuid().ToString('N'))
 $extract=Join-Path $root 'extracted'
@@ -12,7 +12,7 @@ New-Item -ItemType Directory -Path $root | Out-Null
 try{
  $null=& $sevenZip x $master ('-o'+$extract) -y
  if($LASTEXITCODE -ne 0){throw 'Falha ao extrair o pacote publicado.'}
- $generic=Get-ChildItem -LiteralPath $extract -Filter 'BackupDesk-Client-0.23.0-x64.exe' -Recurse | Select-Object -First 1
+ $generic=Get-ChildItem -LiteralPath $extract -Filter 'BackupDesk-Client-0.24.0-x64.exe' -Recurse | Select-Object -First 1
  if(-not $generic){throw 'Master não contém o client esperado.'}
  $env:BACKUPDESK_TEST_LOG_LOCAL=Join-Path $root 'logs local';$env:BACKUPDESK_TEST_LOG_CLOUD=Join-Path $root 'logs cloud'
  New-Item -ItemType Directory -Path $env:BACKUPDESK_TEST_LOG_LOCAL,$env:BACKUPDESK_TEST_LOG_CLOUD | Out-Null
@@ -39,7 +39,7 @@ try{
   for($attempt=0;$attempt -lt 100;$attempt++){try{$health=Invoke-LocalClient 'health';if($health.mode -eq 'client' -and $health.device -eq $config.device_id){$ready=$true;break}}catch{};Start-Sleep -Milliseconds 300}
   if(-not $ready){throw 'O painel local do client não iniciou sem endereço do master.'}
   $script:clientSession=(Invoke-LocalClient 'local-session' @{}).token
-  for($attempt=0;$attempt -lt 100;$attempt++){$state=Invoke-LocalClient 'state';if($state.devices[0].version -eq '0.23.0'){return $state};Start-Sleep -Milliseconds 200}
+  for($attempt=0;$attempt -lt 100;$attempt++){$state=Invoke-LocalClient 'state';if($state.devices[0].version -eq '0.24.0'){return $state};Start-Sleep -Milliseconds 200}
   throw 'O agente local do client não iniciou.'
  }
  $localState=Wait-LocalClient
@@ -71,6 +71,32 @@ try{
  $keyId=$dataKey.header.key_id
  if($keyId -ne '4bb06f8e4e3a7715d201d573d0aa423762e55dabd61a2c02278fa56cc6d294e0'){throw 'A chave de segurança não originou a chave de dados do computador.'}
  if($config.PSObject.Properties.Name -contains 'security_key'){throw 'A chave de segurança ficou em texto aberto na configuração.'}
+ $filesToPreserve=@('agent-config.json','data\keys\computer.json','data\keys\device.json','data\device-identity.json')
+ $keyHashes=@{};foreach($relative in $filesToPreserve){$keyHashes[$relative]=(Get-FileHash -LiteralPath (Join-Path $target $relative) -Algorithm SHA256).Hash}
+ # A harmless marker proves rejection happens before any application replacement.
+ Add-Content -LiteralPath (Join-Path $target 'agent.mjs') -Value '// marker: rejected installer must not replace this file' -Encoding UTF8
+ $agentHash=(Get-FileHash -LiteralPath (Join-Path $target 'agent.mjs') -Algorithm SHA256).Hash
+ $runningServer=Get-CimInstance Win32_Process | Where-Object {$_.ExecutablePath -eq (Join-Path $target 'node.exe') -and $_.CommandLine -match 'server\.mjs'} | Select-Object -First 1
+ if(-not $runningServer){throw 'Servidor local não está em execução para o teste de proteção.'}
+ $env:BACKUPDESK_TEST_CLIENT_WRONG=Join-Path $root 'pacote com outra chave.exe'
+ & node --input-type=module -e "import {readFile,writeFile} from 'node:fs/promises';import {readEnrollment,enrollmentTrailer} from './client-package.mjs';const original=await readEnrollment(process.env.BACKUPDESK_TEST_CLIENT_NAMED);await writeFile(process.env.BACKUPDESK_TEST_CLIENT_WRONG,Buffer.concat([await readFile(process.env.BACKUPDESK_TEST_CLIENT_BASE),enrollmentTrailer({...original,security_key:'08'.repeat(32)})]));"
+ if($LASTEXITCODE -ne 0){throw 'Falha ao preparar teste com chave divergente.'}
+ $rejected=Start-Process -FilePath $env:BACKUPDESK_TEST_CLIENT_WRONG -ArgumentList @('/S',('/D='+$target)) -PassThru
+ if(-not $rejected.WaitForExit(90000)){$rejected.Kill();throw 'O instalador divergente não encerrou em modo silencioso.'}
+ if($rejected.ExitCode -eq 0){throw 'O instalador aceitou uma chave diferente.'}
+ foreach($relative in $filesToPreserve){if((Get-FileHash -LiteralPath (Join-Path $target $relative) -Algorithm SHA256).Hash -ne $keyHashes[$relative]){throw ('Instalador divergente modificou '+$relative)}}
+ if((Get-FileHash -LiteralPath (Join-Path $target 'agent.mjs') -Algorithm SHA256).Hash -ne $agentHash){throw 'A validação ocorreu depois de substituir o programa.'}
+ if(-not (Get-Process -Id $runningServer.ProcessId -ErrorAction SilentlyContinue)){throw 'O instalador divergente interrompeu o servidor antes da validação.'}
+ $null=Invoke-LocalClient 'state'
+ # Even a package carrying the original key may not recreate a missing vault record.
+ $deviceFile=Join-Path $target 'data\keys\device.json'
+ Move-Item -LiteralPath $deviceFile -Destination ($deviceFile+'.retained')
+ try{
+  $incomplete=Start-Process -FilePath $renamed -ArgumentList @('/S',('/D='+$target)) -PassThru
+  if(-not $incomplete.WaitForExit(90000)){$incomplete.Kill();throw 'O teste de cofre incompleto não encerrou.'}
+  if($incomplete.ExitCode -eq 0 -or (Test-Path -LiteralPath $deviceFile)){throw 'O instalador recriou a chave de um cofre incompleto.'}
+  if((Get-FileHash -LiteralPath (Join-Path $target 'agent.mjs') -Algorithm SHA256).Hash -ne $agentHash){throw 'O instalador modificou o programa apesar do cofre incompleto.'}
+ }finally{Move-Item -LiteralPath ($deviceFile+'.retained') -Destination $deviceFile}
  $process=Start-Process -FilePath $renamed -ArgumentList @('/S',('/D='+$target)) -PassThru
  if(-not $process.WaitForExit(180000)){$process.Kill();throw 'Atualização do client excedeu o prazo.'}
  if($process.ExitCode -ne 0){throw 'Atualização identificada falhou.'}
@@ -78,9 +104,13 @@ try{
  if($afterUpdate.routines.Count -ne 1){throw 'A atualização perdeu a rotina local.'}
  $updated=Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $target 'agent-config.json') | ConvertFrom-Json
  if((Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $target 'data\keys\device.json') | ConvertFrom-Json).header.key_id -ne $keyId){throw 'A atualização trocou a chave de dados.'}
+ foreach($relative in @('data\keys\computer.json','data\keys\device.json','data\device-identity.json')){if((Get-FileHash -LiteralPath (Join-Path $target $relative) -Algorithm SHA256).Hash -ne $keyHashes[$relative]){throw ('Atualização legítima regravou '+$relative)}}
+ $oldRestored=Wait-ClientJob (Invoke-LocalClient 'jobs' @{kind='restore';run=$backup.run;path='sample.txt';target=$restore})
+ if([IO.File]::ReadAllText((Join-Path $oldRestored.destination 'sample.txt')) -ne 'backup independente do master'){throw 'O backup anterior não abriu com a chave preservada.'}
  if($updated.installed_at -ne $installedAt){throw 'A atualização alterou a data original de instalação.'}
  if($updated.installation_id -ne $instance){throw 'A atualização mudou a identificação da instalação.'}
  if(-not (Test-Path -LiteralPath (Join-Path $target 'client-package.mjs'))){throw 'Módulo de identificação não foi incluído no pacote.'}
+ 'Chaves Windows: instalador divergente bloqueado antes de substituir arquivos ou parar o app; cofre incompleto preservado; chaves idênticas após atualização legítima e backup anterior restaurado: OK.'
  'Client local Windows: sem endereço, painel isolado, Restic/VSS, backup, restauração, duas pastas de logs e atualização preservando rotina: OK.'
  'Instalador NSIS real: CRC preservado com identificação incorporada, nome independente do arquivo e vínculo mantido na atualização: OK.'
 }catch{

@@ -35,13 +35,15 @@ on:
       - 'repository-catalog.mjs'
       - 'repository-store.mjs'
       - 'client-package.mjs'
+      - 'windows/client-preflight.nsh'
+      - 'test/client-key-preservation.test.mjs'
       - 'windows/installer.nsi'
       - 'windows/launcher.nsi'
       - 'windows/launch-agent.mjs'
       - 'windows/Configure.ps1'
       - 'test/windows-client-install.ps1'
       - 'test/client-package.test.mjs'
-      - 'dist/BackupDesk-Master-0.23.0-x64.exe'
+      - 'dist/BackupDesk-Master-0.24.0-x64.exe'
       - 'backup-repository.mjs'
       - 'vss.mjs'
       - 'filesystem.mjs'
@@ -124,7 +126,7 @@ jobs:
             !/*/
             /windows/
             /test/
-            /dist/BackupDesk-Master-0.23.0-x64.exe
+            /dist/BackupDesk-Master-0.24.0-x64.exe
       - uses: actions/setup-node@v4
         with:
           node-version: '24'

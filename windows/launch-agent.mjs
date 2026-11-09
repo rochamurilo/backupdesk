@@ -23,7 +23,7 @@ async function openLocalPanel(){
  log('O painel local do client não respondeu. Confira a disponibilidade da porta '+port+' e os erros deste arquivo.');
 }
 if(!lock){await openLocalPanel();process.exit(0)}
-const shared={...process.env,BACKUPDESK_VSS_PRODUCT:'client',BACKUPDESK_COMPUTER_NAME:config.name,BACKUPDESK_INSTALLATION_ID:config.installation_id,BACKUPDESK_INSTALLED_AT:config.installed_at||'',BACKUPDESK_KEY_DIR:join(dir,'data'),BACKUPDESK_AGENT_STATE:join(dir,'agent-state.json'),...(config.recovery_public_key?{BACKUPDESK_RECOVERY_PUBLIC_KEY:config.recovery_public_key}:{})};
+const shared={...process.env,BACKUPDESK_VSS_PRODUCT:'client',BACKUPDESK_REQUIRE_EXISTING_KEYS:'1',BACKUPDESK_COMPUTER_NAME:config.name,BACKUPDESK_INSTALLATION_ID:config.installation_id,BACKUPDESK_INSTALLED_AT:config.installed_at||'',BACKUPDESK_KEY_DIR:join(dir,'data'),BACKUPDESK_AGENT_STATE:join(dir,'agent-state.json'),...(config.recovery_public_key?{BACKUPDESK_RECOVERY_PUBLIC_KEY:config.recovery_public_key}:{})};
 let entry,env;
 if(local){entry='server.mjs';env={...shared,HOST:'127.0.0.1',PORT:port,DATA_DIR:join(dir,'data'),BACKUPDESK_AGENT_STATE:join(dir,'data','client-agent-state.json'),BACKUPDESK_LOCAL_MASTER:'0',BACKUPDESK_LOCAL_CLIENT:'1',BACKUPDESK_CLOUD_MODE:'0',BACKUPDESK_PUBLIC_URL:'',BACKUPDESK_CLIENT_CONFIG:join(dir,'agent-config.json')};log('Client local iniciado; rotinas e logs são executados neste computador.');}
 else{const url=new URL(config.url);entry='agent.mjs';env={...shared,BACKUPDESK_URL:url.origin,BACKUPDESK_TOKEN:config.token};log('Client online iniciado com conexão incorporada no instalador.');}

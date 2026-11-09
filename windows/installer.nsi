@@ -5,18 +5,19 @@ Unicode True
 !include "FileFunc.nsh"
 !include "TextFunc.nsh"
 Var VssOwnerSid
+Var PreparedUpdate
 !ifdef CLIENT
   !define PRODUCT "BackupDesk Client"
-  !define VERSION "0.23.0"
+  !define VERSION "0.24.0"
   !define KEY "BackupDeskClient"
   !define FOLDER "BackupDeskClient"
-  OutFile "../windows/build/BackupDesk-Client-0.23.0-x64.exe"
+  OutFile "../windows/build/BackupDesk-Client-0.24.0-x64.exe"
 !else
   !define PRODUCT "BackupDesk Master"
-  !define VERSION "0.23.0"
+  !define VERSION "0.24.0"
   !define KEY "BackupDesk"
   !define FOLDER "BackupDesk"
-  OutFile "../dist/BackupDesk-Master-0.23.0-x64.exe"
+  OutFile "../dist/BackupDesk-Master-0.24.0-x64.exe"
 !endif
 Name "${PRODUCT} (teste local)"
 InstallDir "$LOCALAPPDATA\${FOLDER}"
@@ -70,17 +71,26 @@ Function .onInstSuccess
 !endif
 FunctionEnd
 Function .onInstFailed
- Delete "$INSTDIR\data\update-lock.json"
+ ${If} $PreparedUpdate == 1
+  Delete "$INSTDIR\data\update-lock.json"
+ ${EndIf}
 FunctionEnd
 Function CancelUpdate
- Delete "$INSTDIR\data\update-lock.json"
+ ${If} $PreparedUpdate == 1
+  Delete "$INSTDIR\data\update-lock.json"
+ ${EndIf}
 FunctionEnd
 Function un.onUninstSuccess
  Delete "$INSTDIR\data\update-lock.json"
 FunctionEnd
 !include "update.nsh"
+!include "client-preflight.nsh"
 Section "${PRODUCT}" Main
+!ifdef CLIENT
+ Call VerifyClientIdentity
+!endif
  Call StopInstalledProcesses
+ StrCpy $PreparedUpdate 1
  SetOutPath "$INSTDIR"
  File "build/node.exe"
  File /oname=NODE-LICENSE.txt "build/LICENSE"
@@ -159,7 +169,7 @@ Section "${PRODUCT}" Main
  File "build/BackupDesk.exe"
  File /oname=VSSComponentSetup.exe "build/BackupDeskVSSComponent.exe"
  SetOutPath "$INSTDIR\dist"
- File "build/BackupDesk-Client-0.23.0-x64.exe"
+ File "build/BackupDesk-Client-0.24.0-x64.exe"
  SetOutPath "$INSTDIR"
  nsExec::ExecToStack '"$INSTDIR\node.exe" "$INSTDIR\server.mjs" --prepare-master'
  Pop $0
@@ -235,7 +245,7 @@ Section "Uninstall"
  Delete "$INSTDIR\public\app.js"
  Delete "$INSTDIR\public\style.css"
  RMDir "$INSTDIR\public"
- Delete "$INSTDIR\dist\BackupDesk-Client-0.23.0-x64.exe"
+ Delete "$INSTDIR\dist\BackupDesk-Client-0.24.0-x64.exe"
  RMDir "$INSTDIR\dist"
 !else
  Delete "$DESKTOP\BackupDesk Client.lnk"

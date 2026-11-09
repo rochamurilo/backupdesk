@@ -1,6 +1,6 @@
-# BackupDesk 0.23.0 — versão de teste
+# BackupDesk 0.24.0 — versão de teste
 
-[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.23.0-x64.exe)
+[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.24.0-x64.exe)
 
 [Começar na Locaweb: contratação, instalação e primeiro client](deploy/LOCAWEB-PASSO-A-PASSO.md)
 
@@ -317,3 +317,14 @@ Esta correção não altera a inicialização por sessão do Windows nem confirm
 Validação final 0.23.0: suíte de 95 testes aprovada, mais a checagem dos motores com origens sobrepostas e exclusões. Chromium confirmou o caminho do link ignorado no histórico e a restauração dos arquivos reais. O [workflow Windows 42659816609](https://github.com/rochamurilo/backupdesk/actions/runs/42659816609) passou nos quatro trabalhos. O teste VSS criou junctions reais de compatibilidade/ciclo e pasta externa, confirmou duas exclusões e restaurou os arquivos corretos nos motores anterior e Restic, como usuário comum; instalação, atualização e logs SMB também passaram.
 
 Os 45 arquivos de produção de cada pacote foram comparados ao código validado, o client embutido foi conferido e a imagem web passou em Restic com link ignorado, check integral e restauração master. O download público é idêntico ao instalador gerado; SHA-256 `9bf3f6d26f2753444bd9d9427a11ee715a3ae432b84bb91aa9e652e16086d6b9`.
+
+
+## Preservação das chaves durante atualizações — 0.24.0
+
+O instalador do client valida a identidade **antes de parar o aplicativo ou substituir qualquer arquivo instalado**. A atualização abre o cofre existente somente para leitura, confere a chave de dados, o par RSA do computador, o master e a identidade do cadastro. Uma chave diferente, outro cadastro/master ou um cofre ausente, incompleto ou corrompido bloqueiam a atualização; nenhum deles autoriza gerar uma chave de substituição. A pasta registrada do client também é preservada para evitar instalar outra identidade em um segundo destino por engano.
+
+A primeira instalação cria os registros de chave com publicação exclusiva, sem sobrescrever arquivos existentes. A identidade do cofre fica registrada separadamente, e a configuração mantém o identificador da chave e a impressão digital do computador. Instalações anteriores recebem esse registro após validar o cofre, conservando os arquivos de chave originais. O client instalado também exige o cofre existente na inicialização, evitando recriação automática caso um arquivo desapareça.
+
+Um pacote sem identificação pode atualizar um client já configurado usando sua identidade local, mas não configura uma máquina nova. O botão Baixar client Windows continua reaproveitando a chave do cadastro; se o master não conseguir recuperá-la, ele informa o erro em vez de gerar um pacote incompleto. Atualize o master, gere o client com o mesmo cadastro e instale na pasta e no usuário do Windows originais. Não é necessário comparar ou digitar uma chave para autorizar sua troca: a atualização não oferece essa substituição.
+
+Esses bloqueios protegem a atualização do software; não substituem a cópia de recuperação da chave nem restauram um cofre já perdido. Quando a identidade está incompleta, o procedimento é recuperar os dados originais ou restaurar os backups com a chave guardada, não reinicializar a identidade.
