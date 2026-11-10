@@ -11,6 +11,7 @@ $renamed=Join-Path $root 'arquivo renomeado.exe'
 $sevenZip=(Get-Command 7z.exe -ErrorAction SilentlyContinue).Source
 if(-not $sevenZip){$sevenZip=Join-Path $env:ProgramFiles '7-Zip\7z.exe'}
 New-Item -ItemType Directory -Path $root | Out-Null
+$testStage='preparar instalação antiga';$testPassed=$false
 try{
  $null=& $sevenZip x $master ('-o'+$extract) -y
  if($LASTEXITCODE -ne 0){throw 'Falha ao extrair o pacote publicado.'}
@@ -23,6 +24,7 @@ try{
  Set-Location $repo
  & node --input-type=module -e "import {readFile,writeFile} from 'node:fs/promises';import {enrollmentTrailer} from './client-package.mjs';const {generateKeyPairSync}=await import('node:crypto');const publicKey=generateKeyPairSync('rsa',{modulusLength:3072,publicKeyEncoding:{type:'spki',format:'pem'},privateKeyEncoding:{type:'pkcs8',format:'pem'}}).publicKey;const config={security_key:'07'.repeat(32),recovery_public_key:publicKey,format:'backupdesk-client-v1',device_id:'d'.repeat(64),name:'Financeiro São Paulo',mode:'local',url:null,log_defaults:{local:{path:process.env.BACKUPDESK_TEST_LOG_LOCAL},cloud:{path:process.env.BACKUPDESK_TEST_LOG_CLOUD}},token:'a'.repeat(64)};await writeFile(process.env.BACKUPDESK_TEST_CLIENT_NAMED,Buffer.concat([await readFile(process.env.BACKUPDESK_TEST_CLIENT_BASE),enrollmentTrailer(config)]));"
  if($LASTEXITCODE -ne 0){throw 'Falha ao incorporar identificação no instalador.'}
+ $testStage='instalar Client 0.25'
  $process=Start-Process -FilePath $renamed -ArgumentList @('/S',('/D='+$target)) -PassThru
  if(-not $process.WaitForExit(180000)){$process.Kill();throw 'Instalação identificada excedeu o prazo.'}
  if($process.ExitCode -ne 0){throw ('Instalador retornou '+$process.ExitCode)}
@@ -44,6 +46,7 @@ try{
   for($attempt=0;$attempt -lt 100;$attempt++){$state=Invoke-LocalClient 'state';if($state.devices[0].version -eq $ExpectedVersion){return $state};Start-Sleep -Milliseconds 200}
   throw 'O agente local do client não iniciou.'
  }
+ $testStage='iniciar Client antigo'
  $localState=Wait-LocalClient '0.25.0'
  if($localState.user.role -ne 'client' -or $localState.devices.Count -ne 1 -or $localState.localDeviceId -ne $config.device_id){throw 'O client expôs controles master ou outra máquina.'}
  $source=Join-Path $root 'source';$destination=Join-Path $root 'BackupDesk';$restore=Join-Path $root 'restored'
@@ -55,10 +58,13 @@ try{
   for($attempt=0;$attempt -lt 200;$attempt++){$result=Invoke-LocalClient ('jobs/'+$Job.id);if($result.status -eq 'failed'){throw ('Tarefa local falhou: '+$result.error)};if($result.status -eq 'success'){return $result.result};Start-Sleep -Milliseconds 300}
   throw 'A tarefa local não concluiu.'
  }
+ $testStage='backup Restic antigo'
  $backup=Wait-ClientJob (Invoke-LocalClient 'jobs' @{kind='backup';routine_id=$routine.id})
  if($backup.backup_type -ne 'snapshot' -or -not $backup.integrity.checked_this_run){throw 'O Restic local não confirmou snapshot e check integral.'}
+ $testStage='restaurar no Client antigo'
  $recovered=Wait-ClientJob (Invoke-LocalClient 'jobs' @{kind='restore';run=$backup.run;path='sample.txt';target=$restore})
  if([IO.File]::ReadAllText((Join-Path $recovered.destination 'sample.txt')) -ne 'backup independente do master'){throw 'A restauração pelo client local divergiu da origem.'}
+ $testStage='publicar logs da rotina'
  foreach($folder in @($env:BACKUPDESK_TEST_LOG_LOCAL,$env:BACKUPDESK_TEST_LOG_CLOUD)){
   $file=Join-Path (Join-Path $folder 'BackupDesk-Logs') ($config.device_id+'.json');$found=$false
   for($attempt=0;$attempt -lt 100;$attempt++){if(Test-Path -LiteralPath $file){$document=Get-Content -Raw -Encoding UTF8 -LiteralPath $file | ConvertFrom-Json;$payload=$document.payload | ConvertFrom-Json;if($payload.runs | Where-Object {$_.id -eq $backup.run -and $_.status -eq 'success'}){$found=$true;break}};Start-Sleep -Milliseconds 200}
@@ -80,7 +86,7 @@ try{
  $agentHash=(Get-FileHash -LiteralPath (Join-Path $target 'agent.mjs') -Algorithm SHA256).Hash
  $runningServer=Get-CimInstance Win32_Process | Where-Object {$_.ExecutablePath -eq (Join-Path $target 'node.exe') -and $_.CommandLine -match 'server\.mjs'} | Select-Object -First 1
  if(-not $runningServer){throw 'Servidor local não está em execução para o teste de proteção.'}
- # The original installation is the real published 0.25.0; use 0.26 for rejection/update tests.
+ # The original installation is the real published 0.25.0; use the current package for rejection/update tests.
  $newExtract=Join-Path $root 'new extracted'
  $null=& $sevenZip x $newMaster ('-o'+$newExtract) -y
  if($LASTEXITCODE -ne 0){throw 'Falha ao extrair a versão atual.'}
@@ -90,6 +96,7 @@ try{
  $env:BACKUPDESK_TEST_CLIENT_WRONG=Join-Path $root 'pacote com outra chave.exe'
  & node --input-type=module -e "import {readFile,writeFile} from 'node:fs/promises';import {readEnrollment,enrollmentTrailer} from './client-package.mjs';const original=await readEnrollment(process.env.BACKUPDESK_TEST_CLIENT_NAMED);await writeFile(process.env.BACKUPDESK_TEST_CLIENT_WRONG,Buffer.concat([await readFile(process.env.BACKUPDESK_TEST_CLIENT_BASE),enrollmentTrailer({...original,security_key:'08'.repeat(32)})]));"
  if($LASTEXITCODE -ne 0){throw 'Falha ao preparar teste com chave divergente.'}
+ $testStage='rejeitar pacote com outra chave'
  $rejected=Start-Process -FilePath $env:BACKUPDESK_TEST_CLIENT_WRONG -ArgumentList @('/S',('/D='+$target)) -PassThru
  if(-not $rejected.WaitForExit(90000)){$rejected.Kill();throw 'O instalador divergente não encerrou em modo silencioso.'}
  if($rejected.ExitCode -eq 0){throw 'O instalador aceitou uma chave diferente.'}
@@ -98,6 +105,7 @@ try{
  if(-not (Get-Process -Id $runningServer.ProcessId -ErrorAction SilentlyContinue)){throw 'O instalador divergente interrompeu o servidor antes da validação.'}
  $null=Invoke-LocalClient 'state'
  # Even a package carrying the original key may not recreate a missing vault record.
+ $testStage='rejeitar cofre incompleto'
  $deviceFile=Join-Path $target 'data\keys\device.json'
  Move-Item -LiteralPath $deviceFile -Destination ($deviceFile+'.retained')
  try{
@@ -106,14 +114,17 @@ try{
   if($incomplete.ExitCode -eq 0 -or (Test-Path -LiteralPath $deviceFile)){throw 'O instalador recriou a chave de um cofre incompleto.'}
   if((Get-FileHash -LiteralPath (Join-Path $target 'agent.mjs') -Algorithm SHA256).Hash -ne $agentHash){throw 'O instalador modificou o programa apesar do cofre incompleto.'}
  }finally{Move-Item -LiteralPath ($deviceFile+'.retained') -Destination $deviceFile}
+ $testStage='atualizar Client preservando chaves'
  $process=Start-Process -FilePath $updater -ArgumentList @('/S',('/D='+$target)) -PassThru
  if(-not $process.WaitForExit(180000)){$process.Kill();throw 'Atualização do client excedeu o prazo.'}
  if($process.ExitCode -ne 0){throw 'Atualização identificada falhou.'}
+ $testStage='iniciar Client atualizado'
  $afterUpdate=Wait-LocalClient
  if($afterUpdate.routines.Count -ne 1){throw 'A atualização perdeu a rotina local.'}
  $updated=Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $target 'agent-config.json') | ConvertFrom-Json
  if((Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $target 'data\keys\device.json') | ConvertFrom-Json).header.key_id -ne $keyId){throw 'A atualização trocou a chave de dados.'}
  foreach($relative in @('data\keys\master.json','data\keys\computer.json','data\keys\device.json','data\device-identity.json')){if((Get-FileHash -LiteralPath (Join-Path $target $relative) -Algorithm SHA256).Hash -ne $keyHashes[$relative]){throw ('Atualização legítima regravou '+$relative)}}
+ $testStage='restaurar backup anterior após atualização'
  $oldRestored=Wait-ClientJob (Invoke-LocalClient 'jobs' @{kind='restore';run=$backup.run;path='sample.txt';target=$restore})
  if([IO.File]::ReadAllText((Join-Path $oldRestored.destination 'sample.txt')) -ne 'backup independente do master'){throw 'O backup anterior não abriu com a chave preservada.'}
  if($updated.installed_at -ne $installedAt){throw 'A atualização alterou a data original de instalação.'}
@@ -126,10 +137,12 @@ try{
  $configBytes=[IO.File]::ReadAllBytes((Join-Path $target 'agent-config.json'))
  Add-Content -LiteralPath (Join-Path $target 'agent.mjs') -Value '// dedicated updater must replace program without touching identity' -Encoding UTF8
  $oldProgram=(Get-FileHash -LiteralPath (Join-Path $target 'agent.mjs') -Algorithm SHA256).Hash
+ $testStage='bloquear atualizador sem instalação'
  $fresh=Join-Path $root 'sem instalacao'
  $blocked=Start-Process -FilePath $updater -ArgumentList @('/S',('/D='+$fresh)) -PassThru
  if(-not $blocked.WaitForExit(90000)){$blocked.Kill();throw 'Atualizador sem instalação não encerrou.'}
  if($blocked.ExitCode -eq 0 -or (Test-Path -LiteralPath $fresh)){throw 'Atualizador permitiu primeira instalação ou criou dados novos.'}
+ $testStage='rejeitar cofre incompleto'
  $deviceFile=Join-Path $target 'data\keys\device.json'
  Move-Item -LiteralPath $deviceFile -Destination ($deviceFile+'.retained')
  try{
@@ -138,24 +151,31 @@ try{
   if($blocked.ExitCode -eq 0 -or (Test-Path -LiteralPath $deviceFile)){throw 'Atualizador recriou chave ausente.'}
   if((Get-FileHash -LiteralPath (Join-Path $target 'agent.mjs') -Algorithm SHA256).Hash -ne $oldProgram){throw 'Atualizador modificou programa antes de validar as chaves.'}
  }finally{Move-Item -LiteralPath ($deviceFile+'.retained') -Destination $deviceFile}
+ $testStage='atualizar Client preservando chaves'
  $process=Start-Process -FilePath $updater -ArgumentList @('/S',('/D='+$target)) -PassThru
  if(-not $process.WaitForExit(180000)){$process.Kill();throw 'Atualizador dedicado excedeu o prazo.'}
  if($process.ExitCode -ne 0){throw ('Atualizador dedicado falhou: '+$process.ExitCode)}
+ $testStage='iniciar Client após atualização dedicada'
  $afterDedicated=Wait-LocalClient
  foreach($relative in $filesToPreserve){if((Get-FileHash -LiteralPath (Join-Path $target $relative) -Algorithm SHA256).Hash -ne $updateHashes[$relative]){throw ('Atualizador dedicado regravou '+$relative)}}
  if((Get-FileHash -LiteralPath (Join-Path $target 'agent.mjs') -Algorithm SHA256).Hash -eq $oldProgram){throw 'O programa não foi atualizado.'}
  if($afterDedicated.routines.Count -ne 1){throw 'O atualizador perdeu a rotina.'}
+ $testStage='restaurar após atualização dedicada'
  $restoredDedicated=Wait-ClientJob (Invoke-LocalClient 'jobs' @{kind='restore';run=$backup.run;path='sample.txt';target=$restore})
  if([IO.File]::ReadAllText((Join-Path $restoredDedicated.destination 'sample.txt')) -ne 'backup independente do master'){throw 'O backup anterior não restaurou após atualização dedicada.'}
  # The destination itself is named BackupDesk: catalog the outer folder using the original key.
+ $testStage='consultar própria chave'
  $ownSecurity=Invoke-LocalClient ('devices/'+$config.device_id+'/security-key') @{}
+ $testStage='catalogar subpastas da raiz'
  $catalog=Wait-ClientJob (Invoke-LocalClient 'jobs' @{kind='catalog';device=$config.device_id;source=$root;recovery_name=$config.name;security_key=$ownSecurity.security_key})
  if($catalog.runs -lt 1){throw 'O calendário não encontrou backup nas subpastas da raiz selecionada.'}
  $catalogState=Invoke-LocalClient 'state'
  $imported=$catalogState.repositoryRuns | Where-Object {$_.original_run -eq $backup.run -and $_.recovery_name -eq $config.name} | Select-Object -First 1
  if(-not $imported){throw 'Backup anterior não foi importado com nome e chave originais.'}
+ $testStage='restaurar pelo calendário importado'
  $recoveredCatalog=Wait-ClientJob (Invoke-LocalClient 'jobs' @{kind='restore';repository_run=$imported.id;path='sample.txt';target=$restore})
  if([IO.File]::ReadAllText((Join-Path $recoveredCatalog.destination 'sample.txt')) -ne 'backup independente do master'){throw 'Restauração pelo calendário importado divergiu.'}
+ $testPassed=$true
  'Busca recursiva pela pasta raiz, nome Unicode e chave original: calendário carregado e arquivo Restic anterior restaurado: OK.'
  'Atualizador Client 0.25.0 para 0.27.0: sem cadastro/chave no pacote, sem primeira instalação, cofre incompleto bloqueado, configuração/chaves idênticas, rotina e restauração anterior preservadas: OK.'
  'Chaves Windows: instalador divergente bloqueado antes de substituir arquivos ou parar o app; cofre incompleto preservado; chaves idênticas após atualização legítima e backup anterior restaurado: OK.'
@@ -165,9 +185,16 @@ try{
  $detail=$_.Exception.Message
  $log=Join-Path $target 'data\agent.log'
  if(Test-Path -LiteralPath $log){$detail+=' '+((Get-Content -LiteralPath $log -Tail 25) -join [Environment]::NewLine)}
+ $diagnostic=($testStage+': '+$detail+' '+$_.ScriptStackTrace).Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
+ Write-Output "::error title=Windows client original failure::$diagnostic"
  throw $detail
 }finally{
+ try{
  $uninstall=Join-Path $target 'Uninstall.exe'
  if(Test-Path -LiteralPath $uninstall){$process=Start-Process -FilePath $uninstall -ArgumentList @('/S',('_?='+$target)) -PassThru;if(-not $process.WaitForExit(60000)){$process.Kill();throw 'Desinstalação do teste excedeu o prazo.'}}
  if(Test-Path -LiteralPath $root){Remove-Item -LiteralPath $root -Recurse -Force}
+ }catch{
+  if($testPassed){throw}
+  Write-Warning ('Limpeza falhou após erro principal: '+$_.Exception.Message)
+ }
 }
