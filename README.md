@@ -1,8 +1,8 @@
-# BackupDesk 0.28.0 — versão de teste
+# BackupDesk 0.29.0 — versão de teste
 
-[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.28.0-x64.exe)
+[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.29.0-x64.exe)
 
-Atualizar uma instalação existente: [Client](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Atualizacao-Client-0.28.0-x64.exe) · [Master](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Atualizacao-Master-0.28.0-x64.exe).
+Atualizar uma instalação existente: [Client](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Atualizacao-Client-0.29.0-x64.exe) · [Master](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Atualizacao-Master-0.29.0-x64.exe).
 
 [Começar na Locaweb: contratação, instalação e primeiro client](deploy/LOCAWEB-PASSO-A-PASSO.md)
 
@@ -392,3 +392,16 @@ O valor segue na comunicação direta e nos logs assinados, sem acrescentar grav
 Validação local da 0.28.0: 133 testes passaram, incluindo origens sobrepostas, várias rotinas, destinos múltiplos, cancelamento da medição, unidades decimais, persistência e assinatura do volume no log. A integração real manteve o volume selecionado quando um diferencial gravou zero bytes e incluiu arquivos de outra rotina ainda não executada. A API isola as medições por token do computador. Chromium verificou valores em GB vindos da API e de logs, a ausência de Conexão e o estado de um client antigo sem medição. Foram conferidos 48 arquivos por instalador, 46 por atualizador e oito módulos de pré-verificação, sem cadastro ou chave embutidos; a imagem web passou em backup Restic, verificação integral e restauração.
 
 Validação Windows da 0.28.0: os quatro jobs da [execução 42879421566](https://github.com/rochamurilo/backupdesk/actions/runs/42879421566) passaram. A medição foi verificada com origens sobrepostas, junctions e arquivo aberto com bloqueio exclusivo. O Client instalado a partir da 0.25.0 e atualizado para 0.28.0 mediu as origens e publicou o volume nas duas pastas de logs. Os atualizadores Client e Master mantiveram as chaves byte a byte e restauraram os backups anteriores; VSS e autenticação SMB também passaram. Os três instaladores públicos foram baixados e conferidos com `dist/SHA256SUMS.txt`.
+
+
+## 0.29.0 — Volume de uma Restauração Completa
+
+**Volume Selecionado** passa a representar o tamanho lógico de uma restauração completa disponível até o momento atual. O cálculo usa o catálogo dos backups concluídos: escolhe o último ponto restaurável de cada conjunto de origens e soma o tamanho de todos os seus arquivos, incluindo os que um diferencial referencia na base completa. Cópias equivalentes em vários destinos contam uma vez, usando o ponto concluído mais recente. A seleção dos pontos é compartilhada com o menu **Restauração**.
+
+Arquivos criados ou alterados na origem só mudam o total após um backup concluído. Uma exclusão reduz o volume quando consta de um novo ponto restaurável; versões anteriores continuam preservadas no calendário. Falhas, execuções em andamento e pontos futuros ficam fora da simulação. Se hoje não houve backup, a simulação usa o último ponto disponível até agora. Rotinas desativadas ou excluídas continuam contribuindo enquanto seus conjuntos permanecem no catálogo restaurável. Conjuntos diferentes mantêm suas estruturas separadas, como na restauração.
+
+A simulação consulta somente metadados do catálogo, sem varrer as pastas atuais, restaurar arquivos em disco ou somar o espaço ocupado pelo repositório. O valor continua em GB decimais. A coluna fica em **Aguardando catálogo** quando não há um catálogo concluído; uma versão vazia válida mostra **0 GB**. Um catálogo com volume inválido mostra **Indisponível**.
+
+O Client consulta a simulação ao iniciar e após concluir cada cópia, e envia o resultado nos logs assinados por evento. Assim, instalações atualizadas com histórico existente podem informar o volume sem exigir um novo backup. O Master calcula o valor para os catálogos que administra e aceita dos logs somente volumes identificados com o novo critério; números da antiga medição das origens não são exibidos como restauráveis. Atualize primeiro o Master e depois os Clients pelos atualizadores, preservando as chaves existentes.
+
+Validação local da 0.29.0: 135 testes passaram. O total simulado foi comparado com os bytes de restaurações reais nos motores nativo e Restic, incluindo arquivo mantido na base, exclusão, inclusão e execução sem mudanças. Mudanças na origem sem novo backup mantiveram o volume do catálogo anterior. Também foram verificados limite de data, falhas e cópias pendentes, cópias em destinos distintos, versões vazias, proveniência assinada e rejeição visual do volume antigo de origens. Chromium validou painel, calendário e seleção dos pontos compartilhada com Restauração. Foram conferidos 48 arquivos por instalador, 46 por atualizador e oito módulos de pré-verificação, sem cadastro ou chave embutidos; a imagem web passou em backup Restic, verificação integral e restauração.

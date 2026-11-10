@@ -1,3 +1,3 @@
-dcb2fbdaec3a273e31563612e28a534b423c15018163b797b53e040e931fd7a5  BackupDesk-Master-0.28.0-x64.exe
-79bdaa8bb058a1ad0373af7a767f96d55bc56c7dfdbaf29f9c03d24cd806a535  BackupDesk-Atualizacao-Client-0.28.0-x64.exe
-6c22383cf135cbb957551edb58c090c7db8cdb0e608d0a987d0c635ed8fa2ba7  BackupDesk-Atualizacao-Master-0.28.0-x64.exe
+dc4ef53abb35e2b7f3b9f711c4fefe84d65b00cce2ac585a58e073ed275f9790  BackupDesk-Master-0.29.0-x64.exe
+fe09bb077f3a48c92aa26042dec1cc00249284bc54f0718715b93429ec064e62  BackupDesk-Atualizacao-Client-0.29.0-x64.exe
+8ae9c96538562e31c7c9c200b8fc9700e9bfb417faec5c1ca1d0da8fec3c07c9  BackupDesk-Atualizacao-Master-0.29.0-x64.exe

@@ -1,14 +1,14 @@
 $ErrorActionPreference='Stop'
 $repo=Split-Path $PSScriptRoot -Parent
 $installer=Join-Path $repo 'dist\BackupDesk-Master-0.25.0-x64.exe'
-$updater=Join-Path $repo 'dist\BackupDesk-Atualizacao-Master-0.28.0-x64.exe'
+$updater=Join-Path $repo 'dist\BackupDesk-Atualizacao-Master-0.29.0-x64.exe'
 $root=Join-Path $env:TEMP ('BackupDesk Master Update '+[guid]::NewGuid().ToString('N'))
 $target=Join-Path $root 'master existente'
 New-Item -ItemType Directory -Path $root | Out-Null
 function Run-Package($File,$Directory){$p=Start-Process -FilePath $File -ArgumentList @('/S',('/D='+$Directory)) -PassThru;if(-not $p.WaitForExit(180000)){$p.Kill();throw 'Pacote excedeu o prazo.'};return $p.ExitCode}
 $panel='http://127.0.0.1:3000';$script:session=$null
 function Api($Path,$Body=$null){$headers=@{Origin=$panel};if($script:session){$headers.Authorization='Bearer '+$script:session};if($null -eq $Body){return Invoke-RestMethod -Uri ($panel+'/api/'+$Path) -Headers $headers -TimeoutSec 5};return Invoke-RestMethod -Uri ($panel+'/api/'+$Path) -Method Post -ContentType 'application/json' -Body ($Body | ConvertTo-Json -Depth 12 -Compress) -Headers $headers -TimeoutSec 10}
-function Ready($ExpectedVersion='0.28.0') {for($i=0;$i -lt 150;$i++){try{$script:session=(Api 'local-session' @{}).token;$s=Api 'state';if($s.localDeviceId -and $s.devices[0].version -eq $ExpectedVersion){return $s}}catch{};Start-Sleep -Milliseconds 300};throw 'Master não iniciou.'}
+function Ready($ExpectedVersion='0.29.0') {for($i=0;$i -lt 150;$i++){try{$script:session=(Api 'local-session' @{}).token;$s=Api 'state';if($s.localDeviceId -and $s.devices[0].version -eq $ExpectedVersion){return $s}}catch{};Start-Sleep -Milliseconds 300};throw 'Master não iniciou.'}
 function Wait-Job($Job){for($i=0;$i -lt 200;$i++){$j=Api ('jobs/'+$Job.id);if($j.status -eq 'failed'){throw $j.error};if($j.status -eq 'success'){return $j.result};Start-Sleep -Milliseconds 300};throw 'Tarefa não concluiu.'}
 try{
  $fresh=Join-Path $root 'nao instalado'
@@ -34,7 +34,7 @@ try{
  if((Get-FileHash -LiteralPath (Join-Path $target 'agent.mjs') -Algorithm SHA256).Hash -eq $oldProgram){throw 'Programa não foi atualizado.'}
  $restored=Wait-Job (Api 'jobs' @{kind='restore';run=$backup.run;path='before.txt';target=$restorePath})
  if([IO.File]::ReadAllText((Join-Path $restored.destination 'before.txt')) -ne 'master key remains valid'){throw 'Backup antigo não foi restaurado.'}
- 'Atualizador Master 0.25.0 para 0.28.0: primeira instalação bloqueada, chave ausente sem regeneração, chaves idênticas, cadastro/rotinas/preferências preservados e backup Restic anterior restaurado: OK.'
+ 'Atualizador Master 0.25.0 para 0.29.0: primeira instalação bloqueada, chave ausente sem regeneração, chaves idênticas, cadastro/rotinas/preferências preservados e backup Restic anterior restaurado: OK.'
 }finally{
  $uninstall=Join-Path $target 'Uninstall.exe';if(Test-Path -LiteralPath $uninstall){$p=Start-Process -FilePath $uninstall -ArgumentList @('/S',('_?='+$target)) -PassThru;if(-not $p.WaitForExit(60000)){$p.Kill();throw 'Limpeza do teste excedeu o prazo.'}}
  if(Test-Path -LiteralPath $root){Remove-Item -LiteralPath $root -Recurse -Force}

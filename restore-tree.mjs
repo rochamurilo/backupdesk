@@ -1,3 +1,17 @@
+const normalizedSource=value=>{const input=String(value||'').replace(/[\\/]+$/,'');return /^(?:[a-z]:|\\)/i.test(input)?input.replaceAll('/',String.fromCharCode(92)).toLowerCase():input};
+export function restoreSourceKey(run){const origin=run.original_device||run.device;try{const sources=JSON.parse(run.scope_sources);if(!sources.length)throw Error();return JSON.stringify([origin,sources.map(normalizedSource).sort()])}catch{return origin+':'+(run.scope_key||'legacy:'+run.routine_id)}}
+// Used by the restore calendar and by the dashboard's complete-restoration simulation.
+export function selectRestorePoints(runs,asOf=Date.now()){
+ const points=new Map();
+ for(const run of runs.filter(r=>r.status==='success'&&Number.isFinite(Date.parse(r.finished))&&Date.parse(r.finished)<=Number(asOf)).sort((a,b)=>Date.parse(b.finished)-Date.parse(a.finished))){const key=restoreSourceKey(run);if(!points.has(key))points.set(key,run)}
+ return [...points.values()];
+}
+export function restoreVolumeAt(runs,asOf=new Date()){
+ const points=selectRestorePoints(runs,asOf);if(!points.length)return null;
+ const metadata={basis:'restore',measured_at:new Date(asOf).toISOString(),latest_backup_at:points[0].finished};let bytes=0n;
+ for(const run of points){if(!Number.isSafeInteger(run.logical_bytes)||run.logical_bytes<0)return {...metadata,status:'unavailable',bytes:null};bytes+=BigInt(run.logical_bytes)}
+ return bytes>BigInt(Number.MAX_SAFE_INTEGER)?{...metadata,status:'unavailable',bytes:null}:{...metadata,status:'ready',bytes:Number(bytes)};
+}
 // A separate root for every restore point prevents same-named files being merged.
 export function buildRestoreTree(sets){
  const nodes=new Map(),rows=[],roots=[],compareNames=new Intl.Collator('pt-BR',{numeric:true,sensitivity:'base'}).compare;let next=0;
