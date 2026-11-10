@@ -1,4 +1,5 @@
 export const megabytes=value=>new Intl.NumberFormat('pt-BR',{maximumFractionDigits:2}).format(Number(value||0)/1000000)+' MB';
+export const gigabytes=value=>value>0&&value<10000000?'< 0,01 GB':new Intl.NumberFormat('pt-BR',{maximumFractionDigits:2}).format(Number(value||0)/1000000000)+' GB';
 export function remainingTime(seconds){if(!Number.isFinite(seconds)||seconds<0)return 'Calculando…';const n=Math.ceil(seconds);if(n<60)return n+' s';if(n<3600)return Math.floor(n/60)+' min '+n%60+' s';return Math.floor(n/3600)+' h '+Math.floor(n%3600/60)+' min'}
 // Measure real copy/read phases separately: verification bytes never inflate copy speed.
 export function createProgressMeasurement(now=()=>performance.now()){

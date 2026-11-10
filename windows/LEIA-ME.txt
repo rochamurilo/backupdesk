@@ -1,4 +1,4 @@
-BACKUPDESK 0.27.0 - TESTE WINDOWS x64
+BACKUPDESK 0.28.0 - TESTE WINDOWS x64
 
 INSTALACAO
 Instale na mesma pasta para preservar cadastros e backups.
@@ -110,7 +110,7 @@ Diferenciais dependem do completo que deve estar nesse mesmo repositorio.
 Copie toda a pasta BackupDesk para preservar as bases.
 A leitura do catalogo nao modifica os arquivos do disco.
 
-CRIPTOGRAFIA - 0.27.0
+CRIPTOGRAFIA - 0.28.0
 Novos backups usam AES-256-GCM, incluindo conteudo e nomes dos arquivos.
 Uma chave de dados pode ser recuperada pelo computador ou pelo master.
 As chaves privadas do Windows usam DPAPI do usuario da instalacao.
@@ -136,14 +136,14 @@ O passo a passo do painel esta em deploy/LOCAWEB-PASSO-A-PASSO.md no repositorio
 VPS, dominio e servidor fisico ainda precisam ser contratados/configurados.
 O agendamento remoto ainda depende de conexao com o master configurado.
 
-MEDIDAS E ANDAMENTO - 0.27.0
+MEDIDAS E ANDAMENTO - 0.28.0
 Tamanhos em MB decimais: 1 MB = 1.000.000 bytes.
 O painel mostra velocidade em MB/s e tempo restante estimado.
 A velocidade de copia nao inclui os bytes contados na verificacao.
 Preparacao, falta de amostras e ausencia de avanco nao geram estimativa falsa.
 Tempo estimado pode variar; inclui trabalho de copia/verificacao da etapa atual.
 
-CHAVE DE SEGURANCA - 0.27.0
+CHAVE DE SEGURANCA - 0.28.0
 Baixar client pede somente o nome e mostra a chave para anotar ou baixar.
 Downloads repetidos da mesma identificacao mantem a chave.
 O endereco do painel web segue incorporado automaticamente, sem campo para digitar.
@@ -153,14 +153,14 @@ Atualize/inicie agentes antigos para registrar sua carteira antes de obter a cha
 Restauracao de terceiros consulta somente o computador e a chave informados.
 O calendario usa as copias existentes no compartilhamento selecionado.
 
-ARVORE DE RESTAURACAO - 0.27.0
+ARVORE DE RESTAURACAO - 0.28.0
 Abra Visualizar estrutura de pastas para pre-visualizar a data/hora selecionadas.
 Expanda as pastas e marque o que deseja recuperar. O botao Restaurar fica no topo.
 Expandir ou visualizar o catalogo nao restaura arquivos automaticamente.
 Os dados recuperados preservam as subpastas e nao substituem os originais.
 A chave de seguranca fica em Preferencias > Geral.
 
-PREFERENCIAS E CALENDARIOS - 0.27.0
+PREFERENCIAS E CALENDARIOS - 0.28.0
 Geral: nome, chave, data de instalacao registrada, versao e ultimo contato.
 Destinos de backup e Preferencias de desempenho ficam em submenus proprios.
 A chave do computador nao aparece mais na janela de terceiros.
@@ -169,21 +169,21 @@ Instalacoes antigas sem registro mostram data nao registrada, sem inventar valor
 Ambos os calendarios mostram sucesso, falha e execucao usando a mesma regra de data.
 Somente copias concluidas ficam disponiveis para restauracao.
 
-LOGS - 0.27.0
+LOGS - 0.28.0
 Preferencias > Logs permite duas pastas (local e nuvem), cada uma com usuario/senha opcionais e independentes. Senhas sao cifradas e nunca sao gravadas no arquivo de status. O master precisa acessar as pastas; se o caminho dele for diferente, preencha Leitura pelo master. Nuvem aqui significa pasta de rede, sincronizada ou montada, nao uma URL HTTPS. No Linux, monte o compartilhamento no sistema.
-O arquivo BackupDesk-Logs/ID-COMPUTADOR.json e compacto, assinado e limitado a 128 KiB (ate 200 execucoes recentes). E atualizado a cada minuto e nos backups. O master le a cada minuto e atualiza a Visao Geral, mantendo a consulta direta existente. Arquivos antigos nao tornam a maquina online. Falha de log e indicada sem interromper o backup. Atualize os clients para 0.27.0.
+O arquivo BackupDesk-Logs/ID-COMPUTADOR.json e compacto, assinado e limitado a 128 KiB (ate 200 execucoes recentes). E atualizado a cada minuto e nos backups. O master le a cada minuto e atualiza a Visao Geral, mantendo a consulta direta existente. Arquivos antigos nao tornam a maquina online. Falha de log e indicada sem interromper o backup. Atualize os clients para 0.28.0.
 
-ORGANIZACAO DA INTERFACE - 0.27.0
+ORGANIZACAO DA INTERFACE - 0.28.0
 Titulos: Visao Geral, Opcoes de Backup, Backups Concluidos, Falhas Registradas e PROTECAO DE DADOS. As ultimas 10 execucoes ficam no menu Backup. Ver arquivos abre a Restauracao no ponto selecionado. O aviso informativo de validacao do PST foi removido do historico e da Restauracao; falhas reais permanecem no historico e sao detalhadas em Falhas Registradas. A integridade e os metadados do backup nao foram alterados.
 
-PILOTO RESTIC - 0.27.0
+PILOTO RESTIC - 0.28.0
 Ative em Preferencias > Desempenho > Motor de backup > Restic. Cada execucao e um snapshot completo logico; blocos ja existentes sao reutilizados. O primeiro snapshot de cada repositorio e verificado integralmente. A verificacao --read-data repete na primeira execucao apos cinco dias desde a ultima verificacao aprovada. Nao ha regravacao fisica obrigatoria a cada cinco dias nem remocao automatica de versoes. Uma verificacao com falha impede aprovar a tentativa e aparece em Falhas Registradas.
-O motor anterior permanece selecionado nas instalacoes existentes e seus backups continuam restauraveis. O piloto usa pastas locais/HD externo/UNC, inclusive varios destinos; o receptor HTTPS antigo do escritorio nao suporta esse formato e a combinacao e bloqueada. Quando houver limite configurado, ele permanece durante toda a operacao Restic, inclusive fora do horario de limitacao. Atualize master e clients para 0.27.0 antes de ativar. VSS e mantido no Windows; a estrutura interna de PST real no Outlook ainda requer teste de recuperacao.
+O motor anterior permanece selecionado nas instalacoes existentes e seus backups continuam restauraveis. O piloto usa pastas locais/HD externo/UNC, inclusive varios destinos; o receptor HTTPS antigo do escritorio nao suporta esse formato e a combinacao e bloqueada. Quando houver limite configurado, ele permanece durante toda a operacao Restic, inclusive fora do horario de limitacao. Atualize master e clients para 0.28.0 antes de ativar. VSS e mantido no Windows; a estrutura interna de PST real no Outlook ainda requer teste de recuperacao.
 As chaves de computador/master e BD1 recuperam o novo catalogo. Para transportar os backups, copie toda a pasta BackupDesk, incluindo a subpasta oculta .restic do computador. Copiar somente a pasta de uma execucao nao leva os blocos compartilhados. Nao remova objetos de .restic manualmente. Restic e distribuido com licencas em licenses/restic.
 
 No Windows, selecione pastas dentro da unidade para o piloto Restic. A unidade inteira e arquivos soltos diretamente na raiz ainda exigem o motor anterior. A ponte VSS usa junctions temporarias sem elevar o processo Restic.
 
-CLIENT LOCAL INDEPENDENTE - 0.27.0
+CLIENT LOCAL INDEPENDENTE - 0.28.0
 Atualize o master e gere novamente o client identificado para a maquina.
 O atalho BackupDesk Client abre o painel local em 127.0.0.1:3001.
 Configure rotinas, destinos e motor Restic no proprio client.
@@ -198,7 +198,7 @@ O client local exibe somente sua maquina; o master acompanha os resultados e
 nao envia configuracoes ou comandos atraves dos logs. Instalacoes online que
 ja possuem endereco incorporado continuam funcionando sem alteracao de modo.
 
-ATALHOS E AGENDAMENTO - 0.27.0
+ATALHOS E AGENDAMENTO - 0.28.0
 Links simbolicos e junctions dentro da origem nao interrompem a copia e nao
 sao percorridos. Os arquivos reais sao copiados. No historico de Backup,
 expanda a lista de atalhos ignorados. Para copiar o conteudo apontado por um
@@ -209,7 +209,7 @@ sem marcar execucoes manuais como agendadas. Disparos e falhas tem data/hora
 no agent.log. Atualize master e client. A inicializacao por login do Windows
 permanece igual; uma falha especifica ainda precisa ser diagnosticada nos logs.
 
-CHAVE PRESERVADA NA ATUALIZACAO - 0.27.0
+CHAVE PRESERVADA NA ATUALIZACAO - 0.28.0
 Antes de parar o programa ou substituir arquivos, o instalador valida o cofre.
 A atualizacao usa a chave instalada e nao regrava seus arquivos. Pacotes com
 chave, cadastro ou master diferentes sao bloqueados. Cofre incompleto ou

@@ -1,8 +1,8 @@
-# BackupDesk 0.27.0 — versão de teste
+# BackupDesk 0.28.0 — versão de teste
 
-[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.27.0-x64.exe)
+[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.28.0-x64.exe)
 
-Atualizar uma instalação existente: [Client](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Atualizacao-Client-0.27.0-x64.exe) · [Master](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Atualizacao-Master-0.27.0-x64.exe).
+Atualizar uma instalação existente: [Client](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Atualizacao-Client-0.28.0-x64.exe) · [Master](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Atualizacao-Master-0.28.0-x64.exe).
 
 [Começar na Locaweb: contratação, instalação e primeiro client](deploy/LOCAWEB-PASSO-A-PASSO.md)
 
@@ -379,3 +379,14 @@ A ação **Restaurar** fica no rodapé, depois da estrutura de arquivos. Um íco
 Validação local da 0.27.0: 129 testes passaram. Incluem restauração com a chave original nos motores nativo e Restic, busca em todos os níveis de subpastas, cópias repetidas, permissões, redirecionamentos e diagnóstico de catálogos incompletos. Chromium validou o calendário e a restauração a partir de uma pasta ancestral, o botão no rodapé, as cinco execuções sem perder versões antigas e a cópia da chave mascarada. O Client real exibiu, copiou, revelou e baixou somente sua própria chave, sem alterar o arquivo do cofre. Foram conferidos 48 arquivos de cada instalador; a imagem web passou em backup Restic, verificação integral e restauração.
 
 Validação dos pacotes da 0.27.0: foram conferidos 46 arquivos e oito módulos de pré-verificação em cada atualizador, sem chave ou cadastro embutidos. Os três downloads públicos correspondem aos hashes de `dist/SHA256SUMS.txt`. Os quatro jobs Windows da [execução 42875700404](https://github.com/rochamurilo/backupdesk/actions/runs/42875700404) passaram: instalação real da 0.25.0, atualização de Client e Master para 0.27.0 com arquivos de chave idênticos, restauração dos backups anteriores, descoberta pela pasta raiz com nome Unicode e chave original, VSS e compartilhamento SMB autenticado. O teste PowerShell usa UTF-8 explícito nas requisições e respostas para preservar nomes com acentos.
+
+
+## 0.28.0 — Volume Selecionado em GB
+
+Em **Visão Geral → Equipamentos Protegidos**, a coluna **Volume Selecionado** substitui **Conexão** e o horário do log. Mostra o tamanho lógico dos arquivos nas origens das rotinas ativas do computador, em GB decimais (1 GB = 1.000.000.000 bytes). A coluna anterior continua mostrando o volume gravado na última execução, em MB. Um diferencial que não grava novos dados conserva o volume selecionado correto.
+
+A medição acontece no início de uma rotina, uma vez para todos os destinos dessa execução. Examina somente metadados de arquivos, sem ler seu conteúdo, e considera todas as rotinas ativas, inclusive as ainda não executadas. A mesma pasta, subpasta ou arquivo selecionado em mais de uma rotina é contado uma única vez; atalhos internos não são percorridos. O horário da medição aparece ao passar o mouse sobre o valor. Se alguma origem não puder ser medida, o painel mostra **Indisponível**, sem apresentar um total parcial como completo.
+
+O valor segue na comunicação direta e nos logs assinados, sem acrescentar gravações periódicas durante a ociosidade. A medição persiste no registro local após reiniciar e o Master usa o valor mais recente entre a API e os logs. Atualize Master e Clients pelos atualizadores e execute uma rotina para obter a primeira medição; computadores sem essa informação mostram **Aguardando medição**. Logs antigos continuam sendo aceitos. Os atualizadores preservam as chaves existentes.
+
+Validação local da 0.28.0: 133 testes passaram, incluindo origens sobrepostas, várias rotinas, destinos múltiplos, cancelamento da medição, unidades decimais, persistência e assinatura do volume no log. A integração real manteve o volume selecionado quando um diferencial gravou zero bytes e incluiu arquivos de outra rotina ainda não executada. A API isola as medições por token do computador. Chromium verificou valores em GB vindos da API e de logs, a ausência de Conexão e o estado de um client antigo sem medição. Foram conferidos 48 arquivos por instalador, 46 por atualizador e oito módulos de pré-verificação, sem cadastro ou chave embutidos; a imagem web passou em backup Restic, verificação integral e restauração.

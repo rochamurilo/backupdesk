@@ -35,7 +35,7 @@ Os computadores precisam alcançar **HTTPS/443** no armazenamento. Preferir IP p
 
 Requisitos: VPS Linux atualizado, Docker Engine + Compose, DNS do painel apontando para seu IP e portas 80/443 disponíveis para Caddy emitir o certificado. A aplicação não publica a porta 3000 no host.
 
-1. Obter o repositório e o instalador master **0.27.0** publicado em dist. O Dockerfile extrai dele o client genérico para o botão de download; nenhum instalador personalizado é publicado na imagem.
+1. Obter o repositório e o instalador master **0.28.0** publicado em dist. O Dockerfile extrai dele o client genérico para o botão de download; nenhum instalador personalizado é publicado na imagem.
 2. Copiar deploy/central.env.example para deploy/central.env. Preencher domínio, ADMIN_PASSWORD (senha longa e exclusiva) e KEY_ENCRYPTION_PASSWORD (senha longa da chave privada). Guardar o arquivo fora do Git, com permissão 600. As duas senhas têm funções diferentes.
 3. Construir e iniciar:
 
