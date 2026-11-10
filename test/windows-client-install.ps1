@@ -35,8 +35,11 @@ try{
  $script:clientSession=$null
  function Invoke-LocalClient($Path,$Body=$null){
   $headers=@{Origin=$panel};if($script:clientSession){$headers.Authorization='Bearer '+$script:clientSession}
-  if($null -eq $Body){return Invoke-RestMethod -Uri ($panel+'/api/'+$Path) -Headers $headers -TimeoutSec 5}
-  return Invoke-RestMethod -Uri ($panel+'/api/'+$Path) -Method Post -ContentType 'application/json' -Body ($Body | ConvertTo-Json -Depth 12 -Compress) -Headers $headers -TimeoutSec 10
+  # Windows PowerShell 5.1 otherwise encodes JSON strings and decodes responses as a legacy code page.
+  $request=@{Uri=($panel+'/api/'+$Path);Headers=$headers;TimeoutSec=10;UseBasicParsing=$true}
+  if($null -ne $Body){$request.Method='Post';$request.ContentType='application/json; charset=utf-8';$request.Body=[Text.Encoding]::UTF8.GetBytes(($Body | ConvertTo-Json -Depth 12 -Compress))}
+  $response=Invoke-WebRequest @request
+  return ([Text.Encoding]::UTF8.GetString($response.RawContentStream.ToArray()) | ConvertFrom-Json)
  }
  function Wait-LocalClient($ExpectedVersion='0.27.0') {
   $ready=$false
@@ -184,7 +187,7 @@ try{
 }catch{
  $detail=$_.Exception.Message
  $log=Join-Path $target 'data\agent.log'
- if(Test-Path -LiteralPath $log){$detail+=' '+((Get-Content -LiteralPath $log -Tail 25) -join [Environment]::NewLine)}
+ if(Test-Path -LiteralPath $log){$detail+=' '+((Get-Content -Encoding UTF8 -LiteralPath $log -Tail 25) -join [Environment]::NewLine)}
  $diagnostic=($testStage+': '+$detail+' '+$_.ScriptStackTrace).Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
  Write-Output "::error title=Windows client original failure::$diagnostic"
  throw $detail
