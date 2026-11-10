@@ -1,8 +1,8 @@
-# BackupDesk 0.26.0 — versão de teste
+# BackupDesk 0.27.0 — versão de teste
 
-[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.26.0-x64.exe)
+[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.27.0-x64.exe)
 
-Atualizar uma instalação existente: [Client](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Atualizacao-Client-0.26.0-x64.exe) · [Master](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Atualizacao-Master-0.26.0-x64.exe).
+Atualizar uma instalação existente: [Client](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Atualizacao-Client-0.27.0-x64.exe) · [Master](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Atualizacao-Master-0.27.0-x64.exe).
 
 [Começar na Locaweb: contratação, instalação e primeiro client](deploy/LOCAWEB-PASSO-A-PASSO.md)
 
@@ -366,3 +366,14 @@ Para instalar em uma máquina nova, continue usando **Baixar Client Windows**, q
 Validação local da 0.26.0: 120 testes passaram. Foram cobertos cofres ausentes/corrompidos, produto incorreto, pacote identificado, instalações locais/online e legadas, download sem cadastro e restauração de backups anteriores nos dois motores. Chromium validou o download sem pedir nome/chave. Foram conferidos 48 arquivos por instalador, 46 arquivos por atualizador e os oito módulos de pré-verificação de cada atualizador, sem chave ou cadastro embutidos. A imagem web realizou backup, verificação integral e restauração; o atualizador Client embutido no instalador e no atualizador Master é idêntico ao pacote validado.
 
 Validação Windows da 0.26.0: os quatro jobs da [execução 42848201472](https://github.com/rochamurilo/backupdesk/actions/runs/42848201472) passaram. Client e Master foram instalados a partir dos pacotes publicados da 0.25.0 e atualizados com os executáveis de atualização da 0.26.0. Os testes compararam os arquivos de chave byte a byte, preservaram configuração/rotinas/preferências e restauraram backups Restic anteriores. Primeira instalação e cofres incompletos foram bloqueados antes de substituir o programa. Os três downloads públicos foram conferidos com os hashes de `dist/SHA256SUMS.txt`.
+
+
+## 0.27.0 — Busca Recursiva, Chave no Client e Restauração
+
+A leitura aceita o destino configurado e a pasta interna do repositório, inclusive quando ambos se chamam `BackupDesk` (`destino/BackupDesk/BackupDesk`). O leitor reconhece a estrutura, sem exigir que o usuário escolha a pasta interna pelo nome. A procura percorre todos os níveis de subpastas, encontra repositórios em pastas com qualquer nome e elimina cópias repetidas do mesmo backup. Não segue links simbólicos nem percorre os objetos binários internos do Restic. Erros de pasta vazia, chave sem correspondência, nome divergente e catálogo danificado têm mensagens distintas.
+
+Em **Preferências → Geral**, o Client local passa a mostrar, revelar e baixar a própria chave. A API já autorizava essa consulta; o campo estava oculto por uma regra visual reservada ao master. A correção mantém a proibição de consultar chaves de outros computadores e apaga o valor da tela ao sair do submenu. Nenhuma chave é gerada, alterada ou migrada por essa correção.
+
+A ação **Restaurar** fica no rodapé, depois da estrutura de arquivos. Um ícone discreto ao lado do campo da chave permite copiá-la sem revelar o texto na tela. O menu Backup mostra somente as **Últimas 5 Execuções**; o histórico armazenado e as versões disponíveis para restauração continuam completos.
+
+Validação local da 0.27.0: 129 testes passaram. Incluem restauração com a chave original nos motores nativo e Restic, busca em todos os níveis de subpastas, cópias repetidas, permissões, redirecionamentos e diagnóstico de catálogos incompletos. Chromium validou o calendário e a restauração a partir de uma pasta ancestral, o botão no rodapé, as cinco execuções sem perder versões antigas e a cópia da chave mascarada. O Client real exibiu, copiou, revelou e baixou somente sua própria chave, sem alterar o arquivo do cofre. Foram conferidos 48 arquivos de cada instalador; a imagem web passou em backup Restic, verificação integral e restauração.
