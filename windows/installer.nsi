@@ -8,18 +8,35 @@ Var VssOwnerSid
 Var PreparedUpdate
 !ifdef CLIENT
   !define PRODUCT "BackupDesk Client"
-  !define VERSION "0.25.0"
+  !define VERSION "0.26.0"
   !define KEY "BackupDeskClient"
   !define FOLDER "BackupDeskClient"
-  OutFile "../windows/build/BackupDesk-Client-0.25.0-x64.exe"
+  !define UPDATE_PRODUCT "client"
+  !ifdef UPDATE_ONLY
+   OutFile "../dist/BackupDesk-Atualizacao-Client-0.26.0-x64.exe"
+  !else
+   OutFile "../windows/build/BackupDesk-Client-0.26.0-x64.exe"
+  !endif
 !else
   !define PRODUCT "BackupDesk Master"
-  !define VERSION "0.25.0"
+  !define VERSION "0.26.0"
   !define KEY "BackupDesk"
   !define FOLDER "BackupDesk"
-  OutFile "../dist/BackupDesk-Master-0.25.0-x64.exe"
+  !define UPDATE_PRODUCT "master"
+  !ifdef UPDATE_ONLY
+   OutFile "../dist/BackupDesk-Atualizacao-Master-0.26.0-x64.exe"
+  !else
+   OutFile "../dist/BackupDesk-Master-0.26.0-x64.exe"
+  !endif
 !endif
-Name "${PRODUCT} (teste local)"
+!ifdef UPDATE_ONLY
+ Name "${PRODUCT} — Atualização"
+ !define MUI_WELCOMEPAGE_TITLE "Atualização do ${PRODUCT}"
+ !define MUI_WELCOMEPAGE_TEXT "Este arquivo atualiza somente uma instalação existente. O nome, as chaves de criptografia, as rotinas e as preferências são preservados. Não é necessário informar nome ou chave. Execute com o mesmo usuário da instalação."
+ !define MUI_DIRECTORYPAGE_TEXT_TOP "Confirme a pasta original do aplicativo. A atualização será bloqueada se a identificação ou as chaves existentes não puderem ser validadas."
+!else
+ Name "${PRODUCT} (teste local)"
+!endif
 InstallDir "$LOCALAPPDATA\${FOLDER}"
 InstallDirRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${KEY}" "InstallLocation"
 RequestExecutionLevel user
@@ -84,9 +101,14 @@ Function un.onUninstSuccess
  Delete "$INSTDIR\data\update-lock.json"
 FunctionEnd
 !include "update.nsh"
-!include "client-preflight.nsh"
+!ifndef UPDATE_ONLY
+ !include "client-preflight.nsh"
+!endif
+!include "installation-preflight.nsh"
 Section "${PRODUCT}" Main
-!ifdef CLIENT
+!ifdef UPDATE_ONLY
+ Call VerifyExistingInstallation
+!else ifdef CLIENT
  Call VerifyClientIdentity
 !endif
  Call StopInstalledProcesses
@@ -105,6 +127,7 @@ Section "${PRODUCT}" Main
  File "../restic-release.mjs"
  File "../backup-repository.mjs"
  File "../client-package.mjs"
+ File "../installation-update.mjs"
  File "../crypto-vault.mjs"
  File "../encrypted-files.mjs"
  File "../encryption-service.mjs"
@@ -145,6 +168,7 @@ Section "${PRODUCT}" Main
  File "Configurar.cmd"
  File "build/BackupDeskClient.exe"
  File /oname=VSSComponentSetup.exe "build/BackupDeskClientVSSComponent.exe"
+!ifndef UPDATE_ONLY
  nsExec::ExecToStack '"$INSTDIR\node.exe" "$INSTDIR\client-package.mjs" --install "$EXEPATH"'
  Pop $0
  Pop $1
@@ -152,6 +176,7 @@ Section "${PRODUCT}" Main
   MessageBox MB_OK|MB_ICONSTOP "Não foi possível configurar a identificação do client. $1"
   Abort
  ${EndIf}
+!endif
 !endif
  File "../server.mjs"
  File "../native-picker.mjs"
@@ -171,14 +196,17 @@ Section "${PRODUCT}" Main
  File "build/BackupDesk.exe"
  File /oname=VSSComponentSetup.exe "build/BackupDeskVSSComponent.exe"
  SetOutPath "$INSTDIR\dist"
- File "build/BackupDesk-Client-0.25.0-x64.exe"
+ File "build/BackupDesk-Client-0.26.0-x64.exe"
+ File "../dist/BackupDesk-Atualizacao-Client-0.26.0-x64.exe"
  SetOutPath "$INSTDIR"
+!ifndef UPDATE_ONLY
  nsExec::ExecToStack '"$INSTDIR\node.exe" "$INSTDIR\server.mjs" --prepare-master'
  Pop $0
  Pop $1
  ${If} $0 != 0
   MessageBox MB_OK "Não foi possível preparar o master. Confira as permissões da pasta e abra Painel local para consultar o erro."
  ${EndIf}
+!endif
  Delete "$SMPROGRAMS\${FOLDER}\Painel local.lnk"
  CreateShortcut "$SMPROGRAMS\BackupDesk.lnk" "$INSTDIR\BackupDesk.exe" "" "$INSTDIR\BackupDesk.exe" 0 SW_SHOWNORMAL "" "Abrir BackupDesk e iniciar o painel"
  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\App Paths\BackupDesk.exe" "" "$INSTDIR\BackupDesk.exe"
@@ -200,6 +228,17 @@ Section "${PRODUCT}" Main
  Delete "$SMPROGRAMS\${FOLDER}\Iniciar agente.lnk"
 !endif
  CreateShortcut "$SMPROGRAMS\${FOLDER}\Instruções.lnk" "$INSTDIR\LEIA-ME.txt"
+!ifdef UPDATE_ONLY
+ nsExec::ExecToStack '"$INSTDIR\node.exe" "$INSTDIR\installation-update.mjs" --check "$INSTDIR" "${UPDATE_PRODUCT}"'
+ Pop $0
+ Pop $1
+ ${If} $0 != 0
+  IfSilent +2 0
+  MessageBox MB_OK|MB_ICONSTOP "Os arquivos foram atualizados, mas a identificação não pôde ser revalidada. O aplicativo não será iniciado e nenhuma chave foi criada. $1"
+  SetErrorLevel 12
+  Abort
+ ${EndIf}
+!endif
 !ifdef CLIENT
  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "BackupDeskClient" '"$INSTDIR\BackupDeskClient.exe" /background'
 !else
@@ -247,7 +286,8 @@ Section "Uninstall"
  Delete "$INSTDIR\public\app.js"
  Delete "$INSTDIR\public\style.css"
  RMDir "$INSTDIR\public"
- Delete "$INSTDIR\dist\BackupDesk-Client-0.25.0-x64.exe"
+ Delete "$INSTDIR\dist\BackupDesk-Client-0.26.0-x64.exe"
+ Delete "$INSTDIR\dist\BackupDesk-Atualizacao-Client-0.26.0-x64.exe"
  RMDir "$INSTDIR\dist"
 !else
  Delete "$DESKTOP\BackupDesk Client.lnk"
@@ -274,6 +314,7 @@ Section "Uninstall"
  RMDir "$INSTDIR\licenses"
  Delete "$INSTDIR\backup-repository.mjs"
  Delete "$INSTDIR\client-package.mjs"
+ Delete "$INSTDIR\installation-update.mjs"
  Delete "$INSTDIR\crypto-vault.mjs"
  Delete "$INSTDIR\encrypted-files.mjs"
  Delete "$INSTDIR\encryption-service.mjs"

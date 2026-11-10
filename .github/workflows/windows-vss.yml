@@ -36,6 +36,10 @@ on:
       - 'repository-store.mjs'
       - 'client-package.mjs'
       - 'windows/client-preflight.nsh'
+      - 'windows/installation-preflight.nsh'
+      - 'installation-update.mjs'
+      - 'test/installation-update.test.mjs'
+      - 'test/windows-update-only.ps1'
       - 'test/client-key-preservation.test.mjs'
       - 'windows/installer.nsi'
       - 'windows/launcher.nsi'
@@ -43,7 +47,7 @@ on:
       - 'windows/Configure.ps1'
       - 'test/windows-client-install.ps1'
       - 'test/client-package.test.mjs'
-      - 'dist/BackupDesk-Master-0.25.0-x64.exe'
+      - 'dist/BackupDesk-Master-0.26.0-x64.exe'
       - 'backup-repository.mjs'
       - 'vss.mjs'
       - 'filesystem.mjs'
@@ -127,6 +131,9 @@ jobs:
             /windows/
             /test/
             /dist/BackupDesk-Master-0.25.0-x64.exe
+            /dist/BackupDesk-Master-0.26.0-x64.exe
+            /dist/BackupDesk-Atualizacao-Client-0.26.0-x64.exe
+            /dist/BackupDesk-Atualizacao-Master-0.26.0-x64.exe
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -141,6 +148,15 @@ jobs:
           catch {
             $detail=($_.Exception.Message+' '+$_.ScriptStackTrace+' '+$_.InvocationInfo.PositionMessage).Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
             Write-Output "::error title=Windows client diagnostic::$detail"
+            throw
+          }
+      - name: Test update-only client and master packages
+        shell: powershell
+        run: |
+          try { ./test/windows-update-only.ps1 }
+          catch {
+            $detail=($_.Exception.Message+' '+$_.ScriptStackTrace+' '+$_.InvocationInfo.PositionMessage).Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
+            Write-Output "::error title=Windows update-only diagnostic::$detail"
             throw
           }
 

@@ -1,6 +1,8 @@
-# BackupDesk 0.25.0 — versão de teste
+# BackupDesk 0.26.0 — versão de teste
 
-[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.25.0-x64.exe)
+[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.26.0-x64.exe)
+
+Atualizar uma instalação existente: [Client](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Atualizacao-Client-0.26.0-x64.exe) · [Master](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Atualizacao-Master-0.26.0-x64.exe).
 
 [Começar na Locaweb: contratação, instalação e primeiro client](deploy/LOCAWEB-PASSO-A-PASSO.md)
 
@@ -8,7 +10,7 @@
 
 Na aba **Preferências**, selecione o computador e cadastre uma ou mais pastas de destino (local, HD externo/USB ou rede). Todas as rotinas desse computador usam esses destinos automaticamente. O caminho pertence ao computador selecionado. No master local, Selecionar pasta abre a janela do Windows; para um client remoto, informe o caminho acessível naquela máquina. Depois, na aba **Backup**, escolha computador, dias, horário e pastas/arquivos de origem; não há seleção de destino por rotina.
 
-Salve e use **Fazer backup agora** para testar. O agendador usa o horário local do computador e executa cada rotina no máximo uma vez por dia agendado; dias perdidos com o computador desligado ainda não são recuperados automaticamente. Rotinas antigas podem ser ajustadas em **Editar**. Elas conservam o armazenamento legado até serem alteradas; não são movidas automaticamente. Atualize os clients para 0.18.0 pelo botão no canto inferior esquerdo do master antes de usar destinos em disco. Agentes antigos não recebem rotinas com esses destinos.
+Salve e use **Fazer backup agora** para testar. O agendador usa o horário local do computador e executa cada rotina no máximo uma vez por dia agendado; dias perdidos com o computador desligado ainda não são recuperados automaticamente. Rotinas antigas podem ser ajustadas em **Editar**. Elas conservam o armazenamento legado até serem alteradas; não são movidas automaticamente. Para atualizar clients já instalados, use **Baixar Atualização → Atualização do Client**. Para computadores novos, use **Baixar Client Windows**. Agentes antigos não recebem rotinas com esses destinos.
 
 O motor em disco grava versões completas ou diferenciais em `DESTINO/BackupDesk/ID-COMPUTADOR/ID-ROTINA/ID-EXECUÇÃO`. Cada versão tem manifest.json com o catálogo lógico completo, hashes SHA-256 e referências à base completa. A pasta files contém apenas o conteúdo gravado naquela execução. Diretórios .partial-* são execuções incompletas e não são apresentados como backups válidos. O catálogo e os status continuam no master; os conteúdos desses backups ficam somente no destino escolhido.
 
@@ -348,3 +350,17 @@ Títulos e submenus seguem iniciais maiúsculas, incluindo **Equipamentos Proteg
 Validação local da 0.25.0: 110 testes passaram, incluindo parada pela API em backups manuais e agendados, isolamento entre usuários, preservação de backups anteriores nos dois motores, logs por evento e limite de bytes reais em upload/download do Restic. Chromium validou o botão com backup Restic real e os títulos; foram conferidos 47 arquivos por instalador, os sete módulos de pré-verificação do client e a cópia embutida do instalador. A imagem web realizou backup, verificação integral e restauração.
 
 Validação Windows da 0.25.0: os quatro jobs da [execução 42682698492](https://github.com/rochamurilo/backupdesk/actions/runs/42682698492) passaram. Incluem instalação identificada real, atualização com chaves intactas e restauração anterior, usuário comum/VSS, parada e retomada nos dois motores, autenticação SMB e limite real em repositório UNC. O instalador público foi baixado e conferido com SHA-256 `750e22596321b258e545eb946a352c15ca42c2c02c3f7d9c743e5853f4007546`.
+
+
+## 0.26.0 — Atualizadores sem Cadastro nem Geração de Chaves
+
+Em **Baixar Atualização**, use **Atualização do Client** nas máquinas que já têm o Client e **Atualização do Master** no computador do painel principal. O mesmo atualizador do Client pode ser utilizado em todas as máquinas já instaladas; ele não contém nome, token de vínculo ou chave de nenhum computador.
+
+- [Atualização do Client 0.26.0](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Atualizacao-Client-0.26.0-x64.exe)
+- [Atualização do Master 0.26.0](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Atualizacao-Master-0.26.0-x64.exe)
+
+Execute com o usuário Windows da instalação e confirme sua pasta original. O atualizador valida a identificação, o cofre e o banco existentes em modo somente leitura antes de encerrar processos ou substituir arquivos. Se faltarem as chaves ou os dados forem inconsistentes, ele bloqueia; não faz primeira instalação, não pede nome/chave e não recria o cofre. No Client, não chama `installEnrollment` nem regrava `agent-config.json`; no Master, não executa `--prepare-master`. A validação é repetida depois da cópia antes de iniciar o aplicativo. Rotinas, destinos, preferências e backups anteriores são preservados.
+
+Para instalar em uma máquina nova, continue usando **Baixar Client Windows**, que cria um cadastro próprio. O painel Master inclui o atualizador genérico do Client para download local, inclusive sem internet; o link do atualizador Master é público. A imagem web também inclui o atualizador Client.
+
+Validação local da 0.26.0: 120 testes passaram. Foram cobertos cofres ausentes/corrompidos, produto incorreto, pacote identificado, instalações locais/online e legadas, download sem cadastro e restauração de backups anteriores nos dois motores. Chromium validou o download sem pedir nome/chave. Foram conferidos 48 arquivos por instalador, 46 arquivos por atualizador e os oito módulos de pré-verificação de cada atualizador, sem chave ou cadastro embutidos. A imagem web realizou backup, verificação integral e restauração; o atualizador Client embutido no instalador e no atualizador Master é idêntico ao pacote validado.

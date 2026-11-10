@@ -1,6 +1,6 @@
 # Locaweb: painel web com backups locais ou em rede
 
-Este roteiro usa BackupDesk 0.25.0 e Ubuntu Server 24.04 LTS. O servidor do escritório não é necessário. A instalação na Locaweb recebe status, histórico, catálogo e relatórios; os arquivos criptografados são gravados pelo computador na pasta local, HD externo ou compartilhamento escolhido. Não existe transferência do conteúdo para o VPS nesse modo.
+Este roteiro usa BackupDesk 0.26.0 e Ubuntu Server 24.04 LTS. O servidor do escritório não é necessário. A instalação na Locaweb recebe status, histórico, catálogo e relatórios; os arquivos criptografados são gravados pelo computador na pasta local, HD externo ou compartilhamento escolhido. Não existe transferência do conteúdo para o VPS nesse modo.
 
 ## 1. Contratar
 

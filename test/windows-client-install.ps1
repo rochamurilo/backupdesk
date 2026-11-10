@@ -1,6 +1,8 @@
 ﻿$ErrorActionPreference='Stop'
 $repo=Split-Path $PSScriptRoot -Parent
 $master=Join-Path $repo 'dist\BackupDesk-Master-0.25.0-x64.exe'
+$newMaster=Join-Path $repo 'dist\BackupDesk-Master-0.26.0-x64.exe'
+$updater=Join-Path $repo 'dist\BackupDesk-Atualizacao-Client-0.26.0-x64.exe'
 if(-not (Test-Path -LiteralPath $master)){'Instalador ainda não publicado; teste de pacote será executado na publicação.';return}
 $root=Join-Path $env:TEMP ('BackupDesk Client Test '+[guid]::NewGuid().ToString('N'))
 $extract=Join-Path $root 'extracted'
@@ -34,15 +36,15 @@ try{
   if($null -eq $Body){return Invoke-RestMethod -Uri ($panel+'/api/'+$Path) -Headers $headers -TimeoutSec 5}
   return Invoke-RestMethod -Uri ($panel+'/api/'+$Path) -Method Post -ContentType 'application/json' -Body ($Body | ConvertTo-Json -Depth 12 -Compress) -Headers $headers -TimeoutSec 10
  }
- function Wait-LocalClient {
+ function Wait-LocalClient($ExpectedVersion='0.26.0') {
   $ready=$false
   for($attempt=0;$attempt -lt 100;$attempt++){try{$health=Invoke-LocalClient 'health';if($health.mode -eq 'client' -and $health.device -eq $config.device_id){$ready=$true;break}}catch{};Start-Sleep -Milliseconds 300}
   if(-not $ready){throw 'O painel local do client não iniciou sem endereço do master.'}
   $script:clientSession=(Invoke-LocalClient 'local-session' @{}).token
-  for($attempt=0;$attempt -lt 100;$attempt++){$state=Invoke-LocalClient 'state';if($state.devices[0].version -eq '0.25.0'){return $state};Start-Sleep -Milliseconds 200}
+  for($attempt=0;$attempt -lt 100;$attempt++){$state=Invoke-LocalClient 'state';if($state.devices[0].version -eq $ExpectedVersion){return $state};Start-Sleep -Milliseconds 200}
   throw 'O agente local do client não iniciou.'
  }
- $localState=Wait-LocalClient
+ $localState=Wait-LocalClient '0.25.0'
  if($localState.user.role -ne 'client' -or $localState.devices.Count -ne 1 -or $localState.localDeviceId -ne $config.device_id){throw 'O client expôs controles master ou outra máquina.'}
  $source=Join-Path $root 'source';$destination=Join-Path $root 'backups';$restore=Join-Path $root 'restored'
  New-Item -ItemType Directory -Path $source,$destination,$restore | Out-Null
@@ -71,13 +73,20 @@ try{
  $keyId=$dataKey.header.key_id
  if($keyId -ne '4bb06f8e4e3a7715d201d573d0aa423762e55dabd61a2c02278fa56cc6d294e0'){throw 'A chave de segurança não originou a chave de dados do computador.'}
  if($config.PSObject.Properties.Name -contains 'security_key'){throw 'A chave de segurança ficou em texto aberto na configuração.'}
- $filesToPreserve=@('agent-config.json','data\keys\computer.json','data\keys\device.json','data\device-identity.json')
+ $filesToPreserve=@('agent-config.json','data\keys\master.json','data\keys\computer.json','data\keys\device.json','data\device-identity.json')
  $keyHashes=@{};foreach($relative in $filesToPreserve){$keyHashes[$relative]=(Get-FileHash -LiteralPath (Join-Path $target $relative) -Algorithm SHA256).Hash}
  # A harmless marker proves rejection happens before any application replacement.
  Add-Content -LiteralPath (Join-Path $target 'agent.mjs') -Value '// marker: rejected installer must not replace this file' -Encoding UTF8
  $agentHash=(Get-FileHash -LiteralPath (Join-Path $target 'agent.mjs') -Algorithm SHA256).Hash
  $runningServer=Get-CimInstance Win32_Process | Where-Object {$_.ExecutablePath -eq (Join-Path $target 'node.exe') -and $_.CommandLine -match 'server\.mjs'} | Select-Object -First 1
  if(-not $runningServer){throw 'Servidor local não está em execução para o teste de proteção.'}
+ # The original installation is the real published 0.25.0; use 0.26 for rejection/update tests.
+ $newExtract=Join-Path $root 'new extracted'
+ $null=& $sevenZip x $newMaster ('-o'+$newExtract) -y
+ if($LASTEXITCODE -ne 0){throw 'Falha ao extrair a versão atual.'}
+ $newGeneric=Get-ChildItem -LiteralPath $newExtract -Filter 'BackupDesk-Client-0.26.0-x64.exe' -Recurse | Select-Object -First 1
+ if(-not $newGeneric){throw 'Client atual não encontrado.'}
+ $env:BACKUPDESK_TEST_CLIENT_BASE=$newGeneric.FullName
  $env:BACKUPDESK_TEST_CLIENT_WRONG=Join-Path $root 'pacote com outra chave.exe'
  & node --input-type=module -e "import {readFile,writeFile} from 'node:fs/promises';import {readEnrollment,enrollmentTrailer} from './client-package.mjs';const original=await readEnrollment(process.env.BACKUPDESK_TEST_CLIENT_NAMED);await writeFile(process.env.BACKUPDESK_TEST_CLIENT_WRONG,Buffer.concat([await readFile(process.env.BACKUPDESK_TEST_CLIENT_BASE),enrollmentTrailer({...original,security_key:'08'.repeat(32)})]));"
  if($LASTEXITCODE -ne 0){throw 'Falha ao preparar teste com chave divergente.'}
@@ -97,19 +106,48 @@ try{
   if($incomplete.ExitCode -eq 0 -or (Test-Path -LiteralPath $deviceFile)){throw 'O instalador recriou a chave de um cofre incompleto.'}
   if((Get-FileHash -LiteralPath (Join-Path $target 'agent.mjs') -Algorithm SHA256).Hash -ne $agentHash){throw 'O instalador modificou o programa apesar do cofre incompleto.'}
  }finally{Move-Item -LiteralPath ($deviceFile+'.retained') -Destination $deviceFile}
- $process=Start-Process -FilePath $renamed -ArgumentList @('/S',('/D='+$target)) -PassThru
+ $process=Start-Process -FilePath $updater -ArgumentList @('/S',('/D='+$target)) -PassThru
  if(-not $process.WaitForExit(180000)){$process.Kill();throw 'Atualização do client excedeu o prazo.'}
  if($process.ExitCode -ne 0){throw 'Atualização identificada falhou.'}
  $afterUpdate=Wait-LocalClient
  if($afterUpdate.routines.Count -ne 1){throw 'A atualização perdeu a rotina local.'}
  $updated=Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $target 'agent-config.json') | ConvertFrom-Json
  if((Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $target 'data\keys\device.json') | ConvertFrom-Json).header.key_id -ne $keyId){throw 'A atualização trocou a chave de dados.'}
- foreach($relative in @('data\keys\computer.json','data\keys\device.json','data\device-identity.json')){if((Get-FileHash -LiteralPath (Join-Path $target $relative) -Algorithm SHA256).Hash -ne $keyHashes[$relative]){throw ('Atualização legítima regravou '+$relative)}}
+ foreach($relative in @('data\keys\master.json','data\keys\computer.json','data\keys\device.json','data\device-identity.json')){if((Get-FileHash -LiteralPath (Join-Path $target $relative) -Algorithm SHA256).Hash -ne $keyHashes[$relative]){throw ('Atualização legítima regravou '+$relative)}}
  $oldRestored=Wait-ClientJob (Invoke-LocalClient 'jobs' @{kind='restore';run=$backup.run;path='sample.txt';target=$restore})
  if([IO.File]::ReadAllText((Join-Path $oldRestored.destination 'sample.txt')) -ne 'backup independente do master'){throw 'O backup anterior não abriu com a chave preservada.'}
  if($updated.installed_at -ne $installedAt){throw 'A atualização alterou a data original de instalação.'}
  if($updated.installation_id -ne $instance){throw 'A atualização mudou a identificação da instalação.'}
  if(-not (Test-Path -LiteralPath (Join-Path $target 'client-package.mjs'))){throw 'Módulo de identificação não foi incluído no pacote.'}
+ # Dedicated update has no enrollment and must keep the configuration byte for byte.
+ $updater=Join-Path $repo 'dist\BackupDesk-Atualizacao-Client-0.26.0-x64.exe'
+ if(-not (Test-Path -LiteralPath $updater)){throw 'Atualizador do client não foi publicado.'}
+ $updateHashes=@{};foreach($relative in $filesToPreserve){$updateHashes[$relative]=(Get-FileHash -LiteralPath (Join-Path $target $relative) -Algorithm SHA256).Hash}
+ $configBytes=[IO.File]::ReadAllBytes((Join-Path $target 'agent-config.json'))
+ Add-Content -LiteralPath (Join-Path $target 'agent.mjs') -Value '// dedicated updater must replace program without touching identity' -Encoding UTF8
+ $oldProgram=(Get-FileHash -LiteralPath (Join-Path $target 'agent.mjs') -Algorithm SHA256).Hash
+ $fresh=Join-Path $root 'sem instalacao'
+ $blocked=Start-Process -FilePath $updater -ArgumentList @('/S',('/D='+$fresh)) -PassThru
+ if(-not $blocked.WaitForExit(90000)){$blocked.Kill();throw 'Atualizador sem instalação não encerrou.'}
+ if($blocked.ExitCode -eq 0 -or (Test-Path -LiteralPath $fresh)){throw 'Atualizador permitiu primeira instalação ou criou dados novos.'}
+ $deviceFile=Join-Path $target 'data\keys\device.json'
+ Move-Item -LiteralPath $deviceFile -Destination ($deviceFile+'.retained')
+ try{
+  $blocked=Start-Process -FilePath $updater -ArgumentList @('/S',('/D='+$target)) -PassThru
+  if(-not $blocked.WaitForExit(90000)){$blocked.Kill();throw 'Atualizador com cofre incompleto não encerrou.'}
+  if($blocked.ExitCode -eq 0 -or (Test-Path -LiteralPath $deviceFile)){throw 'Atualizador recriou chave ausente.'}
+  if((Get-FileHash -LiteralPath (Join-Path $target 'agent.mjs') -Algorithm SHA256).Hash -ne $oldProgram){throw 'Atualizador modificou programa antes de validar as chaves.'}
+ }finally{Move-Item -LiteralPath ($deviceFile+'.retained') -Destination $deviceFile}
+ $process=Start-Process -FilePath $updater -ArgumentList @('/S',('/D='+$target)) -PassThru
+ if(-not $process.WaitForExit(180000)){$process.Kill();throw 'Atualizador dedicado excedeu o prazo.'}
+ if($process.ExitCode -ne 0){throw ('Atualizador dedicado falhou: '+$process.ExitCode)}
+ $afterDedicated=Wait-LocalClient
+ foreach($relative in $filesToPreserve){if((Get-FileHash -LiteralPath (Join-Path $target $relative) -Algorithm SHA256).Hash -ne $updateHashes[$relative]){throw ('Atualizador dedicado regravou '+$relative)}}
+ if((Get-FileHash -LiteralPath (Join-Path $target 'agent.mjs') -Algorithm SHA256).Hash -eq $oldProgram){throw 'O programa não foi atualizado.'}
+ if($afterDedicated.routines.Count -ne 1){throw 'O atualizador perdeu a rotina.'}
+ $restoredDedicated=Wait-ClientJob (Invoke-LocalClient 'jobs' @{kind='restore';run=$backup.run;path='sample.txt';target=$restore})
+ if([IO.File]::ReadAllText((Join-Path $restoredDedicated.destination 'sample.txt')) -ne 'backup independente do master'){throw 'O backup anterior não restaurou após atualização dedicada.'}
+ 'Atualizador Client 0.25.0 para 0.26.0: sem cadastro/chave no pacote, sem primeira instalação, cofre incompleto bloqueado, configuração/chaves idênticas, rotina e restauração anterior preservadas: OK.'
  'Chaves Windows: instalador divergente bloqueado antes de substituir arquivos ou parar o app; cofre incompleto preservado; chaves idênticas após atualização legítima e backup anterior restaurado: OK.'
  'Client local Windows: sem endereço, painel isolado, Restic/VSS, backup, restauração, duas pastas de logs e atualização preservando rotina: OK.'
  'Instalador NSIS real: CRC preservado com identificação incorporada, nome independente do arquivo e vínculo mantido na atualização: OK.'
