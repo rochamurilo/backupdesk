@@ -1,8 +1,8 @@
-# BackupDesk 0.30.0 — versão de teste
+# BackupDesk 0.31.0 — versão de teste
 
-[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.30.0-x64.exe)
+[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.31.0-x64.exe)
 
-Atualizar uma instalação existente: [Client](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Atualizacao-Client-0.30.0-x64.exe) · [Master](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Atualizacao-Master-0.30.0-x64.exe).
+Atualizar uma instalação existente: [Client](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Atualizacao-Client-0.31.0-x64.exe) · [Master](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Atualizacao-Master-0.31.0-x64.exe).
 
 [Começar na Locaweb: contratação, instalação e primeiro client](deploy/LOCAWEB-PASSO-A-PASSO.md)
 
@@ -422,3 +422,11 @@ No SERVIDORPB, execute o **Atualizador do Client** na conta e pasta originais e 
 Validação local: 142 testes e a verificação Chromium passaram. Os quatro jobs da [validação Windows 43029392226](https://github.com/rochamurilo/backupdesk/actions/runs/43029392226) passaram: recuperação do componente parado por usuário comum, proteção dos scripts e da tarefa SYSTEM, arquivo bloqueado, isolamento, limpeza, atualização de processos e SMB autenticado. A instalação real e os atualizadores Client e Master preservaram as chaves byte a byte e restauraram backups anteriores. Os atalhos ficaram no Menu Iniciar, sem ícones na Área de Trabalho, e os processos locais instalados tiveram sua prioridade reduzida confirmada. A amostra de recursos em repouso está no relatório de desempenho.
 
 Pacotes da 0.30.0: 49 arquivos de produção por instalador, 47 por atualizador e oito módulos de pré-verificação foram conferidos contra o código testado. Os cinco scripts de cada componente VSS compilado também foram comparados com as fontes. Os pacotes Client embutidos são idênticos aos executáveis gerados e os atualizadores não contêm identificação ou chave. A imagem web realizou backup Restic, verificação integral e restauração master. Os três executáveis foram baixados dos endereços públicos e conferidos com os hashes de `dist/SHA256SUMS.txt`.
+
+## 0.31.0 — Correção do Encerramento Durante a Atualização
+
+O instalador podia falhar em `VSS setup [stop-application]` com `Access is denied` quando um processo encerrava entre a verificação de seu executável e o comando `TerminateProcess`. No Windows, uma segunda tentativa de encerrar um processo já terminado pode produzir esse erro enquanto seu objeto ainda tiver um handle aberto.
+
+A atualização confirma o término usando o mesmo handle antes de tentar encerrar e depois de uma falha do comando. O erro só é desconsiderado se o processo estiver comprovadamente encerrado. Uma negação real com processo ativo continua interrompendo a atualização; o prazo de encerramento também é verificado. A conferência do caminho no handle, o isolamento por pasta, os arquivos de identidade e a proteção da tarefa VSS permanecem preservados.
+
+O teste Windows reproduziu o erro anterior com chamadas Win32 reais na [execução 43048441405](https://github.com/rochamurilo/backupdesk/actions/runs/43048441405). Com a correção, o teste de encerramento passou na [execução 43048587022](https://github.com/rochamurilo/backupdesk/actions/runs/43048587022), incluindo processo já terminado, término concorrente e bloqueio de uma negação real com processo ativo.
