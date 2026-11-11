@@ -31,9 +31,33 @@ try{
  try{
   $retainedHandle=$exited.Handle
   $exited.Kill();$exited.WaitForExit()
-  $null=[BackupDesk.UpdateProcesses]::Stop($exited.Id,(Join-Path $target 'node.exe'))
+  if(-not [BackupDesk.UpdateProcesses]::Stop($exited.Id,(Join-Path $target 'node.exe'))){throw 'O processo encerrado não foi reconhecido.'}
  }finally{$exited.Dispose()}
  'Windows: processo já encerrado, com handle retido, não bloqueia a atualização: OK.'
+ # Exercise the narrow exit race deterministically, using real Win32 calls:
+ # terminate after image verification, then repeat termination on that handle.
+ $source=Get-Content -Raw -LiteralPath (Join-Path $repo 'windows\update-application.ps1')
+ $native=[regex]::Match($source,"(?s)Add-Type -TypeDefinition @'\r?\n(.*?)\r?\n'@").Groups[1].Value
+ if(-not $native){throw 'Código de encerramento não encontrado para o teste de concorrência.'}
+ $declaration='[DllImport("kernel32.dll", SetLastError=true)] static extern bool TerminateProcess(IntPtr h,uint exitCode);'
+ $race='[DllImport("kernel32.dll", EntryPoint="TerminateProcess", SetLastError=true)] static extern bool NativeTerminateProcess(IntPtr h,uint exitCode); static bool TerminateProcess(IntPtr h,uint exitCode) { if(!NativeTerminateProcess(h,exitCode))return false; WaitForSingleObject(h,5000); return NativeTerminateProcess(h,exitCode); }'
+ if(-not $native.Contains($declaration)){throw 'Declaração Win32 mudou; revise o teste de concorrência.'}
+ Add-Type -TypeDefinition ($native.Replace('UpdateProcesses','ExitRaceProcesses').Replace($declaration,$race))
+ $racing=Start-Process -FilePath (Join-Path $target 'node.exe') -ArgumentList 'agent.mjs' -WorkingDirectory $target -PassThru -WindowStyle Hidden
+ try{
+  $retainedHandle=$racing.Handle
+  if(-not [BackupDesk.ExitRaceProcesses]::Stop($racing.Id,(Join-Path $target 'node.exe'))){throw 'Encerramento concorrente não foi confirmado.'}
+  if(-not $racing.WaitForExit(5000)){throw 'Processo concorrente permaneceu ativo.'}
+ }finally{if(-not $racing.HasExited){$racing.Kill()};$racing.Dispose()}
+ # A real access denial while the process is alive must still abort the update.
+ $denied='[DllImport("kernel32.dll", EntryPoint="SetLastError", SetLastError=true)] static extern void SetError(uint code); static bool TerminateProcess(IntPtr h,uint exitCode) { SetError(5); return false; }'
+ Add-Type -TypeDefinition ($native.Replace('UpdateProcesses','DeniedProcesses').Replace($declaration,$denied))
+ $alive=Start-Process -FilePath (Join-Path $target 'node.exe') -ArgumentList 'agent.mjs' -WorkingDirectory $target -PassThru -WindowStyle Hidden
+ try{
+  $blocked=$false;try{$null=[BackupDesk.DeniedProcesses]::Stop($alive.Id,(Join-Path $target 'node.exe'))}catch{$blocked=$true}
+  $alive.Refresh();if(-not $blocked -or $alive.HasExited){throw 'Acesso negado real não bloqueou a atualização com processo ativo.'}
+ }finally{if(-not $alive.HasExited){$alive.Kill();$alive.WaitForExit()};$alive.Dispose()}
+ 'Windows: corrida de encerramento reproduzida com Win32 real; acesso negado em processo ativo continua bloqueado: OK.'
  Register-BackupDeskStartup $target $sid 'master'
  $task=Get-ScheduledTask -TaskName ('BackupDesk-master-'+$sid)
  if($task.Principal.RunLevel -ne 'Limited' -or $task.Principal.LogonType -ne 'Interactive'){throw 'A inicialização não está no usuário normal.'}
