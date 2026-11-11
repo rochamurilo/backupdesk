@@ -40,7 +40,7 @@ try{
  $task=Get-ScheduledTask -TaskName ('BackupDeskVSS-master-'+$sid)
  if($task.Principal.UserId -notin @('SYSTEM','S-1-5-18')){throw 'A conta do componente não é SYSTEM.'}
  New-Item -ItemType Directory -Path (Join-Path $testRoot 'agent\windows') -Force | Out-Null
- foreach($file in @('disk-backup.mjs','restic-backup.mjs','restic-runner.mjs','restic-local-transport.mjs','backup-control.mjs','restic-policy.mjs','restic-release.mjs','crypto-vault.mjs','encrypted-files.mjs','backup-repository.mjs','repository-catalog.mjs','bandwidth.mjs','filesystem.mjs','vss.mjs')){Copy-Item -LiteralPath (Join-Path $repo $file) -Destination (Join-Path $testRoot 'agent')}
+ foreach($file in @('background.mjs','disk-backup.mjs','restic-backup.mjs','restic-runner.mjs','restic-local-transport.mjs','backup-control.mjs','restic-policy.mjs','restic-release.mjs','crypto-vault.mjs','encrypted-files.mjs','backup-repository.mjs','repository-catalog.mjs','bandwidth.mjs','filesystem.mjs','vss.mjs')){Copy-Item -LiteralPath (Join-Path $repo $file) -Destination (Join-Path $testRoot 'agent')}
  Copy-Item -LiteralPath (Join-Path $repo 'windows\encrypted-backup-check.mjs') -Destination (Join-Path $testRoot 'agent\windows-encrypted-backup.mjs')
  Copy-Item -LiteralPath (Join-Path $repo 'windows\restic.exe') -Destination (Join-Path $testRoot 'agent\windows')
  Copy-Item -LiteralPath (Join-Path $repo 'windows\protect-key.ps1') -Destination (Join-Path $testRoot 'agent\windows')
@@ -50,6 +50,9 @@ try{
  $acl=Get-Acl -LiteralPath $testRoot
  $acl.AddAccessRule((New-Object Security.AccessControl.FileSystemAccessRule($user.SID,'Modify','ContainerInherit,ObjectInherit','None','Allow')))
  Set-Acl -LiteralPath $testRoot -AclObject $acl
+ # Reproduce a component stopped after installation; the standard user must recover it on demand.
+ Stop-ScheduledTask -TaskName ('BackupDeskVSS-master-'+$sid)
+ for($i=0;$i -lt 40;$i++){if((Get-ScheduledTask -TaskName ('BackupDeskVSS-master-'+$sid)).State -ne 'Running'){break};Start-Sleep -Milliseconds 250}
  $env:BACKUPDESK_TEST_STAGE='launch-standard-user'
  Start-Service seclogon
  $info=New-Object System.Diagnostics.ProcessStartInfo

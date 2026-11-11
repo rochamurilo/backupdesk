@@ -2,10 +2,11 @@ import {randomUUID} from 'node:crypto';
 import {spawn} from 'node:child_process';
 import {readFile,writeFile} from 'node:fs/promises';
 import {openSync,mkdirSync,appendFileSync} from 'node:fs';
-import {instanceLock,supervise,isUpdating} from './background.mjs';
+import {instanceLock,supervise,isUpdating,lowerPriority} from './background.mjs';
 import {validateEnrollment,clientUrl} from './client-package.mjs';
 import {join,dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
+lowerPriority();
 const dir=dirname(fileURLToPath(import.meta.url));process.chdir(dir);
 if(isUpdating(dir))process.exit(0);
 const config=JSON.parse((await readFile(join(dir,'agent-config.json'),'utf8')).replace(/^\uFEFF/,''));if(config.format||!config.url)validateEnrollment(config);else{clientUrl(config.url);if(!/^[a-f0-9]{64}$/.test(config.token||''))throw Error('Token do client inválido.');}

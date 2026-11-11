@@ -7,12 +7,18 @@ export function mapSnapshotPaths(sources,snapshots){return sources.map(source=>{
  const snapshot=snapshots.find(s=>s.volume.toLowerCase()===volume.toLowerCase());if(!snapshot||!/^\\\\\?\\GLOBALROOT\\Device\\HarddiskVolumeShadowCopy\d+$/i.test(snapshot.device))throw Error('Caminho do snapshot VSS inválido.');
  return path.win32.join(snapshot.device+'\\',path.win32.relative(volume,absolute));
 })}
+export function powershellErrorText(value){
+ const decode=text=>text.replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&#(\d+);/g,(_,n)=>String.fromCharCode(Number(n))).replace(/&amp;/g,'&').replace(/_x([0-9a-f]{4})_/gi,(_,n)=>String.fromCharCode(parseInt(n,16)));
+ const raw=String(value||''),errors=[...raw.matchAll(/<S\b[^>]*\bS=["']Error["'][^>]*>([\s\S]*?)<\/S>/gi)].map(m=>decode(m[1]));
+ const plain=raw.replace(/#<\s*CLIXML\s*/g,'').replace(/<Objs\b[\s\S]*?<\/Objs>/gi,'').replace(/<Objs\b[\s\S]*$/gi,'').trim();
+ return [plain,...errors].filter(Boolean).join('\n').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g,'').trim().slice(0,2500);
+}
 async function requestVss(request){
  if(process.platform!=='win32')throw Error('VSS está disponível apenas no Windows.');
  const script=(await readFile(new URL('./windows/vss-client.ps1',import.meta.url),'utf8')).replace(/^\uFEFF/,'');
  const client=createHash('sha256').update(new URL('.',import.meta.url).href.toLowerCase()).digest('hex');
  const product=process.env.BACKUPDESK_VSS_PRODUCT||'master';
- try{const {stdout}=await execute('powershell.exe',['-NoLogo','-NoProfile','-NonInteractive','-EncodedCommand',Buffer.from(script,'utf16le').toString('base64')],{windowsHide:true,env:{...process.env,BACKUPDESK_VSS_REQUEST:JSON.stringify({...request,protocol:1,client}),BACKUPDESK_VSS_PRODUCT:product},encoding:'utf8',timeout:220000,maxBuffer:1048576});return JSON.parse(stdout.replace(/^\uFEFF/,'').trim())}catch(e){throw Error((e.stderr||e.message).trim())}
+ try{const {stdout}=await execute('powershell.exe',['-NoLogo','-NoProfile','-NonInteractive','-EncodedCommand',Buffer.from(script,'utf16le').toString('base64')],{windowsHide:true,env:{...process.env,BACKUPDESK_VSS_REQUEST:JSON.stringify({...request,protocol:1,client}),BACKUPDESK_VSS_PRODUCT:product},encoding:'utf8',timeout:220000,maxBuffer:1048576});return JSON.parse(stdout.replace(/^\uFEFF/,'').trim())}catch(e){throw Error(powershellErrorText(e.stderr)||(e.killed?'O componente VSS excedeu o tempo de resposta. Repare o componente pelo atualizador do BackupDesk.':'Não foi possível comunicar com o componente VSS. Execute o atualizador do BackupDesk nesta conta e autorize o reparo.'))}
 }
 let cachedStatus=null,statusAt=0,statusPending=null;
 export async function automaticVssStatus(){

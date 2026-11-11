@@ -1,8 +1,8 @@
 ﻿$ErrorActionPreference='Stop'
 $repo=Split-Path $PSScriptRoot -Parent
 $master=Join-Path $repo 'dist\BackupDesk-Master-0.25.0-x64.exe'
-$newMaster=Join-Path $repo 'dist\BackupDesk-Master-0.29.0-x64.exe'
-$updater=Join-Path $repo 'dist\BackupDesk-Atualizacao-Client-0.29.0-x64.exe'
+$newMaster=Join-Path $repo 'dist\BackupDesk-Master-0.30.0-x64.exe'
+$updater=Join-Path $repo 'dist\BackupDesk-Atualizacao-Client-0.30.0-x64.exe'
 if(-not (Test-Path -LiteralPath $master)){'Instalador ainda não publicado; teste de pacote será executado na publicação.';return}
 $root=Join-Path $env:TEMP ('BackupDesk Client Test '+[guid]::NewGuid().ToString('N'))
 $extract=Join-Path $root 'extracted'
@@ -41,7 +41,7 @@ try{
   $response=Invoke-WebRequest @request
   return ([Text.Encoding]::UTF8.GetString($response.RawContentStream.ToArray()) | ConvertFrom-Json)
  }
- function Wait-LocalClient($ExpectedVersion='0.29.0') {
+ function Wait-LocalClient($ExpectedVersion='0.30.0') {
   $ready=$false
   for($attempt=0;$attempt -lt 100;$attempt++){try{$health=Invoke-LocalClient 'health';if($health.mode -eq 'client' -and $health.device -eq $config.device_id){$ready=$true;break}}catch{};Start-Sleep -Milliseconds 300}
   if(-not $ready){throw 'O painel local do client não iniciou sem endereço do master.'}
@@ -93,7 +93,7 @@ try{
  $newExtract=Join-Path $root 'new extracted'
  $null=& $sevenZip x $newMaster ('-o'+$newExtract) -y
  if($LASTEXITCODE -ne 0){throw 'Falha ao extrair a versão atual.'}
- $newGeneric=Get-ChildItem -LiteralPath $newExtract -Filter 'BackupDesk-Client-0.29.0-x64.exe' -Recurse | Select-Object -First 1
+ $newGeneric=Get-ChildItem -LiteralPath $newExtract -Filter 'BackupDesk-Client-0.30.0-x64.exe' -Recurse | Select-Object -First 1
  if(-not $newGeneric){throw 'Client atual não encontrado.'}
  $env:BACKUPDESK_TEST_CLIENT_BASE=$newGeneric.FullName
  $env:BACKUPDESK_TEST_CLIENT_WRONG=Join-Path $root 'pacote com outra chave.exe'
@@ -134,7 +134,7 @@ try{
  if($updated.installation_id -ne $instance){throw 'A atualização mudou a identificação da instalação.'}
  if(-not (Test-Path -LiteralPath (Join-Path $target 'client-package.mjs'))){throw 'Módulo de identificação não foi incluído no pacote.'}
  # Dedicated update has no enrollment and must keep the configuration byte for byte.
- $updater=Join-Path $repo 'dist\BackupDesk-Atualizacao-Client-0.29.0-x64.exe'
+ $updater=Join-Path $repo 'dist\BackupDesk-Atualizacao-Client-0.30.0-x64.exe'
  if(-not (Test-Path -LiteralPath $updater)){throw 'Atualizador do client não foi publicado.'}
  $updateHashes=@{};foreach($relative in $filesToPreserve){$updateHashes[$relative]=(Get-FileHash -LiteralPath (Join-Path $target $relative) -Algorithm SHA256).Hash}
  $configBytes=[IO.File]::ReadAllBytes((Join-Path $target 'agent-config.json'))
@@ -166,6 +166,16 @@ try{
  $testStage='restaurar após atualização dedicada'
  $restoredDedicated=Wait-ClientJob (Invoke-LocalClient 'jobs' @{kind='restore';run=$backup.run;path='sample.txt';target=$restore})
  if([IO.File]::ReadAllText((Join-Path $restoredDedicated.destination 'sample.txt')) -ne 'backup independente do master'){throw 'O backup anterior não restaurou após atualização dedicada.'}
+ $testStage='Menu Iniciar, sem Área de Trabalho, prioridade reduzida'
+ $desktop=[Environment]::GetFolderPath('Desktop');$programs=[Environment]::GetFolderPath('Programs')
+ if(Test-Path -LiteralPath (Join-Path $desktop 'BackupDesk Client.lnk')){throw 'Atalho Client permaneceu na Área de Trabalho.'}
+ $link=Join-Path $programs 'BackupDesk Client.lnk'
+ if(-not (Test-Path -LiteralPath $link)){throw 'Atalho Client não foi criado no Menu Iniciar.'}
+ $shell=New-Object -ComObject WScript.Shell;$linked=$shell.CreateShortcut($link).TargetPath
+ if(-not (Test-Path -LiteralPath $linked) -or (Split-Path -Leaf $linked) -ne 'BackupDeskClient.exe'){throw 'Atalho Client não abre o aplicativo.'}
+ $nodes=@(Get-CimInstance Win32_Process -Filter "Name='node.exe'" | Where-Object {$_.ExecutablePath -eq (Join-Path $target 'node.exe')})
+ if($nodes.Count -lt 2){throw 'Servidor e agente não encontrados para verificar prioridade.'}
+ foreach($node in $nodes){if((Get-Process -Id $node.ProcessId).PriorityClass -notin @('BelowNormal','Idle')){throw 'Client não aplicou prioridade reduzida.'}}
  $testStage='simular restauração do catálogo anterior sem novo backup'
  $historicalVolume=(Invoke-LocalClient 'state').devices[0].selected_volume
  if($historicalVolume.basis -ne 'restore' -or $historicalVolume.bytes -ne [Text.Encoding]::UTF8.GetByteCount('backup independente do master')){throw 'O volume do catálogo anterior não ficou disponível após atualizar.'}
@@ -192,9 +202,18 @@ try{
  $testStage='restaurar pelo calendário importado'
  $recoveredCatalog=Wait-ClientJob (Invoke-LocalClient 'jobs' @{kind='restore';repository_run=$imported.id;path='sample.txt';target=$restore})
  if([IO.File]::ReadAllText((Join-Path $recoveredCatalog.destination 'sample.txt')) -ne 'backup independente do master'){throw 'Restauração pelo calendário importado divergiu.'}
+ $testStage='medir repouso do Client instalado'
+ Start-Sleep -Seconds 3
+ $items=@(Get-CimInstance Win32_Process | Where-Object {($_.ExecutablePath -eq (Join-Path $target 'node.exe')) -or ($_.Name -eq 'powershell.exe' -and $_.CommandLine -like '*BackupDesk VSS*client*vss-broker.ps1*')})
+ $before=@{};$memory=0
+ foreach($item in $items){$p=Get-Process -Id $item.ProcessId;$before[$item.ProcessId]=$p.TotalProcessorTime.TotalMilliseconds;$memory+=$p.WorkingSet64}
+ $clock=[Diagnostics.Stopwatch]::StartNew();Start-Sleep -Seconds 10;$clock.Stop();$cpu=0;$memoryAfter=0
+ foreach($item in $items){$p=Get-Process -Id $item.ProcessId;$cpu+=$p.TotalProcessorTime.TotalMilliseconds-$before[$item.ProcessId];$memoryAfter+=$p.WorkingSet64}
+ $percent=[Math]::Round($cpu/$clock.Elapsed.TotalMilliseconds*100,2);$mb=[Math]::Round([Math]::Max($memory,$memoryAfter)/1000000,1)
+ Write-Output "::notice title=BackupDesk Windows idle resources::Processes=$($items.Count); CPUs=$([Environment]::ProcessorCount); CPU one core=$percent percent; working set=$mb MB; sample=$([Math]::Round($clock.Elapsed.TotalSeconds,1)) seconds"
  $testPassed=$true
  'Busca recursiva pela pasta raiz, nome Unicode e chave original: calendário carregado e arquivo Restic anterior restaurado: OK.'
- 'Atualizador Client 0.25.0 para 0.29.0: sem cadastro/chave no pacote, sem primeira instalação, cofre incompleto bloqueado, configuração/chaves idênticas, rotina e restauração anterior preservadas: OK.'
+ 'Atualizador Client 0.25.0 para 0.30.0: sem cadastro/chave no pacote, sem primeira instalação, cofre incompleto bloqueado, configuração/chaves idênticas, rotina e restauração anterior preservadas: OK.'
  'Chaves Windows: instalador divergente bloqueado antes de substituir arquivos ou parar o app; cofre incompleto preservado; chaves idênticas após atualização legítima e backup anterior restaurado: OK.'
  'Client local Windows: sem endereço, painel isolado, Restic/VSS, backup, restauração, duas pastas de logs e atualização preservando rotina: OK.'
  'Instalador NSIS real: CRC preservado com identificação incorporada, nome independente do arquivo e vínculo mantido na atualização: OK.'

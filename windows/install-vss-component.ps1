@@ -1,4 +1,5 @@
 ﻿$ErrorActionPreference='Stop'
+$ProgressPreference='SilentlyContinue'
 try{
  $phase='identity'
  $sid=$env:BACKUPDESK_VSS_OWNER_SID;$product=$env:BACKUPDESK_VSS_PRODUCT
@@ -54,6 +55,13 @@ try{
  $settings=New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::Zero) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1) -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -MultipleInstances IgnoreNew -StartWhenAvailable
  $phase='register-task'
  Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Principal $account -Settings $settings -Description 'Componente VSS do BackupDesk. Permite snapshots sem elevar o painel ou o agente.' -Force | Out-Null
+ # The installation user may query/run this fixed SYSTEM task, never edit its action or permissions.
+ # Administrators own the task so a filtered token of its creator gains no implicit WRITE_DAC.
+ $phase='task-access'
+ $scheduler=New-Object -ComObject 'Schedule.Service';$scheduler.Connect()
+ $registered=$scheduler.GetFolder('\').GetTask($taskName)
+ $registered.SetSecurityDescriptor(('O:BAG:BAD:P(A;;GA;;;SY)(A;;GA;;;BA)(A;;GRGX;;;'+$sid+')'),0)
+ Enable-ScheduledTask -TaskName $taskName | Out-Null
  $phase='start-task'
  Start-ScheduledTask -TaskName $taskName
  for($i=0;$i -lt 60;$i++){if(Test-Path -LiteralPath $ready){exit 0};Start-Sleep -Milliseconds 250}

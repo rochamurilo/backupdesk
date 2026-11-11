@@ -4,6 +4,9 @@ import {createHash} from 'node:crypto';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {spawn} from 'node:child_process';
+import {getPriority,setPriority,constants} from 'node:os';
+export function lowerPriority(pid=0,{get=getPriority,set=setPriority}={}){try{const current=get(pid),target=constants.priority.PRIORITY_BELOW_NORMAL;if(current<target)set(pid,target);return true}catch{return false}}
+export function createHeartbeatRecorder(save,{now=Date.now,interval=30000}={}){const recorded=new Map();return(device,version)=>{const time=now(),next=version||device.version||null,old=recorded.get(device.id);if(old&&time>=old.at&&time-old.at<interval&&old.version===next&&device.version===next)return false;const at=new Date(time).toISOString();save(device.id,at,next);device.last_seen=at;device.version=next;recorded.set(device.id,{at:time,version:next});return true}}
 export function isUpdating(directory=process.cwd(),now=Date.now()){
  try{const age=now-statSync(join(directory,'data','update-lock.json')).mtimeMs;return age>=-1000&&age<15*60*1000}catch{return false}
 }

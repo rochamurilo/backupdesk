@@ -1,6 +1,11 @@
 name: Windows VSS component
 on:
   workflow_dispatch:
+    inputs:
+      source_only:
+        description: Testar componente VSS e rede sem executar instaladores
+        type: boolean
+        default: false
   push:
     branches: [main]
     paths:
@@ -32,6 +37,12 @@ on:
       - 'windows/network-share*'
       - 'test/windows-network-share.ps1'
       - 'bandwidth.mjs'
+      - 'catalog-transfer.mjs'
+      - 'agent.mjs'
+      - 'master.mjs'
+      - 'background.mjs'
+      - 'test/performance.test.mjs'
+      - 'test/catalog-batch-api.test.mjs'
       - 'restore-tree.mjs'
       - 'filesystem.mjs'
       - 'test/selected-volume.test.mjs'
@@ -50,7 +61,7 @@ on:
       - 'windows/Configure.ps1'
       - 'test/windows-client-install.ps1'
       - 'test/client-package.test.mjs'
-      - 'dist/BackupDesk-Master-0.29.0-x64.exe'
+      - 'dist/BackupDesk-Master-0.30.0-x64.exe'
       - 'backup-repository.mjs'
       - 'vss.mjs'
       - 'filesystem.mjs'
@@ -122,6 +133,7 @@ jobs:
           }
 
   native-client-install:
+    if: ${{ !inputs.source_only }}
     runs-on: windows-2025
     timeout-minutes: 10
     steps:
@@ -134,9 +146,9 @@ jobs:
             /windows/
             /test/
             /dist/BackupDesk-Master-0.25.0-x64.exe
-            /dist/BackupDesk-Master-0.29.0-x64.exe
-            /dist/BackupDesk-Atualizacao-Client-0.29.0-x64.exe
-            /dist/BackupDesk-Atualizacao-Master-0.29.0-x64.exe
+            /dist/BackupDesk-Master-0.30.0-x64.exe
+            /dist/BackupDesk-Atualizacao-Client-0.30.0-x64.exe
+            /dist/BackupDesk-Atualizacao-Master-0.30.0-x64.exe
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -144,6 +156,8 @@ jobs:
         run: node --test test/preferences-bandwidth.test.mjs
       - name: Test selected source volume and signed logs
         run: node --test test/selected-volume.test.mjs
+      - name: Test bounded batches and background policy
+        run: node --test test/performance.test.mjs
       - name: Test persistent client identity
         run: node --test test/client-package.test.mjs
       - name: Test real named installer and update

@@ -8,25 +8,25 @@ Var VssOwnerSid
 Var PreparedUpdate
 !ifdef CLIENT
   !define PRODUCT "BackupDesk Client"
-  !define VERSION "0.29.0"
+  !define VERSION "0.30.0"
   !define KEY "BackupDeskClient"
   !define FOLDER "BackupDeskClient"
   !define UPDATE_PRODUCT "client"
   !ifdef UPDATE_ONLY
-   OutFile "../dist/BackupDesk-Atualizacao-Client-0.29.0-x64.exe"
+   OutFile "../dist/BackupDesk-Atualizacao-Client-0.30.0-x64.exe"
   !else
-   OutFile "../windows/build/BackupDesk-Client-0.29.0-x64.exe"
+   OutFile "../windows/build/BackupDesk-Client-0.30.0-x64.exe"
   !endif
 !else
   !define PRODUCT "BackupDesk Master"
-  !define VERSION "0.29.0"
+  !define VERSION "0.30.0"
   !define KEY "BackupDesk"
   !define FOLDER "BackupDesk"
   !define UPDATE_PRODUCT "master"
   !ifdef UPDATE_ONLY
-   OutFile "../dist/BackupDesk-Atualizacao-Master-0.29.0-x64.exe"
+   OutFile "../dist/BackupDesk-Atualizacao-Master-0.30.0-x64.exe"
   !else
-   OutFile "../dist/BackupDesk-Master-0.29.0-x64.exe"
+   OutFile "../dist/BackupDesk-Master-0.30.0-x64.exe"
   !endif
 !endif
 !ifdef UPDATE_ONLY
@@ -161,6 +161,7 @@ Section "${PRODUCT}" Main
  File "network-share.ps1"
  SetOutPath "$INSTDIR"
  File "../background.mjs"
+ File "../catalog-transfer.mjs"
 !ifdef CLIENT
  File "launch-agent.mjs"
  File "Configure.ps1"
@@ -196,8 +197,8 @@ Section "${PRODUCT}" Main
  File "build/BackupDesk.exe"
  File /oname=VSSComponentSetup.exe "build/BackupDeskVSSComponent.exe"
  SetOutPath "$INSTDIR\dist"
- File "build/BackupDesk-Client-0.29.0-x64.exe"
- File "../dist/BackupDesk-Atualizacao-Client-0.29.0-x64.exe"
+ File "build/BackupDesk-Client-0.30.0-x64.exe"
+ File "../dist/BackupDesk-Atualizacao-Client-0.30.0-x64.exe"
  SetOutPath "$INSTDIR"
 !ifndef UPDATE_ONLY
  nsExec::ExecToStack '"$INSTDIR\node.exe" "$INSTDIR\server.mjs" --prepare-master'
@@ -214,11 +215,16 @@ Section "${PRODUCT}" Main
  System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, p 0, p 0)'
  Delete "$SMPROGRAMS\BackupDesk VSS (administrador).lnk"
  Delete "$INSTDIR\BackupDeskVSS.exe"
- CreateShortcut "$DESKTOP\BackupDesk.lnk" "$INSTDIR\BackupDesk.exe"
+ Delete "$DESKTOP\BackupDesk.lnk"
 !else
  Delete "$SMPROGRAMS\${FOLDER}\Client VSS (administrador).lnk"
  Delete "$INSTDIR\BackupDeskClientVSS.exe"
- CreateShortcut "$DESKTOP\BackupDesk Client.lnk" "$INSTDIR\BackupDeskClient.exe"
+ Delete "$DESKTOP\BackupDesk Client.lnk"
+ CreateShortcut "$SMPROGRAMS\BackupDesk Client.lnk" "$INSTDIR\BackupDeskClient.exe" "" "$INSTDIR\BackupDeskClient.exe" 0 SW_SHOWNORMAL "" "Abrir BackupDesk Client"
+ WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\App Paths\BackupDeskClient.exe" "" "$INSTDIR\BackupDeskClient.exe"
+ WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\App Paths\BackupDeskClient.exe" "Path" "$INSTDIR"
+ System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, p 0, p 0)'
+
 !endif
 !ifdef CLIENT
  CreateShortcut "$SMPROGRAMS\${FOLDER}\Configurar agente.lnk" "$INSTDIR\Configurar.cmd"
@@ -286,11 +292,13 @@ Section "Uninstall"
  Delete "$INSTDIR\public\app.js"
  Delete "$INSTDIR\public\style.css"
  RMDir "$INSTDIR\public"
- Delete "$INSTDIR\dist\BackupDesk-Client-0.29.0-x64.exe"
- Delete "$INSTDIR\dist\BackupDesk-Atualizacao-Client-0.29.0-x64.exe"
+ Delete "$INSTDIR\dist\BackupDesk-Client-0.30.0-x64.exe"
+ Delete "$INSTDIR\dist\BackupDesk-Atualizacao-Client-0.30.0-x64.exe"
  RMDir "$INSTDIR\dist"
 !else
  Delete "$DESKTOP\BackupDesk Client.lnk"
+ Delete "$SMPROGRAMS\BackupDesk Client.lnk"
+ DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\App Paths\BackupDeskClient.exe"
 !endif
  Delete "$SMPROGRAMS\${FOLDER}\Configurar agente.lnk"
  Delete "$SMPROGRAMS\${FOLDER}\Iniciar agente.lnk"
@@ -350,6 +358,7 @@ Section "Uninstall"
 !endif
  Delete "$SMPROGRAMS\${FOLDER}\Client VSS (administrador).lnk"
  Delete "$INSTDIR\background.mjs"
+ Delete "$INSTDIR\catalog-transfer.mjs"
  Delete "$INSTDIR\BackupDeskClient.exe"
  Delete "$INSTDIR\launch-agent.mjs"
  Delete "$INSTDIR\Configure.ps1"

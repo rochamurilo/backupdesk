@@ -1,5 +1,6 @@
 ﻿param([Parameter(Mandatory=$true)][string]$UserSid,[Parameter(Mandatory=$true)][ValidateSet('master','client')][string]$Product)
 $ErrorActionPreference='Stop'
+$ProgressPreference='SilentlyContinue'
 if($UserSid -notmatch '^S-1-(?:\d+-)+\d+$'){throw 'SID inválido.'}
 if([Security.Principal.WindowsIdentity]::GetCurrent().User.Value -ne 'S-1-5-18'){throw 'O componente VSS deve executar como SYSTEM.'}
 . (Join-Path $PSScriptRoot 'vss-protocol.ps1')
