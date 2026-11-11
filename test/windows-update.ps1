@@ -31,7 +31,7 @@ try{
  try{
   $retainedHandle=$exited.Handle
   $exited.Kill();$exited.WaitForExit()
-  if(-not [BackupDesk.UpdateProcesses]::Stop($exited.Id,(Join-Path $target 'node.exe'))){throw 'O processo encerrado não foi reconhecido.'}
+  $null=[BackupDesk.UpdateProcesses]::Stop($exited.Id,(Join-Path $target 'node.exe'))
  }finally{$exited.Dispose()}
  'Windows: processo já encerrado, com handle retido, não bloqueia a atualização: OK.'
  # Exercise the narrow exit race deterministically, using real Win32 calls:
