@@ -12,6 +12,34 @@ $sevenZip=(Get-Command 7z.exe -ErrorAction SilentlyContinue).Source
 if(-not $sevenZip){$sevenZip=Join-Path $env:ProgramFiles '7-Zip\7z.exe'}
 New-Item -ItemType Directory -Path $root | Out-Null
 $testStage='preparar instalação antiga';$testPassed=$false
+function Get-InstallerWindows([int]$InstallerId){
+ # CI runs on an isolated Windows VM. Inspect only this test installer's windows
+ # and its descendants, and read Static labels rather than editable fields.
+ if(-not ('BackupDesk.TestInstallerWindows' -as [type])){Add-Type -TypeDefinition @'
+using System;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+using System.Text;
+namespace BackupDesk { public static class TestInstallerWindows {
+ delegate bool EnumProc(IntPtr h,IntPtr data);
+ [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc callback,IntPtr data);
+ [DllImport("user32.dll")] static extern bool EnumChildWindows(IntPtr parent,EnumProc callback,IntPtr data);
+ [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h,out int pid);
+ [DllImport("user32.dll",CharSet=CharSet.Unicode)] static extern int GetWindowText(IntPtr h,StringBuilder text,int size);
+ [DllImport("user32.dll",CharSet=CharSet.Unicode)] static extern int GetClassName(IntPtr h,StringBuilder text,int size);
+ static string Text(IntPtr h) { var text=new StringBuilder(4096);GetWindowText(h,text,text.Capacity);return text.ToString(); }
+ public static string Read(int[] ids) {
+  var wanted=new HashSet<int>(ids);var result=new StringBuilder();
+  EnumWindows((h,data)=>{int pid;GetWindowThreadProcessId(h,out pid);if(!wanted.Contains(pid))return true;
+   result.AppendLine(Text(h));EnumChildWindows(h,(child,unused)=>{var name=new StringBuilder(128);GetClassName(child,name,name.Capacity);if(name.ToString()=="Static")result.AppendLine(Text(child));return true;},IntPtr.Zero);return true;},IntPtr.Zero);
+  return result.ToString();
+ }
+} }
+'@}
+ $all=@(Get-CimInstance Win32_Process);$ids=@($InstallerId)
+ do{$added=@($all | Where-Object {$_.ParentProcessId -in $ids -and $_.ProcessId -notin $ids} | ForEach-Object {[int]$_.ProcessId});$ids+= $added}while($added.Count)
+ return [BackupDesk.TestInstallerWindows]::Read([int[]]$ids)
+}
 try{
  $null=& $sevenZip x $master ('-o'+$extract) -y
  if($LASTEXITCODE -ne 0){throw 'Falha ao extrair o pacote publicado.'}
@@ -119,7 +147,7 @@ try{
  }finally{Move-Item -LiteralPath ($deviceFile+'.retained') -Destination $deviceFile}
  $testStage='atualizar Client preservando chaves'
  $process=Start-Process -FilePath $updater -ArgumentList @('/S',('/D='+$target)) -PassThru
- if(-not $process.WaitForExit(180000)){$process.Kill();throw 'Atualização do client excedeu o prazo.'}
+ if(-not $process.WaitForExit(180000)){$windows=Get-InstallerWindows $process.Id;$process.Kill();throw ('Atualização do client excedeu o prazo. '+$windows)}
  if($process.ExitCode -ne 0){throw 'Atualização identificada falhou.'}
  $testStage='iniciar Client atualizado'
  $afterUpdate=Wait-LocalClient
