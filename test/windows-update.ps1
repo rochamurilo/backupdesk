@@ -25,6 +25,15 @@ try{
  $otherRestic.Refresh();if($otherRestic.HasExited){throw 'Um Restic de outra instalação foi encerrado.'}
  $unrelated.Refresh();if($unrelated.HasExited){throw 'Um processo Node.js de outra pasta foi encerrado.'}
  if(-not (Test-Path -LiteralPath (Join-Path $target 'data\update-lock.json'))){throw 'Proteção contra reinício não foi criada.'}
+ # Windows retains a terminated process object while its handle is open. A second
+ # TerminateProcess can return ERROR_ACCESS_DENIED even though shutdown succeeded.
+ $exited=Start-Process -FilePath (Join-Path $target 'node.exe') -ArgumentList 'agent.mjs' -WorkingDirectory $target -PassThru -WindowStyle Hidden
+ try{
+  $retainedHandle=$exited.Handle
+  $exited.Kill();$exited.WaitForExit()
+  $null=[BackupDesk.UpdateProcesses]::Stop($exited.Id,(Join-Path $target 'node.exe'))
+ }finally{$exited.Dispose()}
+ 'Windows: processo já encerrado, com handle retido, não bloqueia a atualização: OK.'
  Register-BackupDeskStartup $target $sid 'master'
  $task=Get-ScheduledTask -TaskName ('BackupDesk-master-'+$sid)
  if($task.Principal.RunLevel -ne 'Limited' -or $task.Principal.LogonType -ne 'Interactive'){throw 'A inicialização não está no usuário normal.'}
