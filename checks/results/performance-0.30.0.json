@@ -1,0 +1,46 @@
+{
+  "platform": "linux",
+  "node": "v24.19.0",
+  "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+  "logical_cpus": 5,
+  "fixture": {
+    "small_files": 1500,
+    "small_bytes_each": 2048,
+    "large_mib": 64
+  },
+  "idle": {
+    "elapsed_ms": 15002,
+    "cpu_seconds": 0.02,
+    "cpu_one_core_percent": 0.13,
+    "peak_working_set_mb": 123.4,
+    "sqlite_commits": 0,
+    "requests": {
+      "/api/agent/commands": 8
+    }
+  },
+  "backup": {
+    "elapsed_ms": 9184,
+    "cpu_seconds": 7.65,
+    "cpu_one_core_percent": 83.3,
+    "peak_working_set_mb": 155.4,
+    "sqlite_commits": 54,
+    "requests": {
+      "/api/agent/commands": 4,
+      "/api/agent/runs": 1,
+      "/api/agent/runs/:id/progress": 12,
+      "/api/agent/runs/:id/plan": 1,
+      "/api/agent/runs/:id/files": 16,
+      "/api/agent/runs/:id/finish": 1,
+      "/api/agent/selected-volume": 1,
+      "/api/agent/jobs/:id": 1
+    }
+  },
+  "validation": {
+    "status": "success",
+    "catalog_files": 1504,
+    "logical_bytes": 70180864,
+    "stored_bytes": 67132215,
+    "integrity": "success"
+  },
+  "version": "0.30.0"
+}
