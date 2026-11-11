@@ -8,25 +8,25 @@ Var VssOwnerSid
 Var PreparedUpdate
 !ifdef CLIENT
   !define PRODUCT "BackupDesk Client"
-  !define VERSION "0.30.0"
+  !define VERSION "0.31.0"
   !define KEY "BackupDeskClient"
   !define FOLDER "BackupDeskClient"
   !define UPDATE_PRODUCT "client"
   !ifdef UPDATE_ONLY
-   OutFile "../dist/BackupDesk-Atualizacao-Client-0.30.0-x64.exe"
+   OutFile "../dist/BackupDesk-Atualizacao-Client-0.31.0-x64.exe"
   !else
-   OutFile "../windows/build/BackupDesk-Client-0.30.0-x64.exe"
+   OutFile "../windows/build/BackupDesk-Client-0.31.0-x64.exe"
   !endif
 !else
   !define PRODUCT "BackupDesk Master"
-  !define VERSION "0.30.0"
+  !define VERSION "0.31.0"
   !define KEY "BackupDesk"
   !define FOLDER "BackupDesk"
   !define UPDATE_PRODUCT "master"
   !ifdef UPDATE_ONLY
-   OutFile "../dist/BackupDesk-Atualizacao-Master-0.30.0-x64.exe"
+   OutFile "../dist/BackupDesk-Atualizacao-Master-0.31.0-x64.exe"
   !else
-   OutFile "../dist/BackupDesk-Master-0.30.0-x64.exe"
+   OutFile "../dist/BackupDesk-Master-0.31.0-x64.exe"
   !endif
 !endif
 !ifdef UPDATE_ONLY
@@ -197,8 +197,8 @@ Section "${PRODUCT}" Main
  File "build/BackupDesk.exe"
  File /oname=VSSComponentSetup.exe "build/BackupDeskVSSComponent.exe"
  SetOutPath "$INSTDIR\dist"
- File "build/BackupDesk-Client-0.30.0-x64.exe"
- File "../dist/BackupDesk-Atualizacao-Client-0.30.0-x64.exe"
+ File "build/BackupDesk-Client-0.31.0-x64.exe"
+ File "../dist/BackupDesk-Atualizacao-Client-0.31.0-x64.exe"
  SetOutPath "$INSTDIR"
 !ifndef UPDATE_ONLY
  nsExec::ExecToStack '"$INSTDIR\node.exe" "$INSTDIR\server.mjs" --prepare-master'
@@ -292,8 +292,8 @@ Section "Uninstall"
  Delete "$INSTDIR\public\app.js"
  Delete "$INSTDIR\public\style.css"
  RMDir "$INSTDIR\public"
- Delete "$INSTDIR\dist\BackupDesk-Client-0.30.0-x64.exe"
- Delete "$INSTDIR\dist\BackupDesk-Atualizacao-Client-0.30.0-x64.exe"
+ Delete "$INSTDIR\dist\BackupDesk-Client-0.31.0-x64.exe"
+ Delete "$INSTDIR\dist\BackupDesk-Atualizacao-Client-0.31.0-x64.exe"
  RMDir "$INSTDIR\dist"
 !else
  Delete "$DESKTOP\BackupDesk Client.lnk"

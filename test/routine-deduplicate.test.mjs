@@ -1,7 +1,7 @@
 import {test} from 'node:test';import assert from 'node:assert/strict';import {DatabaseSync} from 'node:sqlite';import {spawn} from 'node:child_process';import {once} from 'node:events';import {mkdtemp,rm} from 'node:fs/promises';import {tmpdir} from 'node:os';import {join} from 'node:path';
 test('limpeza de cópias idênticas preserva histórico, arquivos e outras contas',{timeout:15000},async()=>{
  const dir=await mkdtemp(join(tmpdir(),'backupdesk-identical-'));let db;const child=spawn(process.execPath,['server.mjs'],{env:{...process.env,PORT:'3192',DATA_DIR:dir,ADMIN_PASSWORD:'dedup-test-password'},stdio:['ignore','pipe','pipe']});
- try{await once(child.stdout,'data');const api=async(p,b,t,method)=>{const r=await fetch('http://127.0.0.1:3192/api/'+p,{method:method||(b?'POST':'GET'),headers:{Authorization:'Bearer '+t,'Content-Type':'application/json','X-BackupDesk-Version':'0.30.0'},body:b?JSON.stringify(b):undefined});return {status:r.status,body:await r.json()}};
+ try{await once(child.stdout,'data');const api=async(p,b,t,method)=>{const r=await fetch('http://127.0.0.1:3192/api/'+p,{method:method||(b?'POST':'GET'),headers:{Authorization:'Bearer '+t,'Content-Type':'application/json','X-BackupDesk-Version':'0.31.0'},body:b?JSON.stringify(b):undefined});return {status:r.status,body:await r.json()}};
  const admin=(await api('login',{name:'admin',password:'dedup-test-password'})).body.token;
  for(const name of ['ownerA','ownerB'])await api('users',{name,password:'dedup-test-password'},admin);
  const users=(await api('state',null,admin)).body.users;const devices={},tokens={};

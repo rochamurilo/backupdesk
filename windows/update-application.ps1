@@ -33,12 +33,21 @@ namespace BackupDesk {
    IntPtr handle=OpenProcess(0x1000|0x0001|0x00100000,false,pid);
    if(handle==IntPtr.Zero)return false;
    try {
+    // A supervisor may have already reaped a child from our process snapshot.
+    // Its object can still exist while another process retains an open handle.
+    if(WaitForSingleObject(handle,0)==0)return true;
     uint size=32768;StringBuilder image=new StringBuilder((int)size);
     if(!QueryFullProcessImageName(handle,0,image,ref size))return false;
     // Verify the executable on the opened handle, avoiding a PID-reuse race.
     if(!String.Equals(Path.GetFullPath(image.ToString()),Path.GetFullPath(expected),StringComparison.OrdinalIgnoreCase))return false;
-    if(!TerminateProcess(handle,0))throw new Win32Exception(Marshal.GetLastWin32Error());
-    WaitForSingleObject(handle,5000);return true;
+    if(!TerminateProcess(handle,0)) {
+     int error=Marshal.GetLastWin32Error();
+     // ERROR_ACCESS_DENIED is also returned if the child exited between the
+     // image check and TerminateProcess. Ignore it only after confirmed exit.
+     if(WaitForSingleObject(handle,0)!=0)throw new Win32Exception(error);
+    }
+    if(WaitForSingleObject(handle,5000)!=0)throw new Win32Exception(1460,"O processo desta instalação não terminou no prazo.");
+    return true;
    } finally { CloseHandle(handle); }
   }
  }
