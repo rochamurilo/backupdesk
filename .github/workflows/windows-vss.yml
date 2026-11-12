@@ -13,6 +13,9 @@ on:
       - 'agent-schedule-state.mjs'
       - 'test/backup-links.test.mjs'
       - 'test/agent-schedule-state.test.mjs'
+      - 'schedule.mjs'
+      - 'test/schedule.test.mjs'
+      - 'test/schedule-integration.test.mjs'
       - 'restic*.mjs'
       - 'tools/fetch-restic*'
       - 'test/restic*.mjs'
@@ -61,7 +64,7 @@ on:
       - 'windows/Configure.ps1'
       - 'test/windows-client-install.ps1'
       - 'test/client-package.test.mjs'
-      - 'dist/BackupDesk-Master-0.31.0-x64.exe'
+      - 'dist/BackupDesk-Master-0.32.0-x64.exe'
       - 'backup-repository.mjs'
       - 'vss.mjs'
       - 'filesystem.mjs'
@@ -146,9 +149,9 @@ jobs:
             /windows/
             /test/
             /dist/BackupDesk-Master-0.25.0-x64.exe
-            /dist/BackupDesk-Master-0.31.0-x64.exe
-            /dist/BackupDesk-Atualizacao-Client-0.31.0-x64.exe
-            /dist/BackupDesk-Atualizacao-Master-0.31.0-x64.exe
+            /dist/BackupDesk-Master-0.32.0-x64.exe
+            /dist/BackupDesk-Atualizacao-Client-0.32.0-x64.exe
+            /dist/BackupDesk-Atualizacao-Master-0.32.0-x64.exe
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -158,6 +161,8 @@ jobs:
         run: node --test test/selected-volume.test.mjs
       - name: Test bounded batches and background policy
         run: node --test test/performance.test.mjs
+      - name: Test persisted schedule slots and rescheduling
+        run: node --test test/schedule.test.mjs test/agent-schedule-state.test.mjs
       - name: Test persistent client identity
         run: node --test test/client-package.test.mjs
       - name: Test real named installer and update

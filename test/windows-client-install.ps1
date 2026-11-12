@@ -1,8 +1,8 @@
 ﻿$ErrorActionPreference='Stop'
 $repo=Split-Path $PSScriptRoot -Parent
 $master=Join-Path $repo 'dist\BackupDesk-Master-0.25.0-x64.exe'
-$newMaster=Join-Path $repo 'dist\BackupDesk-Master-0.31.0-x64.exe'
-$updater=Join-Path $repo 'dist\BackupDesk-Atualizacao-Client-0.31.0-x64.exe'
+$newMaster=Join-Path $repo 'dist\BackupDesk-Master-0.32.0-x64.exe'
+$updater=Join-Path $repo 'dist\BackupDesk-Atualizacao-Client-0.32.0-x64.exe'
 if(-not (Test-Path -LiteralPath $master)){'Instalador ainda não publicado; teste de pacote será executado na publicação.';return}
 $root=Join-Path $env:TEMP ('BackupDesk Client Test '+[guid]::NewGuid().ToString('N'))
 $extract=Join-Path $root 'extracted'
@@ -69,7 +69,7 @@ try{
   $response=Invoke-WebRequest @request
   return ([Text.Encoding]::UTF8.GetString($response.RawContentStream.ToArray()) | ConvertFrom-Json)
  }
- function Wait-LocalClient($ExpectedVersion='0.31.0') {
+ function Wait-LocalClient($ExpectedVersion='0.32.0') {
   $ready=$false
   for($attempt=0;$attempt -lt 100;$attempt++){try{$health=Invoke-LocalClient 'health';if($health.mode -eq 'client' -and $health.device -eq $config.device_id){$ready=$true;break}}catch{};Start-Sleep -Milliseconds 300}
   if(-not $ready){throw 'O painel local do client não iniciou sem endereço do master.'}
@@ -121,7 +121,7 @@ try{
  $newExtract=Join-Path $root 'new extracted'
  $null=& $sevenZip x $newMaster ('-o'+$newExtract) -y
  if($LASTEXITCODE -ne 0){throw 'Falha ao extrair a versão atual.'}
- $newGeneric=Get-ChildItem -LiteralPath $newExtract -Filter 'BackupDesk-Client-0.31.0-x64.exe' -Recurse | Select-Object -First 1
+ $newGeneric=Get-ChildItem -LiteralPath $newExtract -Filter 'BackupDesk-Client-0.32.0-x64.exe' -Recurse | Select-Object -First 1
  if(-not $newGeneric){throw 'Client atual não encontrado.'}
  $env:BACKUPDESK_TEST_CLIENT_BASE=$newGeneric.FullName
  $env:BACKUPDESK_TEST_CLIENT_WRONG=Join-Path $root 'pacote com outra chave.exe'
@@ -162,7 +162,7 @@ try{
  if($updated.installation_id -ne $instance){throw 'A atualização mudou a identificação da instalação.'}
  if(-not (Test-Path -LiteralPath (Join-Path $target 'client-package.mjs'))){throw 'Módulo de identificação não foi incluído no pacote.'}
  # Dedicated update has no enrollment and must keep the configuration byte for byte.
- $updater=Join-Path $repo 'dist\BackupDesk-Atualizacao-Client-0.31.0-x64.exe'
+ $updater=Join-Path $repo 'dist\BackupDesk-Atualizacao-Client-0.32.0-x64.exe'
  if(-not (Test-Path -LiteralPath $updater)){throw 'Atualizador do client não foi publicado.'}
  $updateHashes=@{};foreach($relative in $filesToPreserve){$updateHashes[$relative]=(Get-FileHash -LiteralPath (Join-Path $target $relative) -Algorithm SHA256).Hash}
  $configBytes=[IO.File]::ReadAllBytes((Join-Path $target 'agent-config.json'))
@@ -241,7 +241,7 @@ try{
  Write-Output "::notice title=BackupDesk Windows idle resources::Processes=$($items.Count); CPUs=$([Environment]::ProcessorCount); CPU one core=$percent percent; working set=$mb MB; sample=$([Math]::Round($clock.Elapsed.TotalSeconds,1)) seconds"
  $testPassed=$true
  'Busca recursiva pela pasta raiz, nome Unicode e chave original: calendário carregado e arquivo Restic anterior restaurado: OK.'
- 'Atualizador Client 0.25.0 para 0.31.0: sem cadastro/chave no pacote, sem primeira instalação, cofre incompleto bloqueado, configuração/chaves idênticas, rotina e restauração anterior preservadas: OK.'
+ 'Atualizador Client 0.25.0 para 0.32.0: sem cadastro/chave no pacote, sem primeira instalação, cofre incompleto bloqueado, configuração/chaves idênticas, rotina e restauração anterior preservadas: OK.'
  'Chaves Windows: instalador divergente bloqueado antes de substituir arquivos ou parar o app; cofre incompleto preservado; chaves idênticas após atualização legítima e backup anterior restaurado: OK.'
  'Client local Windows: sem endereço, painel isolado, Restic/VSS, backup, restauração, duas pastas de logs e atualização preservando rotina: OK.'
  'Instalador NSIS real: CRC preservado com identificação incorporada, nome independente do arquivo e vínculo mantido na atualização: OK.'

@@ -20,3 +20,24 @@ test('sem persistir tentativa não inicia backup e preserva estado anterior',asy
  const {runScheduledRoutine}=await import('../schedule.mjs');const state={};let copied=false;
  await assert.rejects(runScheduledRoutine({id:1,cadence:'daily',hour:'10:00'},new Date(2026,10,3,10,0),state,async()=>{throw Error('Disco indisponível')},async()=>{copied=true}),/Disco/);assert.equal(copied,false);assert.deepEqual(state,{});
 });
+
+test('alterar de 09h para 23h no mesmo dia permite o novo horário, sem repetir os já tentados',async()=>{
+ const {runScheduledRoutine}=await import('../schedule.mjs');const state={},routine={id:42,cadence:'weekdays',hour:'09:00'};let calls=0,persisted;
+ const persist=async value=>{persisted=JSON.stringify(value)};
+ await assert.rejects(runScheduledRoutine(routine,new Date(2026,10,11,9),state,persist,async()=>{calls++;throw Error('VSS falhou')}),/VSS/);
+ routine.hour='23:00';
+ assert.equal(await runScheduledRoutine(routine,new Date(2026,10,11,22,59),state,persist,async()=>calls++),false);
+ assert.equal(await runScheduledRoutine(routine,new Date(2026,10,11,23),state,persist,async()=>calls++),true);
+ assert.equal(await runScheduledRoutine(routine,new Date(2026,10,11,23,1),JSON.parse(persisted),persist,async()=>calls++),false);
+ routine.hour='09:00';assert.equal(await runScheduledRoutine(routine,new Date(2026,10,11,23,2),state,persist,async()=>calls++),false);
+ assert.equal(calls,2);
+ assert.equal(await runScheduledRoutine(routine,new Date(2026,10,12,9),state,persist,async()=>calls++),true);
+ assert.equal(calls,3);
+});
+
+test('falha ao persistir novo horário preserva as tentativas anteriores e permite tentar salvar novamente',async()=>{
+ const {runScheduledRoutine}=await import('../schedule.mjs'),old={date:'2026-11-11',hours:['09:00']},state={1:old},routine={id:1,cadence:'weekdays',hour:'23:00'};let copied=false;
+ await assert.rejects(runScheduledRoutine(routine,new Date(2026,10,11,23),state,async()=>{throw Error('Disco indisponível')},async()=>{copied=true}),/Disco/);
+ assert.equal(copied,false);assert.equal(state[1],old);assert.deepEqual(old.hours,['09:00']);
+ assert.equal(await runScheduledRoutine(routine,new Date(2026,10,11,23,1),state,async()=>{},async()=>{copied=true}),true);assert.equal(copied,true);
+});
