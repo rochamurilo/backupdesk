@@ -1,8 +1,8 @@
-# BackupDesk 0.31.0 — versão de teste
+# BackupDesk 0.32.0 — versão de teste
 
-[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.31.0-x64.exe)
+[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.32.0-x64.exe)
 
-Atualizar uma instalação existente: [Client](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Atualizacao-Client-0.31.0-x64.exe) · [Master](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Atualizacao-Master-0.31.0-x64.exe).
+Atualizar uma instalação existente: [Client](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Atualizacao-Client-0.32.0-x64.exe) · [Master](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Atualizacao-Master-0.32.0-x64.exe).
 
 [Começar na Locaweb: contratação, instalação e primeiro client](deploy/LOCAWEB-PASSO-A-PASSO.md)
 
@@ -434,3 +434,13 @@ O teste Windows reproduziu o erro anterior com chamadas Win32 reais na [execuç�
 Validação dos pacotes: 142 testes Node e a verificação Chromium passaram. Os quatro jobs da [execução Windows 43050605342](https://github.com/rochamurilo/backupdesk/actions/runs/43050605342) passaram, incluindo instalação real, atualização dos Clients e Master, preservação das chaves byte a byte, restauração de backups anteriores, VSS e SMB autenticado. Os componentes VSS embutidos foram extraídos e comparados com os scripts corrigidos; os atualizadores não têm cadastro ou chave embutidos. Os três downloads públicos foram conferidos com `dist/SHA256SUMS.txt`.
 
 Uma execução inicial do teste completo de atualização atingiu o prazo de 180 segundos. A nova execução aprovou os mesmos executáveis, sem alteração de código ou de pacotes. A [repetição independente 43049556524](https://github.com/rochamurilo/backupdesk/actions/runs/43049556524) também passou nas quatro validações. A causa do primeiro excesso de prazo não foi determinada. O teste agora captura, antes da limpeza, os textos estáticos das janelas do instalador e seus descendentes na VM de testes para diagnosticar eventual repetição; não acessa janelas no computador do usuário.
+
+## 0.32.0 — Agendamento Após Alterar o Horário
+
+Uma tentativa anterior, inclusive com falha, podia consumir o dia inteiro da rotina. Ao alterar o horário para mais tarde no mesmo dia, o agente reconhecia o dia como já tentado e ignorava o novo horário. A 0.32.0 registra os horários já tentados por rotina e data local. Uma mudança de 09h para 23h pode executar às 23h; consultas repetidas, reinício e retorno a um horário já tentado não geram outra cópia naquele horário. A tentativa continua sendo persistida antes de copiar; uma falha não é repetida a cada minuto e uma falha na gravação do estado não inicia o backup.
+
+As novas tentativas guardam no histórico a data e o horário do disparo original. Assim, uma segunda cópia em outro destino, iniciada depois da meia-noite, não consome o agendamento da noite seguinte. A recuperação de estado ausente ou inválido usa esses campos. Arquivos antigos contendo apenas a data são migrados usando o histórico disponível; tentativas antigas sem horário explícito cobrem os horários até o momento em que começaram, permitindo um novo horário posterior. Um registro antigo sem histórico correspondente mantém o bloqueio conservador daquele dia.
+
+O log local registra uma vez o fuso/hora local na inicialização e registra os horários recebidos quando a configuração muda. Não há nova gravação periódica durante a ociosidade. A inicialização Windows continua vinculada à sessão da conta instalada: bloquear a tela ou apenas desconectar o acesso remoto normalmente mantém o agente; fazer logoff encerra os processos da sessão.
+
+Esta correção trata o disparo do agendamento. O erro de remoção de snapshots VSS é uma etapa diferente e deve ser verificado quando a rotina executar. Sem os logs do SERVIDORPB, o caso reproduzido não confirma sozinho a causa da execução específica ausente. Os atualizadores preservam as chaves, as rotinas e os horários existentes.
