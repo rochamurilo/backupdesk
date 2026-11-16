@@ -39,6 +39,16 @@ $grandchild=Start-Process -FilePath (Join-Path $env:SystemRoot 'System32\Windows
  if(-not $failed){throw 'Worker sem confirmação foi aprovado.'}
  Set-Content -LiteralPath (Join-Path $script:workerRoot 'vss.ps1') -Value ($success+"`nexit 0") -Encoding UTF8
  if(-not (Invoke-OwnedVss @{action='cleanup'} ('b'*64)).cleaned){throw 'Worker não se recuperou após as falhas.'}
+ $previous=Start-Process -FilePath (Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe') -ArgumentList @('-NoLogo','-NoProfile','-NonInteractive','-Command','Start-Sleep -Seconds 20') -WindowStyle Hidden -PassThru
+ $previousStopped=$false
+ try{
+  $pendingReply=Join-Path $state ('reply-'+[guid]::NewGuid().ToString('N')+'.json');[IO.File]::WriteAllText($pendingReply,'pending')
+  $script:pendingVssWorker=@{process=$previous;reply=$pendingReply}
+  $failed=$false;try{$null=Invoke-OwnedVss @{action='cleanup'} ('b'*64)}catch{$failed=$_.Exception.Message -like '*anterior ainda*'}
+  $previous.Refresh();if(-not $failed -or $previous.HasExited){throw 'Uma operação ainda ativa não impediu a criação de outro worker.'}
+  $previous.Kill();$previous.WaitForExit();$previousStopped=$true
+  if(-not (Invoke-OwnedVss @{action='cleanup'} ('b'*64)).cleaned -or (Test-Path -LiteralPath $pendingReply)){throw 'O estado pendente não foi liberado após o encerramento.'}
+ }finally{if(-not $previousStopped -and -not $previous.HasExited){$previous.Kill();$previous.WaitForExit()};$previous.Dispose();$script:pendingVssWorker=$null}
  $workerAst=[Management.Automation.Language.Parser]::ParseFile((Join-Path $repo 'windows\vss.ps1'),[ref]$tokens,[ref]$errors)
  $publisher=$workerAst.Find({param($node)$node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Write-VssReply'},$true)
  if(-not $publisher){throw 'Confirmação privada VSS não encontrada.'};. ([scriptblock]::Create($publisher.Extent.Text))

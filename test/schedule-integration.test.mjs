@@ -12,7 +12,7 @@ test('agente real migra tentativa anterior, executa novo horário e recupera o s
  // Use a fixed-offset zone whose local hour is midday, so both slots are due
  // without changing the OS clock or waiting until the evening.
  const offset=12-new Date().getUTCHours(),zone='Etc/GMT'+(offset>=0?'-':'+')+Math.abs(offset),date=new Intl.DateTimeFormat('sv-SE',{timeZone:zone}).format(new Date());
- const api=async(path,body,auth=token,method=body?'POST':'GET')=>{const r=await fetch(url+'/api/'+path,{method,headers:{Authorization:'Bearer '+auth,'Content-Type':'application/json','X-BackupDesk-Version':'0.32.0','X-BackupDesk-Platform':'linux'},body:body?JSON.stringify(body):undefined});return {status:r.status,body:await r.json()}};
+ const api=async(path,body,auth=token,method=body?'POST':'GET')=>{const r=await fetch(url+'/api/'+path,{method,headers:{Authorization:'Bearer '+auth,'Content-Type':'application/json','X-BackupDesk-Version':'0.33.0','X-BackupDesk-Platform':'linux'},body:body?JSON.stringify(body):undefined});return {status:r.status,body:await r.json()}};
  const wait=async fn=>{for(let i=0;i<400;i++){const value=await fn();if(value)return value;await pause(40)}throw Error('Espera excedida. '+logs.slice(-2000))};
  try{
   server=spawn(process.execPath,['server.mjs'],{env:{...process.env,PORT:'3296',HOST:'127.0.0.1',DATA_DIR:join(root,'server'),ADMIN_PASSWORD:'schedule-integration-password',TZ:zone},stdio:['ignore','pipe','pipe']});await once(server.stdout,'data');server.stderr.on('data',s=>{logs+=s});

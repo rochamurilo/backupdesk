@@ -40,5 +40,13 @@ try{
  if(-not $response.ok){throw [string]$response.error}
  if($request.action -eq 'probe' -and $recovered){$response.result | Add-Member -NotePropertyName component_restarted -NotePropertyValue $true}
  $response.result | ConvertTo-Json -Depth 8 -Compress
-}catch{[Console]::Error.WriteLine(('VSS client ['+$phase+']: '+$_.Exception.Message));exit 1}
+}catch{
+ $details='';if($request -and $request.action){$details=' Operação: '+$request.action+'.'}
+ if($phase -in @('connect-retry','response') -and $task){try{
+  $current=$scheduler.GetFolder('\').GetTask($taskName)
+  $states=@('desconhecido','desativado','na fila','parado','em execução')
+  $details+=' Estado do componente: '+$states[[int]$current.State]+'.'
+ }catch{}}
+ [Console]::Error.WriteLine(('VSS client ['+$phase+']: '+$_.Exception.Message+$details));exit 1
+}
 finally{if($reader){$reader.Dispose()};if($writer){$writer.Dispose()};if($pipe){$pipe.Dispose()}}
