@@ -1,8 +1,8 @@
-# BackupDesk 0.33.0 — versão de teste
+# BackupDesk 0.34.0 — versão de teste
 
-[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.33.0-x64.exe)
+[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.34.0-x64.exe)
 
-Atualizar uma instalação existente: [Client](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Atualizacao-Client-0.33.0-x64.exe) · [Master](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Atualizacao-Master-0.33.0-x64.exe).
+Atualizar uma instalação existente: [Client](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Atualizacao-Client-0.34.0-x64.exe) · [Master](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Atualizacao-Master-0.34.0-x64.exe).
 
 [Começar na Locaweb: contratação, instalação e primeiro client](deploy/LOCAWEB-PASSO-A-PASSO.md)
 
@@ -466,3 +466,15 @@ Validação local: 148 testes Node e a verificação Chromium passaram. Na [exec
 Validação dos pacotes: os quatro jobs da [execução Windows 43899500804](https://github.com/rochamurilo/backupdesk/actions/runs/43899500804) passaram. Um cliente conectado sem enviar solicitação continuou aberto depois do prazo de leitura, e outro cliente conseguiu consultar o componente; o teste confirmou a recuperação dessa conexão abandonada. Os atualizadores Client e Master preservaram as chaves byte a byte e restauraram backups anteriores. Os executáveis foram extraídos: os arquivos de produção, as dependências, os cinco scripts de cada componente VSS e os módulos de pré-verificação correspondem às fontes testadas. Os clientes embutidos correspondem aos pacotes gerados e os atualizadores não contêm cadastro ou chave de computador.
 
 Os três downloads públicos da 0.33.0 foram baixados e conferidos com os hashes de `dist/SHA256SUMS.txt`.
+
+## 0.34.0 — Progresso da Conferência e Liberação Antecipada do VSS
+
+A primeira verificação integral e a conferência a cada cinco dias continuam usando `restic check --read-data`, com a mesma validação e sem reaproveitar cache para dispensar a leitura. A conferência relê os dados do repositório e pode demorar em rede, inclusive sem limite configurado; dois computadores no mesmo servidor compartilham a capacidade disponível. O tempo de leitura depende do volume físico armazenado, da rede, dos discos e da carga das máquinas. Quinze minutos, isoladamente, não comprovam um travamento.
+
+A tela passa a mostrar bytes efetivamente lidos do repositório, velocidade, blocos analisados e estimativa após haver amostras suficientes. Durante o preparo ou a conclusão, mostra essas etapas; uma leitura medida como zero aparece como zero. O nome do último arquivo copiado deixa de aparecer como se fosse o arquivo em verificação. O contador de blocos vem do progresso do Restic 0.19.1 validado; os bytes são medidos no transporte local autenticado. Os limites configurados continuam aplicados às leituras, e a saída textual da conferência não é acumulada indefinidamente em memória.
+
+Depois de copiar e validar todas as origens e remover as junctions temporárias, o motor Restic libera seus snapshots VSS antes de conferir o repositório. A conferência depende apenas dos dados já armazenados. A liberação é idempotente: o encerramento da operação não repete a limpeza. Falha ao liberar VSS ou falha de integridade continuam impedindo a aprovação, e o catálogo definitivo só é publicado após a conferência exigida. O motor anterior mantém sua limpeza ao finalizar.
+
+Isso reduz o tempo durante o qual o snapshot temporário precisa permanecer ativo. O volume integral a conferir, a prioridade dos processos, os limites de CPU/conexões, as chaves e as rotinas permanecem preservados. Espere as conferências em andamento terminarem antes de atualizar: interromper a primeira conferência deixa a verificação integral pendente para a execução seguinte.
+
+Validação local: 152 testes Node e a checagem Chromium passaram. Foram verificados velocidade/ETA da conferência, interpretação do contador de blocos, progresso na API com isolamento por computador, remoção do arquivo antigo da tela, preparo, conclusão, restauração e recusa de corrupção. A [validação preliminar Windows 43912481317](https://github.com/rochamurilo/backupdesk/actions/runs/43912481317) confirmou contadores reais e limpeza VSS antes da conferência, sem outra limpeza posterior; leitura de arquivo bloqueado, restauração, permissões e SMB também passaram.
