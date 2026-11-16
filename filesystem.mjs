@@ -1,5 +1,19 @@
-import {readdir,stat,lstat,readFile} from 'node:fs/promises';
+import {readdir,stat,lstat,readFile,realpath} from 'node:fs/promises';
 import path from 'node:path';
+export const networkSourceNotice='Origem de rede copiada sem snapshot do servidor. Use esta rotina com os arquivos e programas de origem fechados; a cópia não representa um snapshot simultâneo de todos os arquivos.';
+export function sourceMode(value='local'){if(!['local','network'].includes(value))throw Error('Selecione Disco Local ou Compartilhamento de Rede como origem.');return value}
+export function isNetworkSourcePath(value){return typeof value==='string'&&/^\\\\(?![?.]\\)[^\\]+\\[^\\]+(?:\\|$)/.test(value.replaceAll('/','\\'))}
+export async function resolveNetworkSources(source){
+ if(process.platform!=='win32')throw Error('O modo Compartilhamento de Rede requer um agente Windows.');
+ const result=[];
+ for(const root of parseSources(source)){
+  if((await lstat(root)).isSymbolicLink())throw Error('Selecione a pasta real, não um link: '+root);
+  let canonical=await realpath(root);canonical=canonical.replace(/^\\\\\?\\UNC\\/i,'\\\\');
+  if(!isNetworkSourcePath(canonical))throw Error('Compartilhamento de Rede aceita apenas origens de rede. Informe \\\\servidor\\compartilhamento\\pasta; separe discos locais em outra rotina.');
+  result.push(canonical);
+ }
+ return [...new Set(result)];
+}
 export async function browseFiles(input='') {
  if(typeof input!=='string')throw Error('Caminho inválido');
  if(!input){

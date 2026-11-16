@@ -17,13 +17,19 @@ try {
  New-SmbShare -Name $share -Path $folder -ChangeAccess $account | Out-Null
  @{destination=$unc;username=$account;password=$password;roots=@($unc.ToLowerInvariant())} | ConvertTo-Json | Set-Content -LiteralPath $config -Encoding UTF8
  $env:BACKUPDESK_NETWORK_TEST_CONFIG=$config
- & node (Join-Path $PSScriptRoot '../windows/network-share-check.mjs')
- if($LASTEXITCODE -ne 0){throw 'Native SMB authentication failed.'}
+ $drive=@('Q:','R:','S:','T:') | Where-Object { -not (Test-Path ($_+'\')) } | Select-Object -First 1
+ if(-not $drive){throw 'No free test drive letter.'}
+ $env:BACKUPDESK_NETWORK_TEST_DRIVE=$drive
+ $output = & node (Join-Path $PSScriptRoot '../windows/network-share-check.mjs') 2>&1
+ $output | Write-Output
+ if($LASTEXITCODE -ne 0){throw ($output -join "`n")}
 } finally {
+ if($drive){& net use $drive /delete /y 2>$null | Out-Null}
  & net use $unc /delete /y 2>$null | Out-Null
  Remove-SmbShare -Name $share -Force -ErrorAction SilentlyContinue
  Remove-LocalUser -Name $user -ErrorAction SilentlyContinue
  Remove-Item $folder -Recurse -Force -ErrorAction SilentlyContinue
  Remove-Item $config -Force -ErrorAction SilentlyContinue
  Remove-Item Env:BACKUPDESK_NETWORK_TEST_CONFIG -ErrorAction SilentlyContinue
+ Remove-Item Env:BACKUPDESK_NETWORK_TEST_DRIVE -ErrorAction SilentlyContinue
 }

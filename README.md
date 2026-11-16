@@ -1,8 +1,8 @@
-# BackupDesk 0.35.0 — versão de teste
+# BackupDesk 0.36.0 — versão de teste
 
-[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.35.0-x64.exe)
+[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.36.0-x64.exe)
 
-Atualizar uma instalação existente: [Client](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Atualizacao-Client-0.35.0-x64.exe) · [Master](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Atualizacao-Master-0.35.0-x64.exe).
+Atualizar uma instalação existente: [Client](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Atualizacao-Client-0.36.0-x64.exe) · [Master](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Atualizacao-Master-0.36.0-x64.exe).
 
 [Começar na Locaweb: contratação, instalação e primeiro client](deploy/LOCAWEB-PASSO-A-PASSO.md)
 
@@ -498,3 +498,13 @@ Os quatro instaladores foram extraídos: os 47 arquivos de produção de cada pa
 Validação final Windows: os quatro jobs da [execução 43918856837](https://github.com/rochamurilo/backupdesk/actions/runs/43918856837) passaram. Foram confirmadas a recuperação de bloqueio abandonado em backup e conferência integral, a preservação de bloqueio de processo ativo, as mensagens para processo/chave incorreta, VSS, SMB autenticado e a instalação/atualização real de Client e Master, preservando as chaves e restaurando os backups anteriores.
 
 Os três downloads públicos da 0.35.0 foram baixados após a publicação e conferidos com os hashes de `dist/SHA256SUMS.txt`.
+
+## 0.36.0 — Origem em Compartilhamento de Rede
+
+A rotina tem o seletor **Origem dos Arquivos**: **Disco Local (Snapshot VSS)**, padrão das rotinas existentes, ou **Compartilhamento de Rede (Arquivos Fechados)**. A segunda opção permite executar a cópia no Master/Client Windows que acessa os arquivos, sem instalar outro Client no servidor de origem. Usa os motores nativo ou Restic, a criptografia e as chaves já cadastradas, o destino em Preferências e o mesmo agendamento.
+
+No modo de rede, as origens são resolvidas para caminhos UNC. Ao salvar no painel do próprio computador Windows, uma letra mapeada como `H:` é convertida para `\\servidor\compartilhamento\pasta` quando o Windows fornece esse caminho; a rotina passa a guardar o UNC. A conta/sessão do Windows que executa o BackupDesk precisa ter acesso à origem. Origem indisponível, caminho local nesse modo e destino dentro da origem continuam impedindo a cópia. Origens locais e de rede devem ficar em rotinas separadas. Clientes antigos recebem a orientação de atualização, sem executar esse modo com uma política diferente.
+
+O VSS local continua obrigatório para a opção Disco Local. Uma origem de rede não fornece um snapshot simultâneo do servidor: mantenha os arquivos e os programas que os utilizam fechados, especialmente PST/OST e bancos de dados. A rotina usa as verificações de arquivos, metadados, criptografia e integridade de cada motor e reprova alterações detectadas durante a cópia. Registra a consistência `network-verified-file-copy` e o aviso de ausência de snapshot. A primeira conferência integral e a conferência a cada cinco dias do Restic continuam obrigatórias. Isso não equivale a backup coordenado de uma aplicação aberta.
+
+Validação local: 157 testes Node e a checagem Chromium passaram, incluindo persistência do novo modo, preservação após mudar preferências e reiniciar, bloqueio de clientes antigos e manutenção do VSS nas rotinas locais. O seletor e a orientação de arquivos fechados foram conferidos no navegador.
