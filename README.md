@@ -514,3 +514,5 @@ A [validação preliminar Windows 43926900476](https://github.com/rochamurilo/ba
 Os quatro instaladores foram extraídos e comparados com as fontes finais: 47 arquivos de produção por pacote, Node e Restic fixados, scripts VSS, módulos de pré-verificação e clientes embutidos correspondem aos arquivos validados. Os atualizadores Client/Master não contêm cadastro ou chave de computador. Os hashes locais dos três executáveis de distribuição foram conferidos com `dist/SHA256SUMS.txt`.
 
 Validação final Windows: os quatro jobs da [execução 43928800517](https://github.com/rochamurilo/backupdesk/actions/runs/43928800517) passaram, incluindo os testes de origem SMB real/drive mapeado, cópia e restauração nos dois motores, alteração da origem, VSS local, bloqueio Restic e instalação/atualização real de Client e Master. Os atualizadores preservaram as chaves e restauraram os backups anteriores.
+
+Os três downloads públicos da 0.36.0 foram baixados após a publicação e conferidos com os hashes de `dist/SHA256SUMS.txt`.
