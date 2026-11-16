@@ -18,13 +18,13 @@ async function requestVss(request){
  const script=(await readFile(new URL('./windows/vss-client.ps1',import.meta.url),'utf8')).replace(/^\uFEFF/,'');
  const client=createHash('sha256').update(new URL('.',import.meta.url).href.toLowerCase()).digest('hex');
  const product=process.env.BACKUPDESK_VSS_PRODUCT||'master';
- try{const {stdout}=await execute('powershell.exe',['-NoLogo','-NoProfile','-NonInteractive','-EncodedCommand',Buffer.from(script,'utf16le').toString('base64')],{windowsHide:true,env:{...process.env,BACKUPDESK_VSS_REQUEST:JSON.stringify({...request,protocol:1,client}),BACKUPDESK_VSS_PRODUCT:product},encoding:'utf8',timeout:220000,maxBuffer:1048576});return JSON.parse(stdout.replace(/^\uFEFF/,'').trim())}catch(e){throw Error(powershellErrorText(e.stderr)||(e.killed?'O componente VSS excedeu o tempo de resposta. Repare o componente pelo atualizador do BackupDesk.':'Não foi possível comunicar com o componente VSS. Execute o atualizador do BackupDesk nesta conta e autorize o reparo.'))}
+ try{const {stdout}=await execute('powershell.exe',['-NoLogo','-NoProfile','-NonInteractive','-EncodedCommand',Buffer.from(script,'utf16le').toString('base64')],{windowsHide:true,env:{...process.env,BACKUPDESK_VSS_REQUEST:JSON.stringify({...request,protocol:1,client}),BACKUPDESK_VSS_PRODUCT:product},encoding:'utf8',timeout:240000,maxBuffer:1048576});return JSON.parse(stdout.replace(/^\uFEFF/,'').trim())}catch(e){throw Error(powershellErrorText(e.stderr)||(e.killed?'O componente VSS excedeu o tempo de resposta. Repare o componente pelo atualizador do BackupDesk.':'Não foi possível comunicar com o componente VSS. Execute o atualizador do BackupDesk nesta conta e autorize o reparo.'))}
 }
 let cachedStatus=null,statusAt=0,statusPending=null;
 export async function automaticVssStatus(){
  if(cachedStatus&&Date.now()-statusAt<15000)return cachedStatus;
  if(statusPending)return statusPending;
- statusPending=(async()=>{try{const result=await requestVss({action:'probe'});cachedStatus={available:result.protocol===1&&result.automatic===true,automatic:true};}
+ statusPending=(async()=>{try{const result=await requestVss({action:'probe'});cachedStatus={available:result.protocol===1&&result.automatic===true&&!result.busy,automatic:true,...(result.busy?{busy:true,error:'Uma operação VSS anterior ainda está terminando no Windows.'}:{})};}
  catch(e){cachedStatus={available:false,automatic:true,error:e.message}}
  statusAt=Date.now();return cachedStatus;})();
  try{return await statusPending}finally{statusPending=null}

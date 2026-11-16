@@ -34,7 +34,8 @@ try{
  $writer.WriteLine($env:BACKUPDESK_VSS_REQUEST)
  $phase='response'
  $reading=$reader.ReadLineAsync()
- if(-not $reading.Wait(185000)){throw 'O componente VSS não respondeu dentro do prazo.'}
+ $responseTimeout=195000;if($request.action -eq 'probe'){$responseTimeout=5000}
+ if(-not $reading.Wait($responseTimeout)){throw ('O componente VSS não respondeu dentro do prazo durante '+$request.action+'. A operação não foi confirmada.')}
  $response=$reading.Result | ConvertFrom-Json
  if(-not $response.ok){throw [string]$response.error}
  if($request.action -eq 'probe' -and $recovered){$response.result | Add-Member -NotePropertyName component_restarted -NotePropertyValue $true}

@@ -15,7 +15,7 @@ $body=$function.Extent.Text.Replace('$PSScriptRoot','$script:workerRoot').Replac
 . ([scriptblock]::Create($body))
 $success=@'
 $result=@{cleaned=$true}
-if($BackupDeskVssResultFile){[IO.File]::WriteAllText($BackupDeskVssResultFile,(@{ok=$true;result=$result} | ConvertTo-Json -Compress),(New-Object Text.UTF8Encoding($false)))}else{$result | ConvertTo-Json -Compress}
+if($BackupDeskVssResultFile){[IO.File]::WriteAllText($BackupDeskVssResultFile,(@{format='backupdesk-vss-result-v1';ok=$true;result=$result} | ConvertTo-Json -Compress),(New-Object Text.UTF8Encoding($false)))}else{$result | ConvertTo-Json -Compress}
 '@
 try{
  Set-Content -LiteralPath (Join-Path $script:workerRoot 'vss.ps1') -Value ($success+"`nexit 0") -Encoding UTF8
@@ -39,6 +39,18 @@ $grandchild=Start-Process -FilePath (Join-Path $env:SystemRoot 'System32\Windows
  if(-not $failed){throw 'Worker sem confirmação foi aprovado.'}
  Set-Content -LiteralPath (Join-Path $script:workerRoot 'vss.ps1') -Value ($success+"`nexit 0") -Encoding UTF8
  if(-not (Invoke-OwnedVss @{action='cleanup'} ('b'*64)).cleaned){throw 'Worker não se recuperou após as falhas.'}
+ $workerAst=[Management.Automation.Language.Parser]::ParseFile((Join-Path $repo 'windows\vss.ps1'),[ref]$tokens,[ref]$errors)
+ $publisher=$workerAst.Find({param($node)$node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Write-VssReply'},$true)
+ if(-not $publisher){throw 'Confirmação privada VSS não encontrada.'};. ([scriptblock]::Create($publisher.Extent.Text))
+ $env:BACKUPDESK_VSS_LEDGER=Join-Path $state (('b'*64)+'.json')
+ $BackupDeskVssResultFile=Join-Path $state ('reply-'+[guid]::NewGuid().ToString('N')+'.json')
+ Write-VssReply @{cleaned=$true};$document=[IO.File]::ReadAllText($BackupDeskVssResultFile) | ConvertFrom-Json
+ if(-not $document.ok -or -not $document.result.cleaned){throw 'Confirmação privada não foi persistida.'}
+ $failed=$false;try{Write-VssReply @{cleaned=$false}}catch{$failed=$true};if(-not $failed){throw 'Confirmação existente foi sobrescrita.'}
+ $BackupDeskVssResultFile=Join-Path $script:workerRoot ('reply-'+[guid]::NewGuid().ToString('N')+'.json')
+ $failed=$false;try{Write-VssReply @{cleaned=$true}}catch{$failed=$true};if(-not $failed -or (Test-Path -LiteralPath $BackupDeskVssResultFile)){throw 'Resultado foi escrito fora da pasta privada do ledger.'}
+ $BackupDeskVssResultFile=$null
+ 'VSS: confirmação privada não sobrescreve arquivos nem aceita outro diretório: OK.'
  'VSS: prazo do worker, confirmação obrigatória e operação seguinte após falha: OK.'
 }finally{
  $pidFile=Join-Path $state 'descendant.pid'
