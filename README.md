@@ -526,3 +526,7 @@ A instalação passa a aguardar até 90 segundos pela confirmação da inicializ
 Falhas durante a inicialização passam a registrar a fase e a mensagem desta tentativa. Se a tarefa encerrar com erro ou não ficar pronta dentro do prazo, o instalador informa o estado e o resultado do Agendador de Tarefas, sem usar mensagens antigas de backup como causa do problema. Os registros de diagnóstico são escritos na inicialização e em falhas; não foi adicionado um registro periódico de atividade.
 
 A tarefa continua executando como SYSTEM, com acesso limitado ao usuário da instalação. O protocolo de operações, a proteção dos scripts, os prazos das operações VSS e a limpeza apenas dos snapshots pertencentes à instalação permanecem preservados. Os atualizadores Client/Master mantêm as chaves, as rotinas e os backups existentes.
+
+Validação local: 157 testes Node e a checagem Chromium passaram. O teste de interface aguarda a atualização do histórico após a conclusão do backup antes de conferir seus detalhes de integridade.
+
+A [validação preliminar Windows 43957127971](https://github.com/rochamurilo/backupdesk/actions/runs/43957127971) passou nos três jobs de fontes. Os testes reais do Agendador comprovaram inicialização com atraso de 20 segundos, rejeição de confirmação antiga e de PID inválido, diagnóstico atual de falha ao carregar o protocolo e reparo posterior. Também passaram a substituição atômica do estado no Windows PowerShell, reinício pelo usuário comum, proteção do componente, VSS com arquivo bloqueado, restauração e origem SMB nos dois motores.
