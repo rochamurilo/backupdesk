@@ -28,6 +28,21 @@ function Invoke-TestInstall {
  return @{status=$status;text=($output -join "`n")}
 }
 try{
+ # PowerShell 5.1 coerces $null string arguments to an empty path. Exercise
+ # actual replacement as well as initial creation before testing the task.
+ $publisherRoot=Join-Path $env:TEMP ('bkd-startup-publisher-'+[guid]::NewGuid().ToString('N'))
+ New-Item -ItemType Directory -Path $publisherRoot | Out-Null
+ try{
+  $tokens=$null;$errors=$null
+  $ast=[Management.Automation.Language.Parser]::ParseFile((Join-Path $repo 'windows\vss-broker.ps1'),[ref]$tokens,[ref]$errors)
+  $publisher=$ast.Find({param($node)$node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Write-VssStartupRecord'},$true)
+  if(-not $publisher){throw 'Startup publisher was not found.'}
+  . ([scriptblock]::Create($publisher.Extent.Text))
+  $savedState=$state;$state=$publisherRoot;$StartupId=[guid]::NewGuid().ToString('N')
+  foreach($status in @('starting','starting','ready','ready','failed')){Write-VssStartupRecord $status 'publisher-test'}
+  if((Get-Content -Raw -LiteralPath (Join-Path $state 'ready.json') | ConvertFrom-Json).status -ne 'ready'){throw 'Readiness replacement failed.'}
+ }finally{$state=$savedState;Remove-Item -LiteralPath $publisherRoot -Recurse -Force}
+ 'VSS installer: atomic startup state replacement under Windows PowerShell: OK.'
  New-Item -ItemType Directory -Path $component -Force | Out-Null
  foreach($file in @('install-vss-component.ps1','vss-broker.ps1','vss-protocol.ps1','vss.ps1','update-application.ps1')){Copy-Item -LiteralPath (Join-Path $repo ('windows\'+$file)) -Destination $component -Force}
  # A cold/loaded computer can take more than the previous 15-second deadline.

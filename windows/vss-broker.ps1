@@ -8,7 +8,7 @@ function Write-VssStartupRecord([string]$Status,[string]$Phase,[string]$ErrorTex
  $file=Join-Path $state $name;$temporary=Join-Path $state ('startup-'+[guid]::NewGuid().ToString('N')+'.tmp')
  try{
   [IO.File]::WriteAllText($temporary,($record | ConvertTo-Json -Compress),(New-Object Text.UTF8Encoding($false)))
-  if(Test-Path -LiteralPath $file){[IO.File]::Replace($temporary,$file,$null)}else{[IO.File]::Move($temporary,$file)}
+  if(Test-Path -LiteralPath $file){[IO.File]::Replace($temporary,$file,[System.Management.Automation.Language.NullString]::Value)}else{[IO.File]::Move($temporary,$file)}
  }finally{if(Test-Path -LiteralPath $temporary){Remove-Item -LiteralPath $temporary -Force}}
 }
 if(-not $StartupId){$StartupId=[guid]::NewGuid().ToString('N')}
