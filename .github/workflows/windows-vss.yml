@@ -141,6 +141,15 @@ jobs:
             Write-Output "::error title=Windows VSS worker diagnostic::$detail"
             throw
           }
+      - name: Test delayed VSS startup and fresh installation readiness
+        shell: powershell
+        run: |
+          try { ./test/windows-vss-startup.ps1 }
+          catch {
+            $detail=($_.Exception.Message+' '+$_.ScriptStackTrace+' '+$_.InvocationInfo.PositionMessage).Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
+            Write-Output "::error title=Windows VSS startup diagnostic::$detail"
+            throw
+          }
       - name: Test update shutdown and normal-user logon task
         shell: powershell
         run: |
