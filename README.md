@@ -496,3 +496,5 @@ Validação local: 155 testes Node e a checagem Chromium passaram. Os novos test
 Os quatro instaladores foram extraídos: os 47 arquivos de produção de cada pacote, o Node, o Restic e os módulos de pré-verificação correspondem às fontes e dependências testadas. Os scripts VSS e os clientes embutidos também foram conferidos. Os atualizadores Client/Master não contêm cadastro ou chave de computador, e os hashes dos três executáveis públicos correspondem a `dist/SHA256SUMS.txt`.
 
 Validação final Windows: os quatro jobs da [execução 43918856837](https://github.com/rochamurilo/backupdesk/actions/runs/43918856837) passaram. Foram confirmadas a recuperação de bloqueio abandonado em backup e conferência integral, a preservação de bloqueio de processo ativo, as mensagens para processo/chave incorreta, VSS, SMB autenticado e a instalação/atualização real de Client e Master, preservando as chaves e restaurando os backups anteriores.
+
+Os três downloads públicos da 0.35.0 foram baixados após a publicação e conferidos com os hashes de `dist/SHA256SUMS.txt`.
