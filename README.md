@@ -1,8 +1,8 @@
-# BackupDesk 0.36.0 — versão de teste
+# BackupDesk 0.37.0 — versão de teste
 
-[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.36.0-x64.exe)
+[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.37.0-x64.exe)
 
-Atualizar uma instalação existente: [Client](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Atualizacao-Client-0.36.0-x64.exe) · [Master](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Atualizacao-Master-0.36.0-x64.exe).
+Atualizar uma instalação existente: [Client](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Atualizacao-Client-0.37.0-x64.exe) · [Master](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Atualizacao-Master-0.37.0-x64.exe).
 
 [Começar na Locaweb: contratação, instalação e primeiro client](deploy/LOCAWEB-PASSO-A-PASSO.md)
 
@@ -516,3 +516,13 @@ Os quatro instaladores foram extraídos e comparados com as fontes finais: 47 ar
 Validação final Windows: os quatro jobs da [execução 43928800517](https://github.com/rochamurilo/backupdesk/actions/runs/43928800517) passaram, incluindo os testes de origem SMB real/drive mapeado, cópia e restauração nos dois motores, alteração da origem, VSS local, bloqueio Restic e instalação/atualização real de Client e Master. Os atualizadores preservaram as chaves e restauraram os backups anteriores.
 
 Os três downloads públicos da 0.36.0 foram baixados após a publicação e conferidos com os hashes de `dist/SHA256SUMS.txt`.
+
+## 0.37.0 — Confirmação da Inicialização do Componente VSS
+
+O instalador aguardava apenas 15 segundos pela presença de `ready.json`; quando o componente demorava a iniciar, retornava “foi registrado, mas não iniciou” e acrescentava registros de backups anteriores. A reprodução Windows 43954230685 confirmou essa falha após cerca de 17 segundos ao simular uma inicialização mais lenta.
+
+A instalação passa a aguardar até 90 segundos pela confirmação da inicialização atual. Cada registro da tarefa recebe um identificador de inicialização próprio, separado das chaves de criptografia; a confirmação deve corresponder a esse identificador, ao PID e ao horário de criação de um processo PowerShell ainda ativo. Um arquivo antigo ou um PID reutilizado não confirma a nova instalação. A publicação do estado é atômica na pasta protegida do componente.
+
+Falhas durante a inicialização passam a registrar a fase e a mensagem desta tentativa. Se a tarefa encerrar com erro ou não ficar pronta dentro do prazo, o instalador informa o estado e o resultado do Agendador de Tarefas, sem usar mensagens antigas de backup como causa do problema. Os registros de diagnóstico são escritos na inicialização e em falhas; não foi adicionado um registro periódico de atividade.
+
+A tarefa continua executando como SYSTEM, com acesso limitado ao usuário da instalação. O protocolo de operações, a proteção dos scripts, os prazos das operações VSS e a limpeza apenas dos snapshots pertencentes à instalação permanecem preservados. Os atualizadores Client/Master mantêm as chaves, as rotinas e os backups existentes.

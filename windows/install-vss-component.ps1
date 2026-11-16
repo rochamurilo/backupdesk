@@ -1,5 +1,56 @@
 ﻿$ErrorActionPreference='Stop'
 $ProgressPreference='SilentlyContinue'
+
+function Read-VssStartupRecord([string]$File,[string]$StartupId){
+ if(-not (Test-Path -LiteralPath $File)){return $null}
+ $stream=$null;$reader=$null
+ try{
+  $stream=[IO.File]::Open($File,[IO.FileMode]::Open,[IO.FileAccess]::Read,([IO.FileShare]::ReadWrite -bor [IO.FileShare]::Delete))
+  if($stream.Length -gt 16384){return $null}
+  $reader=New-Object IO.StreamReader($stream,[Text.Encoding]::UTF8)
+  $record=$reader.ReadToEnd() | ConvertFrom-Json
+  if($record.format -eq 'backupdesk-vss-startup-v1' -and $record.startup_id -eq $StartupId){return $record}
+ }catch{}finally{if($reader){$reader.Dispose()}elseif($stream){$stream.Dispose()}}
+ return $null
+}
+function Get-VssTaskDetails([string]$TaskName){
+ try{
+  $task=Get-ScheduledTask -TaskName $TaskName -ErrorAction Stop
+  $info=Get-ScheduledTaskInfo -TaskName $TaskName -ErrorAction Stop
+  return ('Estado da tarefa: '+$task.State+'; último resultado: 0x'+([uint32]$info.LastTaskResult).ToString('X8')+'; última inicialização: '+$info.LastRunTime.ToString('o')+'.')
+ }catch{return 'Não foi possível consultar o estado da tarefa VSS.'}
+}
+function Wait-VssStartup([string]$TaskName,[string]$State,[string]$StartupId,[datetime]$PreviousRunAt){
+ $clock=[Diagnostics.Stopwatch]::StartNew();$nextTaskCheck=2000
+ while($clock.ElapsedMilliseconds -lt 90000){
+  $record=Read-VssStartupRecord (Join-Path $State 'ready.json') $StartupId
+  if($record -and $record.status -eq 'ready' -and $record.protocol -eq 1){
+   try{
+    $process=Get-Process -Id ([int]$record.pid) -ErrorAction Stop
+    if($process.ProcessName -eq 'powershell' -and [string]$process.StartTime.ToUniversalTime().Ticks -eq [string]$record.process_started_at){return}
+   }catch{}
+  }
+  $startup=Read-VssStartupRecord (Join-Path $State 'startup.json') $StartupId
+  if($startup -and $startup.status -eq 'failed'){throw ('O componente VSS falhou ao iniciar ['+$startup.phase+']: '+$startup.error+' '+(Get-VssTaskDetails $TaskName))}
+  if($clock.ElapsedMilliseconds -ge $nextTaskCheck){
+   $nextTaskCheck=$clock.ElapsedMilliseconds+2000
+   $task=Get-ScheduledTask -TaskName $TaskName -ErrorAction Stop
+   $info=Get-ScheduledTaskInfo -TaskName $TaskName -ErrorAction Stop
+   if($task.State -eq 'Disabled'){throw ('A tarefa VSS está desativada. '+(Get-VssTaskDetails $TaskName))}
+   # Do not confuse the previous run's result or scheduler queue codes with a
+   # failure of this startup. A live broker remains in Running state.
+   if($task.State -eq 'Ready' -and $info.LastRunTime -gt $PreviousRunAt -and $info.LastTaskResult -notin @(0,0x41301,0x41303,0x41325)){
+    throw ('A tarefa VSS terminou antes de confirmar a inicialização. '+(Get-VssTaskDetails $TaskName))
+   }
+  }
+  Start-Sleep -Milliseconds 250
+ }
+ $details=Get-VssTaskDetails $TaskName
+ $startup=Read-VssStartupRecord (Join-Path $State 'startup.json') $StartupId
+ if($startup){$details+=' Fase desta inicialização: '+$startup.phase+'. '+$startup.error}
+ throw ('O componente VSS não confirmou a inicialização em 90 segundos. '+$details)
+}
+
 try{
  $phase='identity'
  $sid=$env:BACKUPDESK_VSS_OWNER_SID;$product=$env:BACKUPDESK_VSS_PRODUCT
@@ -47,8 +98,9 @@ try{
  $phase='create-state'
  New-Item -ItemType Directory -Path $state -Force | Out-Null
  $ready=Join-Path $state 'ready.json';Remove-Item -LiteralPath $ready -Force -ErrorAction SilentlyContinue
+ $startupId=[guid]::NewGuid().ToString('N')
  $exe=Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
- $arguments='-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "'+(Join-Path $PSScriptRoot 'vss-broker.ps1')+'" -UserSid '+$sid+' -Product '+$product
+ $arguments='-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "'+(Join-Path $PSScriptRoot 'vss-broker.ps1')+'" -UserSid '+$sid+' -Product '+$product+' -StartupId '+$startupId
  $action=New-ScheduledTaskAction -Execute $exe -Argument $arguments
  $trigger=@((New-ScheduledTaskTrigger -AtStartup),(New-ScheduledTaskTrigger -AtLogOn -User $sid))
  $account=New-ScheduledTaskPrincipal -UserId 'S-1-5-18' -LogonType ServiceAccount -RunLevel Highest
@@ -63,8 +115,8 @@ try{
  $registered.SetSecurityDescriptor(('O:BAG:BAD:P(A;;GA;;;SY)(A;;GA;;;BA)(A;;GRGX;;;'+$sid+')'),0)
  Enable-ScheduledTask -TaskName $taskName | Out-Null
  $phase='start-task'
+ $previousRunAt=(Get-ScheduledTaskInfo -TaskName $taskName -ErrorAction Stop).LastRunTime
  Start-ScheduledTask -TaskName $taskName
- for($i=0;$i -lt 60;$i++){if(Test-Path -LiteralPath $ready){exit 0};Start-Sleep -Milliseconds 250}
- $log=Join-Path $state 'broker.log';$details='';if(Test-Path -LiteralPath $log){$details=(Get-Content -LiteralPath $log -Tail 4) -join '; '}
- throw ('O componente VSS foi registrado, mas não iniciou. '+$details)
+ Wait-VssStartup $taskName $state $startupId $previousRunAt
+ exit 0
 }catch{[Console]::Error.WriteLine(('VSS setup ['+$phase+']: '+$_.Exception.Message+' '+$_.ScriptStackTrace));exit 1}

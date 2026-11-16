@@ -1,11 +1,26 @@
-﻿param([Parameter(Mandatory=$true)][string]$UserSid,[Parameter(Mandatory=$true)][ValidateSet('master','client')][string]$Product)
+﻿param([Parameter(Mandatory=$true)][string]$UserSid,[Parameter(Mandatory=$true)][ValidateSet('master','client')][string]$Product,[ValidatePattern('^(?:|[a-f0-9]{32})$')][string]$StartupId='')
 $ErrorActionPreference='Stop'
 $ProgressPreference='SilentlyContinue'
+function Write-VssStartupRecord([string]$Status,[string]$Phase,[string]$ErrorText=''){
+ $self=Get-Process -Id $PID
+ $record=@{format='backupdesk-vss-startup-v1';startup_id=$StartupId;status=$Status;phase=$Phase;pid=$PID;process_started_at=[string]$self.StartTime.ToUniversalTime().Ticks;protocol=1;at=(Get-Date -Format o);error=$ErrorText.Substring(0,[Math]::Min(1500,$ErrorText.Length))}
+ $name='startup.json';if($Status -eq 'ready'){$name='ready.json'}
+ $file=Join-Path $state $name;$temporary=Join-Path $state ('startup-'+[guid]::NewGuid().ToString('N')+'.tmp')
+ try{
+  [IO.File]::WriteAllText($temporary,($record | ConvertTo-Json -Compress),(New-Object Text.UTF8Encoding($false)))
+  if(Test-Path -LiteralPath $file){[IO.File]::Replace($temporary,$file,$null)}else{[IO.File]::Move($temporary,$file)}
+ }finally{if(Test-Path -LiteralPath $temporary){Remove-Item -LiteralPath $temporary -Force}}
+}
+if(-not $StartupId){$StartupId=[guid]::NewGuid().ToString('N')}
+$startupPhase='identity'
+try{
 if($UserSid -notmatch '^S-1-(?:\d+-)+\d+$'){throw 'SID inválido.'}
 if([Security.Principal.WindowsIdentity]::GetCurrent().User.Value -ne 'S-1-5-18'){throw 'O componente VSS deve executar como SYSTEM.'}
-. (Join-Path $PSScriptRoot 'vss-protocol.ps1')
 $state=Join-Path $PSScriptRoot ('state\'+$UserSid)
 New-Item -ItemType Directory -Path $state -Force | Out-Null
+Write-VssStartupRecord 'starting' 'load-protocol'
+$startupPhase='load-protocol';. (Join-Path $PSScriptRoot 'vss-protocol.ps1')
+$startupPhase='pipe-security'
 $pipeName='BackupDeskVSS-v1-'+$Product+'-'+$UserSid
 $security=New-Object System.IO.Pipes.PipeSecurity
 $systemSid=New-Object System.Security.Principal.SecurityIdentifier('S-1-5-18')
@@ -14,6 +29,10 @@ $security.SetOwner($systemSid)
 $security.SetAccessRuleProtection($true,$false)
 $security.AddAccessRule((New-Object System.IO.Pipes.PipeAccessRule($systemSid,[System.IO.Pipes.PipeAccessRights]::FullControl,[System.Security.AccessControl.AccessControlType]::Allow)))
 $security.AddAccessRule((New-Object System.IO.Pipes.PipeAccessRule($ownerSid,[System.IO.Pipes.PipeAccessRights]::ReadWrite,[System.Security.AccessControl.AccessControlType]::Allow)))
+}catch{
+ try{Write-VssStartupRecord 'failed' $startupPhase $_.Exception.Message}catch{}
+ throw
+}
 function Invoke-OwnedVss($Command,$Key){
  # Do not overlap VSS operations if Windows has not completed cancellation.
  if($script:pendingVssWorker){
@@ -68,7 +87,7 @@ while($true){
  $pipe=$null;$reader=$null;$writer=$null
  try{
   $pipe=New-Object System.IO.Pipes.NamedPipeServerStream($pipeName,[System.IO.Pipes.PipeDirection]::InOut,1,[System.IO.Pipes.PipeTransmissionMode]::Byte,[System.IO.Pipes.PipeOptions]::Asynchronous,8192,8192,$security)
-  if(-not $readyWritten){@{pid=$PID;protocol=1} | ConvertTo-Json -Compress | Set-Content -LiteralPath (Join-Path $state 'ready.json') -Encoding UTF8;$readyWritten=$true}
+  if(-not $readyWritten){Write-VssStartupRecord 'ready' 'listen';$readyWritten=$true}
   $pipe.WaitForConnection()
   $reader=New-Object System.IO.StreamReader($pipe,(New-Object System.Text.UTF8Encoding($false)),$false,1024,$true)
   $writer=New-Object System.IO.StreamWriter($pipe,(New-Object System.Text.UTF8Encoding($false)),1024,$true);$writer.AutoFlush=$true
@@ -92,6 +111,10 @@ while($true){
    $writer.WriteLine((@{ok=$true;result=$result} | ConvertTo-Json -Depth 8 -Compress))
   }catch{$writer.WriteLine((@{ok=$false;error=$_.Exception.Message} | ConvertTo-Json -Compress))}
  }catch{
+  if(-not $readyWritten -and $script:lastStartupError -ne $_.Exception.Message){
+   try{Write-VssStartupRecord 'waiting' 'pipe-listen' $_.Exception.Message}catch{}
+   $script:lastStartupError=$_.Exception.Message
+  }
   Write-BrokerLog $_.Exception.Message
   Start-Sleep -Seconds 1
  }finally{if($reader){$reader.Dispose()};if($writer){$writer.Dispose()};if($pipe){$pipe.Dispose()}}

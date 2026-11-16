@@ -1,4 +1,4 @@
-# Real Task Scheduler startup, isolated from application data and VSS snapshots.
+﻿# Real Task Scheduler startup, isolated from application data and VSS snapshots.
 $ErrorActionPreference='Stop';$ProgressPreference='SilentlyContinue'
 $repo=Split-Path $PSScriptRoot -Parent
 $userName='bkstart'+[guid]::NewGuid().ToString('N').Substring(0,10)
@@ -10,6 +10,14 @@ $powerShell=Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershel
 $broker=[IO.File]::ReadAllText((Join-Path $repo 'windows\vss-broker.ps1'),[Text.Encoding]::UTF8)
 $env:BACKUPDESK_VSS_OWNER_SID=$sid;$env:BACKUPDESK_VSS_PRODUCT=$product;$env:BACKUPDESK_VSS_REMOVE='0'
 Remove-Item Env:BACKUPDESK_UPDATE_DIR -ErrorAction SilentlyContinue
+function Assert-TestReady {
+ $ready=Get-Content -Raw -LiteralPath (Join-Path $state 'ready.json') | ConvertFrom-Json
+ $arguments=(Get-ScheduledTask -TaskName $taskName).Actions[0].Arguments
+ $generation=[regex]::Match($arguments,'-StartupId ([a-f0-9]{32})')
+ if(-not $generation.Success -or $ready.startup_id -ne $generation.Groups[1].Value -or $ready.status -ne 'ready'){throw 'An earlier generation confirmed VSS startup.'}
+ $process=Get-Process -Id ([int]$ready.pid) -ErrorAction Stop
+ if([string]$process.StartTime.ToUniversalTime().Ticks -ne [string]$ready.process_started_at){throw 'A dead or different process confirmed VSS startup.'}
+}
 function Invoke-TestInstall {
  $preference=$ErrorActionPreference
  try{
@@ -27,17 +35,23 @@ try{
  [IO.File]::WriteAllText((Join-Path $component 'vss-broker.ps1'),$delayed,(New-Object Text.UTF8Encoding($true)))
  $clock=[Diagnostics.Stopwatch]::StartNew();$result=Invoke-TestInstall;$clock.Stop()
  if($result.status -ne 0 -or $clock.ElapsedMilliseconds -lt 19000){throw ('Delayed VSS startup failed: '+$clock.ElapsedMilliseconds+' ms; '+$result.text)}
+ Assert-TestReady
  'VSS installer: startup slower than 15 seconds succeeds: OK.'
  # A stale marker must not approve installation before the new broker starts.
  $stale=@'
 $testState=Join-Path $PSScriptRoot ('state\'+$UserSid)
-@{format='backupdesk-vss-startup-v1';startup_id=('a'*32);status='ready';protocol=1;pid=1;process_started_at='1'} | ConvertTo-Json -Compress | Set-Content -LiteralPath (Join-Path $testState 'ready.json') -Encoding UTF8
-Start-Sleep -Seconds 20
+$fake=@{format='backupdesk-vss-startup-v1';startup_id=('a'*32);status='ready';protocol=1;pid=1;process_started_at='1'}
+$fake | ConvertTo-Json -Compress | Set-Content -LiteralPath (Join-Path $testState 'ready.json') -Encoding UTF8
+Start-Sleep -Seconds 5
+$fake.startup_id=$StartupId
+$fake | ConvertTo-Json -Compress | Set-Content -LiteralPath (Join-Path $testState 'ready.json') -Encoding UTF8
+Start-Sleep -Seconds 15
 '@
  $modified=$broker.Replace('$ErrorActionPreference=''Stop''',($stale+"`r`n"+'$ErrorActionPreference=''Stop'''))
  [IO.File]::WriteAllText((Join-Path $component 'vss-broker.ps1'),$modified,(New-Object Text.UTF8Encoding($true)))
  $clock.Restart();$result=Invoke-TestInstall;$clock.Stop()
  if($result.status -ne 0 -or $clock.ElapsedMilliseconds -lt 19000){throw ('Stale marker approved VSS startup: '+$clock.ElapsedMilliseconds+' ms; '+$result.text)}
+ Assert-TestReady
  'VSS installer: a previous startup cannot confirm the new component: OK.'
  # Report initialization failures from this attempt, rather than old backup logs.
  [IO.File]::WriteAllText((Join-Path $component 'vss-broker.ps1'),$broker,(New-Object Text.UTF8Encoding($true)))
