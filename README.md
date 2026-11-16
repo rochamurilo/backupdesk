@@ -1,8 +1,8 @@
-# BackupDesk 0.32.0 — versão de teste
+# BackupDesk 0.33.0 — versão de teste
 
-[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.32.0-x64.exe)
+[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.33.0-x64.exe)
 
-Atualizar uma instalação existente: [Client](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Atualizacao-Client-0.32.0-x64.exe) · [Master](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Atualizacao-Master-0.32.0-x64.exe).
+Atualizar uma instalação existente: [Client](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Atualizacao-Client-0.33.0-x64.exe) · [Master](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Atualizacao-Master-0.33.0-x64.exe).
 
 [Começar na Locaweb: contratação, instalação e primeiro client](deploy/LOCAWEB-PASSO-A-PASSO.md)
 
@@ -450,3 +450,15 @@ Validação local: 148 testes Node e a checagem Chromium passaram. Um agente rea
 Validação Windows: os quatro jobs da [execução 43260028295](https://github.com/rochamurilo/backupdesk/actions/runs/43260028295) passaram. Os onze testes de agenda e persistência passaram no Windows, e os atualizadores Client e Master preservaram as chaves byte a byte e restauraram backups anteriores. A instalação, o componente VSS com arquivo bloqueado e a autenticação SMB também passaram. Os quatro pacotes foram extraídos e os arquivos de produção, Node, Restic, componentes protegidos e módulos de pré-verificação foram comparados com as fontes testadas; os atualizadores não têm cadastro ou chave embutidos.
 
 Os três executáveis publicados da 0.32.0 foram baixados dos endereços públicos e correspondem aos hashes de `dist/SHA256SUMS.txt`.
+
+## 0.33.0 — Prazo de Resposta do Componente VSS
+
+O componente podia ficar bloqueado mesmo depois de o processo auxiliar VSS terminar. A espera pelo processo tinha um limite de três minutos, mas a leitura posterior de stdout/stderr não tinha prazo: um descendente que herdasse os pipes podia mantê-los abertos indefinidamente. Na [reprodução Windows 43895780373](https://github.com/rochamurilo/backupdesk/actions/runs/43895780373), a função continuou esperando por 9.411 ms apesar do prazo de processo reduzido para dois segundos no teste. Esse defeito é compatível com falha de resposta seguida de falhas de conexão; sem os logs do SERVIDORPB, não confirma sozinho a causa específica do equipamento.
+
+A confirmação do worker passa por um arquivo temporário privado, limitado a 64 KiB, dentro da pasta protegida do registro VSS. O broker escolhe o nome aleatório; o protocolo do usuário não aceita caminhos, comandos ou scripts. O worker cria a confirmação sem sobrescrever arquivos e confirma a gravação antes de terminar. O broker exige formato, sucesso, resultado e código de saída válidos e remove o arquivo após o uso. O modo direto usado na manutenção continua retornando JSON pelo console.
+
+O processo auxiliar continua limitado a três minutos, com até cinco segundos para concluir o cancelamento. Se o Windows ainda não tiver encerrado esse processo, outra operação VSS fica bloqueada até ele terminar, mantendo o registro de snapshots para limpeza posterior. O cliente aguarda até 195 segundos pela operação e o processo de comunicação tem limite de 240 segundos; a consulta de disponibilidade usa um prazo menor. Falta de confirmação continua sendo erro: não aprova o backup nem muda para leitura dos arquivos vivos.
+
+O log protegido registra início, conclusão ou falha das operações e sua duração, sem registrar consultas de disponibilidade bem-sucedidas. A identificação do componente deixa de ser regravada a cada consulta. As falhas no cliente incluem a operação e, quando disponível, o estado da tarefa Windows. Nenhuma mudança foi feita para apagar snapshots de outros programas, reiniciar o serviço VSS do Windows ou substituir chaves de criptografia.
+
+Validação preliminar: 148 testes Node e a verificação Chromium passaram. Na [execução Windows 43897567366](https://github.com/rochamurilo/backupdesk/actions/runs/43897567366), passaram o worker encerrado com descendente vivo, prazo de operação, resultado ausente, recuperação após falha, bloqueio de outra operação enquanto a anterior estiver ativa e proteção do caminho da confirmação. Também passaram VSS como usuário comum, leitura de arquivo bloqueado, backup/restauração, proteção da tarefa e dos scripts, atualização de processos e SMB autenticado. A validação dos instaladores completos é registrada após a compilação.

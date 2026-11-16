@@ -25,7 +25,7 @@ try{
  # exits. The broker must not wait for that descendant's output EOF.
  $leak=@'
 $grandchild=Start-Process -FilePath (Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe') -ArgumentList @('-NoLogo','-NoProfile','-NonInteractive','-Command','Start-Sleep -Seconds 9') -NoNewWindow -PassThru
-[IO.File]::WriteAllText((Join-Path (Split-Path $env:BACKUPDESK_VSS_LEDGER) 'descendant.pid'),[string]$grandchild.Id)
+[IO.File]::WriteAllText((Join-Path (Split-Path $env:BACKUPDESK_VSS_LEDGER) 'descendant.json'),(@{id=$grandchild.Id;started=[string]$grandchild.StartTime.ToUniversalTime().Ticks} | ConvertTo-Json -Compress))
 '@
  Set-Content -LiteralPath (Join-Path $script:workerRoot 'vss.ps1') -Value ($leak+"`n"+$success+"`nexit 0") -Encoding UTF8
  $clock=[Diagnostics.Stopwatch]::StartNew();$result=Invoke-OwnedVss @{action='cleanup'} ('b'*64);$clock.Stop()
@@ -63,7 +63,7 @@ $grandchild=Start-Process -FilePath (Join-Path $env:SystemRoot 'System32\Windows
  'VSS: confirmação privada não sobrescreve arquivos nem aceita outro diretório: OK.'
  'VSS: prazo do worker, confirmação obrigatória e operação seguinte após falha: OK.'
 }finally{
- $pidFile=Join-Path $state 'descendant.pid'
- if(Test-Path -LiteralPath $pidFile){$descendant=Get-Process -Id ([int][IO.File]::ReadAllText($pidFile)) -ErrorAction SilentlyContinue;if($descendant -and $descendant.ProcessName -eq 'powershell'){$descendant.Kill();$descendant.WaitForExit(5000) | Out-Null}}
+ $pidFile=Join-Path $state 'descendant.json'
+ if(Test-Path -LiteralPath $pidFile){$marker=[IO.File]::ReadAllText($pidFile) | ConvertFrom-Json;$descendant=Get-Process -Id $marker.id -ErrorAction SilentlyContinue;if($descendant -and $descendant.ProcessName -eq 'powershell' -and [string]$descendant.StartTime.ToUniversalTime().Ticks -eq $marker.started){$descendant.Kill();$descendant.WaitForExit(5000) | Out-Null}}
  if(Test-Path -LiteralPath $script:workerRoot){Remove-Item -LiteralPath $script:workerRoot -Recurse -Force}
 }

@@ -24,6 +24,13 @@ try{
  $protectedBroker=Join-Path $env:ProgramFiles 'BackupDesk VSS\master\vss-broker.ps1'
  $refused=$false;try{[IO.File]::AppendAllText($protectedBroker,"`n# security-test")}catch{$refused=$true}
  if(-not $refused){throw 'Usuário comum conseguiu escrever no script SYSTEM.'}
+ # A client that connects but never sends JSON must not hold the broker forever.
+ # Keep that connection open while asking a second client to probe the service.
+ $stalled=New-Object IO.Pipes.NamedPipeClientStream('.',('BackupDeskVSS-v1-master-'+$sid),[IO.Pipes.PipeDirection]::InOut,[IO.Pipes.PipeOptions]::Asynchronous)
+ try{
+  $stalled.Connect(2000);Start-Sleep -Seconds 11
+  if(-not (Invoke-Client @{action='probe'}).automatic){throw 'Cliente sem solicitação bloqueou o componente.'}
+ }finally{$stalled.Dispose()}
  $payload=[Text.Encoding]::UTF8.GetBytes('Arquivo de teste bloqueado; não é um PST real do Outlook.')
  [IO.File]::WriteAllBytes($fixture,$payload)
  [IO.File]::SetLastWriteTimeUtc($fixture,[datetime]'2025-06-15T11:12:13Z')
