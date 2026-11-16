@@ -10,6 +10,9 @@ on:
     branches: [main]
     paths:
       - 'disk-backup.mjs'
+      - 'progress.mjs'
+      - 'test/progress.test.mjs'
+      - 'test/vss.test.mjs'
       - 'agent-schedule-state.mjs'
       - 'test/backup-links.test.mjs'
       - 'test/agent-schedule-state.test.mjs'
@@ -64,7 +67,7 @@ on:
       - 'windows/Configure.ps1'
       - 'test/windows-client-install.ps1'
       - 'test/client-package.test.mjs'
-      - 'dist/BackupDesk-Master-0.33.0-x64.exe'
+      - 'dist/BackupDesk-Master-0.34.0-x64.exe'
       - 'backup-repository.mjs'
       - 'vss.mjs'
       - 'filesystem.mjs'
@@ -125,6 +128,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - name: Test repository check progress and early VSS release
+        run: |
+          node --test --test-name-pattern "Restic|velocidade" test/progress.test.mjs
+          node --test test/vss.test.mjs
       - name: Test VSS worker deadline and inherited output handles
         shell: powershell
         run: |
@@ -158,9 +165,9 @@ jobs:
             /windows/
             /test/
             /dist/BackupDesk-Master-0.25.0-x64.exe
-            /dist/BackupDesk-Master-0.33.0-x64.exe
-            /dist/BackupDesk-Atualizacao-Client-0.33.0-x64.exe
-            /dist/BackupDesk-Atualizacao-Master-0.33.0-x64.exe
+            /dist/BackupDesk-Master-0.34.0-x64.exe
+            /dist/BackupDesk-Atualizacao-Client-0.34.0-x64.exe
+            /dist/BackupDesk-Atualizacao-Master-0.34.0-x64.exe
       - uses: actions/setup-node@v4
         with:
           node-version: '24'

@@ -15,3 +15,20 @@ test('velocidade separa bytes de cópia e verificação; ETA acompanha trabalho 
 test('velocidade Restic usa bytes transferidos, mesmo quando deduplicação avança volume lógico',{timeout:1000},async()=>{
  const {createProgressMeasurement}=await import('../progress.mjs');let clock=0;const m=createProgressMeasurement(()=>clock);m.report({stage:'copying',processedBytes:0,totalBytes:100000000,transferredBytes:0});clock=2000;m.report({stage:'copying',processedBytes:50000000,transferredBytes:1000000});assert.equal(m.snapshot().speedBytesPerSecond,500000);assert.equal(m.snapshot().etaSeconds,2);clock=4000;m.report({stage:'copying',processedBytes:90000000,transferredBytes:2000000});assert.equal(m.snapshot().speedBytesPerSecond,500000);
 });
+
+test('conferência Restic mede leitura e estima o tempo pelos blocos analisados',async()=>{
+ const {createProgressMeasurement}=await import('../progress.mjs');let clock=0;const m=createProgressMeasurement(()=>clock);
+ m.report({stage:'restic_check',processedBytes:0,totalBytes:null,transferredBytes:0,packsDone:0,totalPacks:10});
+ clock=2000;m.report({stage:'restic_check',processedBytes:20000000,transferredBytes:20000000,packsDone:2});
+ assert.equal(m.snapshot().speedBytesPerSecond,10000000);assert.equal(m.snapshot().etaSeconds,8);
+ clock=4000;m.report({stage:'restic_check',processedBytes:40000000,transferredBytes:40000000,packsDone:4});assert.equal(m.snapshot().etaSeconds,6);
+ clock=6000;m.report({stage:'restic_check',processedBytes:100000000,transferredBytes:100000000,packsDone:10});assert.equal(m.snapshot().etaSeconds,null);
+ m.report({stage:'restic_check',processedBytes:0,transferredBytes:0,packsDone:0,totalPacks:null});assert.equal(m.snapshot().etaSeconds,null);
+});
+
+test('contador Restic aceita somente progresso de packs válido da versão fixada',async()=>{
+ const {parseResticCheckProgress}=await import('../restic-runner.mjs');
+ assert.deepEqual(parseResticCheckProgress('[0:01] 33.33%  1 / 3 packs'),{packsDone:1,totalPacks:3});
+ assert.deepEqual(parseResticCheckProgress('\x1b[2K[1:02:03] 100.00%  123 / 123 packs\r'),{packsDone:123,totalPacks:123});
+ for(const value of ['[0:01] 100.00% 1 / 1 snapshots','error: pack broken','[0:01] 100.00% 4 / 3 packs','[0:01] 0.00% 0 / 9007199254740992 packs'])assert.equal(parseResticCheckProgress(value),null);
+});

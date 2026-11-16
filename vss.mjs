@@ -32,6 +32,13 @@ export async function automaticVssStatus(){
 export async function withVssSources(sources,operation,backend=requestVss,onProgress=()=>{}){
  const volumes=[...new Set(sources.map(p=>{if(!/^[A-Za-z]:[\\/]/.test(p))throw Error('VSS requer origem em disco local NTFS.');return path.win32.parse(path.win32.resolve(p)).root.toUpperCase()}))];const snapshots=[];
  if(backend===requestVss){onProgress({stage:'vss_prepare',currentFile:''});await backend({action:'cleanup'})}
- try{for(const volume of volumes){onProgress({stage:'vss_snapshot',currentFile:volume});snapshots.push(await backend({action:'create',volume}))}const mapped=mapSnapshotPaths(sources,snapshots);return await operation(mapped,snapshots)}
- finally{onProgress({stage:'vss_cleanup',currentFile:''});const failures=[];for(const snapshot of snapshots.reverse()){try{await backend({action:'delete',id:snapshot.id})}catch(e){failures.push(snapshot.id+': '+e.message)}}if(backend===requestVss){try{await backend({action:'cleanup'})}catch(e){failures.push(e.message)}}if(failures.length)throw Error('Não foi possível remover os snapshots VSS desta execução: '+failures.join('; '))}
+ let releasing;
+ const release=()=>releasing ||= Promise.resolve().then(async()=>{
+  onProgress({stage:'vss_cleanup',currentFile:'',processedBytes:0,totalBytes:null,filesDone:null,totalFiles:null});
+  const failures=[];for(const snapshot of [...snapshots].reverse()){try{await backend({action:'delete',id:snapshot.id})}catch(e){failures.push(snapshot.id+': '+e.message)}}
+  if(backend===requestVss){try{await backend({action:'cleanup'})}catch(e){failures.push(e.message)}}
+  if(failures.length)throw Error('Não foi possível remover os snapshots VSS desta execução: '+failures.join('; '));
+ });
+ try{for(const volume of volumes){onProgress({stage:'vss_snapshot',currentFile:volume});snapshots.push(await backend({action:'create',volume}))}const mapped=mapSnapshotPaths(sources,snapshots);return await operation(mapped,snapshots,release)}
+ finally{await release()}
 }

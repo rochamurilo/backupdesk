@@ -3,9 +3,16 @@ export const gigabytes=value=>value>0&&value<10000000?'< 0,01 GB':new Intl.Numbe
 export function remainingTime(seconds){if(!Number.isFinite(seconds)||seconds<0)return 'Calculando…';const n=Math.ceil(seconds);if(n<60)return n+' s';if(n<3600)return Math.floor(n/60)+' min '+n%60+' s';return Math.floor(n/3600)+' h '+Math.floor(n%3600/60)+' min'}
 // Measure real copy/read phases separately: verification bytes never inflate copy speed.
 export function createProgressMeasurement(now=()=>performance.now()){
- let last=null,at=0,changedAt=0,counters,samples=[],transferSamples=[],lastTransfer=null;
+ let last=null,at=0,changedAt=0,counters,samples=[],transferSamples=[],lastTransfer=null,checkSamples=[];
  const group=p=>['copying','verifying','finalizing'].includes(p.stage)?'transfer':p.stage;
  function report(value){const time=now(),p={...last,...value},processed=Number(p.processedBytes)||0;
+  if(p.stage==='restic_check'){
+   const done=Number(p.packsDone)||0;
+   if(last?.stage!==p.stage||p.totalPacks!==last.totalPacks||done<(Number(last.packsDone)||0))checkSamples=[{at:time,done}];
+   else if(!checkSamples.length||time-checkSamples.at(-1).at>=500)checkSamples.push({at:time,done});
+   while(checkSamples.length>2&&checkSamples[1].at<time-60000)checkSamples.shift();
+   if(done>(Number(last?.packsDone)||0))changedAt=time;
+  }else checkSamples=[];
   if(!last||processed<(Number(last.processedBytes)||0)||p.totalBytes!==last.totalBytes||group(p)!==group(last)){
    counters={work:processed,copy:0,copyMs:0,verify:0,verifyMs:0};samples=[{at:time,...counters}];at=time;changedAt=time;
   }else{const delta=processed-(Number(last.processedBytes)||0),elapsed=Math.max(0,time-at);counters.work+=delta;if(last.stage==='copying')counters.copyMs+=elapsed;if(last.stage==='verifying')counters.verifyMs+=elapsed;if(p.stage==='copying')counters.copy+=delta;if(p.stage==='verifying')counters.verify+=delta;if(delta>0)changedAt=time;at=time;}
@@ -14,7 +21,9 @@ export function createProgressMeasurement(now=()=>performance.now()){
  }
  return {report,snapshot(){if(!last)return {};report(last);const time=at,base=samples[0],elapsed=time-base.at,work=counters.work-base.work,rate=elapsed>=1000?work*1000/elapsed:0,phase=last.stage==='verifying'?'verify':'copy',phaseMs=counters[phase+'Ms']-base[phase+'Ms'];const speed=elapsed>=1000&&phaseMs>0?(counters[phase]-base[phase])*1000/phaseMs:0,stalled=time-changedAt>15000;
   const transferBase=transferSamples[0],transferMs=transferBase?time-transferBase.at:0,transferSpeed=transferMs>=1000?(last.transferredBytes-transferBase.bytes)*1000/transferMs:null;
-  return {speedBytesPerSecond:Number.isFinite(last.transferredBytes)?transferSpeed:!stalled&&speed>0?speed:null,etaSeconds:!stalled&&group(last)==='transfer'&&last.totalBytes>0&&last.processedBytes<last.totalBytes&&rate>0?(last.totalBytes-last.processedBytes)/rate:null};
+  const checkBase=checkSamples[0],checkMs=checkBase?time-checkBase.at:0,checked=checkBase?(Number(last.packsDone)||0)-checkBase.done:0;
+  const checkEta=!stalled&&checkMs>=2000&&checked>=2&&last.totalPacks>last.packsDone?(last.totalPacks-last.packsDone)*checkMs/checked/1000:null;
+  return {speedBytesPerSecond:Number.isFinite(last.transferredBytes)?transferSpeed:!stalled&&speed>0?speed:null,etaSeconds:last.stage==='restic_check'?checkEta:!stalled&&group(last)==='transfer'&&last.totalBytes>0&&last.processedBytes<last.totalBytes&&rate>0?(last.totalBytes-last.processedBytes)/rate:null};
  }};
 }
 export function createProgressReporter(send,interval=750){
