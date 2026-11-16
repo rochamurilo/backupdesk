@@ -44,7 +44,8 @@ test('Restic recupera bloqueio exclusivo abandonado após interrupção e preser
  await fixture(async({options,source,initial,locks,stop})=>{
   await stop();assert.deepEqual(await readdir(join(options.repository,'locks')),locks);
   const before=Buffer.from(options.key);
-  const result=await runRestic({...options,args:['backup','--json','--host',options.device,source]});
+  const input=Buffer.from([join(source,'original.txt'),join(source,'data.bin'),''].join('\0'));
+  const result=await runRestic({...options,input,args:['backup','--json','--host',options.device,'--files-from-raw','-']});
   assert.ok(JSON.parse(result.trim().split('\n').at(-1)).snapshot_id);
   assert.deepEqual(options.key,before);
   assert.deepEqual(await readdir(join(options.repository,'locks')),[]);
