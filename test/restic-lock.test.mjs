@@ -10,6 +10,9 @@ import {setTimeout as delay} from 'node:timers/promises';
 import {runRestic,resticBinary,repositoryPassword} from '../restic-runner.mjs';
 import {localResticTransport} from '../restic-local-transport.mjs';
 
+// Match the real transport listing: temporary uploads are not published locks.
+const lockNames=async repository=>(await readdir(join(repository,'locks'))).filter(name=>/^[a-f0-9]{64}$/.test(name));
+
 async function fixture(operation){
  const root=await mkdtemp(join(tmpdir(),'backupdesk-restic-lock-'));
  let child,transport;
@@ -29,10 +32,10 @@ async function fixture(operation){
   // encrypted lock or fabricating a PID/timestamp. Killing it leaves a fresh lock.
   child=spawn(await resticBinary(),['--no-cache','--limit-download','1','check','--read-data'],{env,stdio:'ignore',windowsHide:true});
   for(let i=0;i<300;i++){
-   if((await readdir(join(repository,'locks'))).length)break;
+   if((await lockNames(repository)).length)break;
    assert.equal(child.exitCode,null);await delay(50);
   }
-  const locks=await readdir(join(repository,'locks'));assert.equal(locks.length,1);
+  const locks=await lockNames(repository);assert.equal(locks.length,1);
   await operation({options,source,initial,locks,child,stop:async()=>{const ended=once(child,'exit');child.kill('SIGKILL');await ended;await transport.close();transport=null}});
  }finally{
   if(child?.exitCode===null&&child?.signalCode===null){const ended=once(child,'exit');child.kill('SIGKILL');await ended}
@@ -42,13 +45,13 @@ async function fixture(operation){
 
 test('Restic recupera bloqueio exclusivo abandonado após interrupção e preserva snapshot e chave',{timeout:60000},async()=>{
  await fixture(async({options,source,initial,locks,stop})=>{
-  await stop();assert.deepEqual(await readdir(join(options.repository,'locks')),locks);
+  await stop();assert.deepEqual(await lockNames(options.repository),locks);
   const before=Buffer.from(options.key);
   const input=Buffer.from([join(source,'original.txt'),join(source,'data.bin'),''].join('\0'));
   const result=await runRestic({...options,input,args:['backup','--json','--host',options.device,'--files-from-raw','-']});
   assert.ok(JSON.parse(result.trim().split('\n').at(-1)).snapshot_id);
   assert.deepEqual(options.key,before);
-  assert.deepEqual(await readdir(join(options.repository,'locks')),[]);
+  assert.deepEqual(await lockNames(options.repository),[]);
   const snapshots=JSON.parse(await runRestic({...options,args:['snapshots','--json']}));
   assert.equal(snapshots.length,2);assert.ok(snapshots.some(s=>s.id.startsWith(initial.snapshot_id)));
   await runRestic({...options,args:['check','--read-data']});
@@ -67,23 +70,23 @@ test('Restic preserva bloqueio ativo, informa processo e não trata chave errada
    assert.ok(error.message.includes(String(child.pid)));assert.doesNotMatch(error.message,/Confira acesso, chave/);
    return true;
   });
-  assert.equal(child.exitCode,null);assert.deepEqual(await readdir(join(options.repository,'locks')),locks);
+  assert.equal(child.exitCode,null);assert.deepEqual(await lockNames(options.repository),locks);
   await assert.rejects(runRestic({...options,key:Buffer.alloc(32,9),args:['cat','config']}),error=>{
    assert.equal(error.exitCode,12);assert.equal(error.lockRecoveryAttempted,undefined);assert.match(error.message,/chave/);return true;
   });
   const controller=new AbortController(),reason=Error('cancelamento de teste');controller.abort(reason);
   await assert.rejects(runRestic({...options,args:['check','--read-data'],signal:controller.signal}),error=>error===reason);
-  assert.deepEqual(await readdir(join(options.repository,'locks')),locks);
+  assert.deepEqual(await lockNames(options.repository),locks);
  });
 });
 
 test('conferência integral Restic recupera bloqueio abandonado e mantém leitura e progresso',{timeout:60000},async()=>{
  await fixture(async({options,locks,stop})=>{
-  await stop();assert.deepEqual(await readdir(join(options.repository,'locks')),locks);
+  await stop();assert.deepEqual(await lockNames(options.repository),locks);
   let readBytes=0;const updates=[];
   await runRestic({...options,args:['check','--read-data'],captureOutput:false,onCheckProgress:p=>updates.push(p),onTransfer:(direction,n)=>{if(direction==='download')readBytes+=n}});
   assert.ok(readBytes>1024*1024);assert.ok(updates.at(-1).totalPacks>0);
   assert.equal(updates.at(-1).packsDone,updates.at(-1).totalPacks);
-  assert.deepEqual(await readdir(join(options.repository,'locks')),[]);
+  assert.deepEqual(await lockNames(options.repository),[]);
  });
 });
