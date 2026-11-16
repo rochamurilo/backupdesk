@@ -22,7 +22,7 @@ test('origem de rede persiste separada do VSS local, aplica preferências e bloq
   let stored=(await api('state')).body.routines.find(r=>r.id===id);assert.equal(stored.source_mode,'network');assert.equal(stored.use_vss,0);
   await api('routines/'+id,{...routine,name:'Engineering updated'},token,'PATCH');
   const config=(await api('agent/config',null,device.token)).body;assert.equal(config.routines[0].source_mode,'network');assert.equal(config.routines[0].use_vss,0);
-  assert.equal((await api('agent/config',null,device.token,undefined,'0.35.0')).body.routines.length,0);
+  assert.equal((await api('agent/config',null,device.token,undefined,'0.35.0')).body.routines.length,0);assert.equal((await api('routines/'+id,routine,token,'PATCH')).status,400);
   assert.equal((await api('jobs',{kind:'backup',routine_id:id})).status,400);
   await api('agent/config',null,device.token);
   const job=await api('jobs',{kind:'backup',routine_id:id});assert.equal(job.status,201,JSON.stringify(job));

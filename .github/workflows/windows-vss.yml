@@ -226,6 +226,8 @@ jobs:
             Write-Output "::error title=Windows Restic lock diagnostic::$detail"
             throw 'Restic lock recovery checks failed.'
           }
+      - name: Test explicit network source policy and local VSS protection
+        run: node --test test/network-source.test.mjs test/mandatory-vss.test.mjs
       - name: Test authenticated SMB destination
         shell: powershell
         run: |

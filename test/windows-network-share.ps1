@@ -20,9 +20,14 @@ try {
  $drive=@('Q:','R:','S:','T:') | Where-Object { -not (Test-Path ($_+'\')) } | Select-Object -First 1
  if(-not $drive){throw 'No free test drive letter.'}
  $env:BACKUPDESK_NETWORK_TEST_DRIVE=$drive
- $output = & node (Join-Path $PSScriptRoot '../windows/network-share-check.mjs') 2>&1
+ $nodePreference=$ErrorActionPreference
+ try {
+  $ErrorActionPreference='Continue'
+  $output = & node (Join-Path $PSScriptRoot '../windows/network-share-check.mjs') 2>&1
+  $nodeStatus=$LASTEXITCODE
+ } finally {$ErrorActionPreference=$nodePreference}
  $output | Write-Output
- if($LASTEXITCODE -ne 0){throw ($output -join "`n")}
+ if($nodeStatus -ne 0){throw ($output -join "`n")}
 } finally {
  if($drive){& net use $drive /delete /y 2>$null | Out-Null}
  & net use $unc /delete /y 2>$null | Out-Null
