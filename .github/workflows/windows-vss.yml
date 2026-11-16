@@ -125,6 +125,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - name: Test VSS worker deadline and inherited output handles
+        shell: powershell
+        run: |
+          try { ./test/windows-vss-worker.ps1 }
+          catch {
+            $detail=($_.Exception.Message+' '+$_.ScriptStackTrace+' '+$_.InvocationInfo.PositionMessage).Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
+            Write-Output "::error title=Windows VSS worker diagnostic::$detail"
+            throw
+          }
       - name: Test update shutdown and normal-user logon task
         shell: powershell
         run: |
