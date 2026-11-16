@@ -1,8 +1,8 @@
-# BackupDesk 0.34.0 — versão de teste
+# BackupDesk 0.35.0 — versão de teste
 
-[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.34.0-x64.exe)
+[Baixar Master Windows x64](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Master-0.35.0-x64.exe)
 
-Atualizar uma instalação existente: [Client](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Atualizacao-Client-0.34.0-x64.exe) · [Master](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Atualizacao-Master-0.34.0-x64.exe).
+Atualizar uma instalação existente: [Client](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Atualizacao-Client-0.35.0-x64.exe) · [Master](https://raw.githubusercontent.com/rochamurilo/backupdesk/main/dist/BackupDesk-Atualizacao-Master-0.35.0-x64.exe).
 
 [Começar na Locaweb: contratação, instalação e primeiro client](deploy/LOCAWEB-PASSO-A-PASSO.md)
 
@@ -482,3 +482,13 @@ Validação local: 152 testes Node e a checagem Chromium passaram. Foram verific
 Validação dos pacotes: os quatro jobs da [execução Windows 43913888992](https://github.com/rochamurilo/backupdesk/actions/runs/43913888992) passaram, incluindo instalação real, atualização Client/Master com preservação das chaves e restauração, VSS e SMB autenticado. Os executáveis foram extraídos e comparados com as fontes testadas, o Node e o Restic fixados; os clientes embutidos correspondem aos pacotes gerados e os atualizadores não contêm cadastro ou chave de computador.
 
 Os três downloads públicos da 0.34.0 foram baixados após a publicação e conferidos com os hashes de `dist/SHA256SUMS.txt`.
+
+## 0.35.0 — Recuperação de Bloqueio Abandonado do Restic
+
+O código 11 do Restic significa que o repositório já está bloqueado. Uma execução interrompida, inclusive durante a conferência integral, pode deixar um bloqueio exclusivo que impede o backup seguinte. A mensagem anterior agrupava esse caso com acesso, chave e integridade, sem identificar a causa. A nova mensagem distingue bloqueio, repositório ausente (10) e chave incorreta (12). Quando o Restic informa o processo que mantém o bloqueio, a tela mostra computador e PID, sem expor senha ou credencial do transporte.
+
+Somente após o código 11 em backup, conferência ou consulta de snapshots/arquivos, o BackupDesk executa o `restic unlock` normal e tenta novamente a mesma operação uma única vez. O próprio Restic autentica os bloqueios e decide se estão abandonados: processo local encerrado ou ausência de renovação por mais de 30 minutos, segundo a [política do Restic 0.19.1](https://github.com/restic/restic/blob/v0.19.1/internal/restic/lock.go). Um bloqueio recente de processo ativo permanece protegido; nesse caso a operação continua falhando e identifica o bloqueio. Falhas ao consultar ou remover o bloqueio também continuam sendo erros. Não há remoção forçada, desativação de bloqueio, exclusão de dados, repetição indefinida ou troca de chave. Chave incorreta, corrupção, outros erros e cancelamento não acionam essa recuperação.
+
+Instale o atualizador correspondente ao Client ou Master já instalado, no mesmo usuário e pasta. Quando não houver outra rotina em andamento, use **Fazer Backup Agora** para tentar novamente. Não é necessário apagar a pasta do repositório nem cadastrar outra chave. A primeira conferência integral e a conferência a cada cinco dias continuam obrigatórias; remover um bloqueio abandonado não aprova uma cópia sem essas validações.
+
+Validação local: 155 testes Node e a checagem Chromium passaram. Os novos testes usam bloqueios criptografados criados por um Restic real: interrompem uma conferência com bloqueio exclusivo, retomam backup e conferência, conferem os contadores de leitura e restauram o snapshot anterior. Também mantêm um processo realmente ativo para comprovar que seu bloqueio não é removido; chave incorreta e cancelamento continuam sendo erros distintos.

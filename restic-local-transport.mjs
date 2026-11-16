@@ -39,7 +39,8 @@ export async function localResticTransport(repository,{throttle=async()=>{},onTr
     await safe(file);await link(temporary,file);await unlink(temporary);temporary=null;res.writeHead(200).end();return;
    }
    if(req.method==='DELETE'){
-    // Backup/check only remove their own locks. This transport cannot prune data.
+    // Restic removes its own locks or authenticated stale locks during normal
+    // unlock. This transport cannot prune data.
     if(type!=='locks'){res.writeHead(405).end();return}await unlink(file);res.writeHead(200).end();return;
    }
    if(!['HEAD','GET'].includes(req.method)){res.writeHead(405).end();return}

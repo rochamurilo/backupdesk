@@ -67,7 +67,7 @@ on:
       - 'windows/Configure.ps1'
       - 'test/windows-client-install.ps1'
       - 'test/client-package.test.mjs'
-      - 'dist/BackupDesk-Master-0.34.0-x64.exe'
+      - 'dist/BackupDesk-Master-0.35.0-x64.exe'
       - 'backup-repository.mjs'
       - 'vss.mjs'
       - 'filesystem.mjs'
@@ -165,9 +165,9 @@ jobs:
             /windows/
             /test/
             /dist/BackupDesk-Master-0.25.0-x64.exe
-            /dist/BackupDesk-Master-0.34.0-x64.exe
-            /dist/BackupDesk-Atualizacao-Client-0.34.0-x64.exe
-            /dist/BackupDesk-Atualizacao-Master-0.34.0-x64.exe
+            /dist/BackupDesk-Master-0.35.0-x64.exe
+            /dist/BackupDesk-Atualizacao-Client-0.35.0-x64.exe
+            /dist/BackupDesk-Atualizacao-Master-0.35.0-x64.exe
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -216,6 +216,16 @@ jobs:
       - name: Fetch pinned Restic
         shell: powershell
         run: ./tools/fetch-restic.ps1
+      - name: Test active and abandoned Restic repository locks
+        shell: powershell
+        run: |
+          $output = & node --test test/restic-lock.test.mjs 2>&1
+          $output | Write-Output
+          if ($LASTEXITCODE -ne 0) {
+            $detail=($output -join "`n").Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
+            Write-Output "::error title=Windows Restic lock diagnostic::$detail"
+            throw 'Restic lock recovery checks failed.'
+          }
       - name: Test authenticated SMB destination
         shell: powershell
         run: |
