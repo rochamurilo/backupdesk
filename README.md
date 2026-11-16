@@ -534,3 +534,5 @@ A [validação preliminar Windows 43957127971](https://github.com/rochamurilo/ba
 Os quatro instaladores foram extraídos e comparados com as fontes validadas: 47 arquivos de produção por pacote, Node/Restic fixados, módulos de pré-verificação, scripts dos componentes VSS e clientes embutidos correspondem aos arquivos finais. Os atualizadores Client/Master não contêm cadastro ou chave de computador. Os hashes locais dos três executáveis de distribuição correspondem a `dist/SHA256SUMS.txt`.
 
 Validação final Windows: os quatro jobs da [execução 43959217373](https://github.com/rochamurilo/backupdesk/actions/runs/43959217373) passaram. Foram confirmados o início lento, a confirmação atual de processo ativo, a rejeição de registro antigo/PID inválido, falha de inicialização seguida de reparo, VSS, SMB e instalação/atualização real de Client e Master. As chaves foram preservadas e os backups anteriores foram restaurados.
+
+Os três downloads públicos da 0.37.0 foram baixados após a publicação e conferidos com os hashes de `dist/SHA256SUMS.txt`.
