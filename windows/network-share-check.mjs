@@ -1,7 +1,7 @@
 import {readFile,writeFile,unlink} from 'node:fs/promises';import {join} from 'node:path';import assert from 'node:assert/strict';import {ensureNetworkAccess} from '../network-share.mjs';
 const credentials=JSON.parse((await readFile(process.env.BACKUPDESK_NETWORK_TEST_CONFIG,'utf8')).replace(/^\uFEFF/,''));const result=await ensureNetworkAccess(credentials.destination,async()=>credentials);assert.equal(result.authenticated,true);const file=join(credentials.destination,'native-proof.txt');await writeFile(file,'BackupDesk authenticated SMB');assert.equal(await readFile(file,'utf8'),'BackupDesk authenticated SMB');await unlink(file);console.log('Native SMB authentication, Unicode password and write/read: OK.');
 // Exercise signed log publication and master reading through separate worker processes over SMB.
-const {mkdir,mkdtemp,rm}=await import('node:fs/promises'),{tmpdir}=await import('node:os');const {masterVault,deviceVault}=await import('../crypto-vault.mjs'),{signedStatus,verifyStatus}=await import('../status-logs.mjs'),{runLogIO}=await import('../logs-io.mjs');const temporary=await mkdtemp(join(tmpdir(),'bkd-smb-logs-'));
+const {mkdir,mkdtemp,rm,realpath}=await import('node:fs/promises'),{tmpdir}=await import('node:os');const {masterVault,deviceVault}=await import('../crypto-vault.mjs'),{signedStatus,verifyStatus}=await import('../status-logs.mjs'),{runLogIO}=await import('../logs-io.mjs');const temporary=await mkdtemp(join(tmpdir(),'bkd-smb-logs-'));
 try{const master=await masterVault(join(temporary,'master')),device='a'.repeat(64),vault=await deviceVault(join(temporary,'device'),device,master.publicKey);const at=new Date().toISOString(),document=signedStatus(vault,{name:'Native SMB PC',version:'0.36.0',runs:[{id:'c'.repeat(64),started:at,finished:at,status:'success',bytes:12}]});for(const name of ['LocalLogs','CloudLogs']){const root=join(credentials.destination,name);await mkdir(root);await runLogIO({action:'write',root,device,document,credentials});const copy=await runLogIO({action:'read',root,device,credentials});assert.equal(verifyStatus(copy,device,vault.publicKey).runs[0].status,'success')}console.log('Native signed logs: two folders, atomic publication and master read: OK.')}finally{await rm(temporary,{recursive:true,force:true})}
 
 const {runRestic}=await import('../restic-runner.mjs'),{randomBytes}=await import('node:crypto');const testRoot=await mkdtemp(join(tmpdir(),'bkd-smb-restic-'));
@@ -11,7 +11,7 @@ try{const repo=join(credentials.destination,'ResticLimited');await mkdir(repo);a
 // in this job; local source paths must still be rejected in network mode.
 const {backupToDisk,restoreFromDisk,validateVssDestination}=await import('../disk-backup.mjs');
 const {resolveNetworkSources}=await import('../filesystem.mjs');
-const copyRoot=await mkdtemp(join(tmpdir(),'bkd-network-source-')),source=join(credentials.destination,'EngineeringSource');
+const copyRoot=await realpath(await mkdtemp(join(tmpdir(),'bkd-network-source-'))),source=join(credentials.destination,'EngineeringSource');
 await mkdir(source);await writeFile(join(source,'engineering.txt'),'engenharia em rede');
 process.env.BACKUPDESK_RESTIC_TEST_DIAGNOSTICS='1';
 try{
