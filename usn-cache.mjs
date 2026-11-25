@@ -42,7 +42,7 @@ export async function readWindowsUsn(requests,{signal}={}){
   (async()=>{
    try{for(let i=0;i<requests.length;i++){
     signal?.throwIfAborted();const r=requests[i];
-    if(!child.stdin.write(i+'\t'+Buffer.from(r.snapshot).toString('base64')+'\t'+Buffer.from(r.live).toString('base64')+'\n'))await once(child.stdin,'drain');
+    if(!child.stdin.write(i+'\t'+Buffer.from(r.snapshot).toString('base64')+'\t'+Buffer.from(r.live).toString('base64')+'\t'+Buffer.from(r.volumeId).toString('base64')+'\n'))await once(child.stdin,'drain');
    }child.stdin.end()}catch{fail()}
   })();
  });
@@ -58,7 +58,7 @@ export async function createUsnCache({files,snapshots=[],scopeKey,device,encrypt
  for(const file of files){
   const snapshot=snapshots.find(s=>validJournal(s.usn)&&file.absolute.toLowerCase().startsWith((s.device+'\\').toLowerCase()));
   if(!snapshot)continue;
-  requests.push({snapshot:file.absolute,live:path.win32.join(snapshot.volume,file.absolute.slice(snapshot.device.length+1))});candidates.push({file,journal:snapshot.usn});
+  requests.push({snapshot:file.absolute,live:path.win32.join(snapshot.volume,file.absolute.slice(snapshot.device.length+1)),volumeId:snapshot.usn.volume_id});candidates.push({file,journal:snapshot.usn});
  }
  if(!requests.length)return noop;
  let previous=null;
@@ -76,7 +76,8 @@ export async function createUsnCache({files,snapshots=[],scopeKey,device,encrypt
   if(serial!==journal.serial||BigInt(usn)<=0n||BigInt(usn)>=BigInt(journal.next_usn)||BigInt(size)!==file.size||(BigInt(written)-epoch)*100n!==file.mtime)continue;
   proofs.set(file.path,{volume:journal.volume_id,value:[journal.volume_id,journal.journal_id,...parts].join('|')});
  }
- const entries=Object.create(null);stats.method='ntfs-usn';stats.reason=previous?'validated':'first-scan';
+ rows.clear();
+ const entries=Object.create(null);stats.method='ntfs-usn';stats.eligible_files=proofs.size;stats.reason=proofs.size?(previous?'validated':'first-scan'):'file-metadata-unavailable';
  return {stats,
   get(file){const proof=proofs.get(file.path),old=previous?.entries?.[file.path];if(!proof||!old||!hash(old.hash)||old.proof!==proof.value||!continuousJournal(previous.volumes[proof.volume],volumes.get(proof.volume)))return null;stats.reused_files++;stats.reused_bytes+=Number(file.size);return old.hash},
   remember(file,digest){const proof=proofs.get(file.path);if(!hash(digest))throw Error('Hash USN inválido.');if(proof)entries[file.path]={hash:digest,proof:proof.value}},

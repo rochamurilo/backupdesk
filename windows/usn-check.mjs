@@ -1,6 +1,6 @@
 // Native Windows integration, run by windows-vss-user.ps1 as a standard user.
 import assert from 'node:assert/strict';
-import {mkdtemp,mkdir,writeFile,readFile,rm,stat,utimes,rename,link,unlink} from 'node:fs/promises';
+import {mkdtemp,mkdir,writeFile,readFile,rm,stat,utimes,rename,link,unlink,open} from 'node:fs/promises';
 import path from 'node:path';
 import {randomBytes} from 'node:crypto';
 import {backupToDisk,restoreFromDisk} from './disk-backup.mjs';
@@ -20,6 +20,13 @@ try {
   assert.equal(second.comparison.method,'ntfs-usn',JSON.stringify(second.comparison));
   assert.equal(second.comparison.reused_files,2,JSON.stringify(second.comparison));
   assert.equal(second.comparison.reused_bytes,1024*1024+3);
+  // An open write handle with permissive sharing must still force full hashing.
+  const writer=await open(a,'r+');
+  try{
+   const busy=await backupToDisk({...opts,run:engine+'-busy'});
+   assert.equal(busy.comparison.reused_files,1,JSON.stringify(busy.comparison));
+   assert.equal(busy.files.find(f=>f.path==='a.txt').hash,second.files.find(f=>f.path==='a.txt').hash);
+  }finally{await writer.close()}
   const before=await stat(a);await writeFile(a,'new');await utimes(a,before.atime,before.mtime);
   const third=await backupToDisk({...opts,run:engine+'-3'});
   assert.equal(third.comparison.reused_files,1);

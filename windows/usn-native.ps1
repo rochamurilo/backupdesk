@@ -15,7 +15,7 @@ public static class BackupDeskUsn {
  [DllImport("kernel32.dll",CharSet=CharSet.Unicode,SetLastError=true)] static extern SafeFileHandle CreateFile(string name,uint access,uint share,IntPtr security,uint disposition,uint flags,IntPtr template);
  [DllImport("kernel32.dll",SetLastError=true)] static extern bool GetFileInformationByHandle(SafeFileHandle handle,out Info info);
  [DllImport("kernel32.dll",SetLastError=true)] static extern bool DeviceIoControl(SafeFileHandle handle,uint code,byte[] input,int inputSize,byte[] output,int outputSize,out int returned,IntPtr overlapped);
- [DllImport("kernel32.dll",CharSet=CharSet.Unicode,SetLastError=true)] static extern bool GetVolumeInformationByHandleW(SafeFileHandle handle,StringBuilder name,int nameSize,out uint serial,out uint maxComponent,out uint flags,StringBuilder filesystem,int filesystemSize);
+ [DllImport("kernel32.dll",CharSet=CharSet.Unicode,SetLastError=true)] static extern uint GetFinalPathNameByHandleW(SafeFileHandle handle,StringBuilder path,uint size,uint flags);
  public sealed class Journal {
   public string journal_id,first_usn,next_usn,lowest_valid_usn,serial;
  }
@@ -41,12 +41,15 @@ public static class BackupDeskUsn {
   if(id!=BitConverter.ToUInt64(b,8)||usn<=0)throw new IOException("USN identity unavailable");
   return info.Serial+"\t"+id+"\t"+usn+"\t"+(((ulong)info.SizeHigh<<32)|info.SizeLow)+"\t"+Time(info.Written)+"\t"+Time(info.Created);
  }
- public static string Pair(string snapshot,string live) {
+ public static string Pair(string snapshot,string live,string volumeId) {
   // Opening the LIVE file without FILE_SHARE_WRITE/DELETE refuses current
   // writers, including handles with unclosed/coalesced USN changes. Snapshot
   // metadata alone is not sufficient proof that a cached hash is reusable.
   using(SafeFileHandle l=Open(live,0x80000000,1))
   using(SafeFileHandle s=Open(snapshot,0x80000000,7)) {
+   StringBuilder resolved=new StringBuilder(32768);
+   uint length=GetFinalPathNameByHandleW(l,resolved,(uint)resolved.Capacity,1);
+   if(length==0||length>=resolved.Capacity||!resolved.ToString().StartsWith(volumeId,StringComparison.OrdinalIgnoreCase))throw new IOException("Live volume identity differs");
    string a=Stamp(l),b=Stamp(s);if(a!=b)throw new IOException("Live/snapshot identity differs");return b;
   }
  }
@@ -54,13 +57,15 @@ public static class BackupDeskUsn {
   string line;
   while((line=Console.ReadLine())!=null) {
    string[] parts=line.Split('\t');int index;
-   if(line.Length>65536||parts.Length!=3||!Int32.TryParse(parts[0],out index)||index<0)throw new IOException("Invalid USN input");
+   if(line.Length>65536||parts.Length!=4||!Int32.TryParse(parts[0],out index)||index<0)throw new IOException("Invalid USN input");
    string result="-";
    try {
     string snapshot=Encoding.UTF8.GetString(Convert.FromBase64String(parts[1]));
     string live=Encoding.UTF8.GetString(Convert.FromBase64String(parts[2]));
     if(!System.Text.RegularExpressions.Regex.IsMatch(snapshot,@"^\\\\\?\\GLOBALROOT\\Device\\HarddiskVolumeShadowCopy\d+\\",System.Text.RegularExpressions.RegexOptions.IgnoreCase)||!System.Text.RegularExpressions.Regex.IsMatch(live,@"^[A-Za-z]:\\"))throw new IOException("Local VSS paths required");
-    result=Pair(snapshot,live);
+    string volumeId=Encoding.UTF8.GetString(Convert.FromBase64String(parts[3]));
+    if(!System.Text.RegularExpressions.Regex.IsMatch(volumeId,@"^\\\\\?\\Volume\{[a-fA-F0-9-]{36}\}\\$"))throw new IOException("Volume identity required");
+    result=Pair(snapshot,live,volumeId);
    } catch { /* Per-file failure always falls back to hashing snapshot data. */ }
    Console.WriteLine(index+"\t"+result);
   }

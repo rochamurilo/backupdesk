@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtemp,readFile,writeFile,rm,readdir} from 'node:fs/promises';
+import {mkdtemp,mkdir,readFile,writeFile,rm,readdir} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
@@ -59,5 +59,12 @@ test('execução incompleta não promove cache, exclusão remove entrada e cance
  const empty=await createUsnCache({...opts,files:[{...file,path:'new.txt'}]});await empty.save();assert.equal((await createUsnCache(opts)).get(file),null);
  const controller=new AbortController();controller.abort(Error('cancelado'));
  await assert.rejects(createUsnCache({...opts,signal:controller.signal}),/cancelado/);
+ assert.ok((await readdir(dir)).every(n=>!n.endsWith('.tmp')));
+}));
+
+test('cache opcional não reprova backup já publicado se a gravação falha ou se o usuário cancela depois',()=>fixture(async(opts,dir)=>{
+ const blocked=path.join(dir,'directory');await mkdir(blocked);
+ const cache=await createUsnCache({...opts,cacheFile:blocked});cache.remember(file,digest('old'));await cache.save();assert.equal(cache.stats.reason,'cache-write-failed');
+ const controller=new AbortController(),cancelled=await createUsnCache({...opts,signal:controller.signal});cancelled.remember(file,digest('old'));controller.abort();await cancelled.save();
  assert.ok((await readdir(dir)).every(n=>!n.endsWith('.tmp')));
 }));
