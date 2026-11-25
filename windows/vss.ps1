@@ -45,13 +45,13 @@ try {
   if($null -eq $snapshot){throw 'Snapshot VSS criado mas não localizado.'}
   # Optional read-only journal checkpoint from this exact owned snapshot. A
   # failure disables USN reuse, never snapshot creation or verified hashing.
-  $usn=$null
+  $usn=$null;$usnError=$null
   try {
    . (Join-Path $PSScriptRoot 'usn-native.ps1')
-   $journal=[BackupDeskUsn]::Query([string]$snapshot.DeviceObject)
+   $journal=[BackupDeskUsn]::Query([string]$snapshot.DeviceObject,[uint32]$volume.SerialNumber)
    $usn=@{volume_id=([string]$volume.DeviceID).ToLowerInvariant();serial=$journal.serial;journal_id=$journal.journal_id;first_usn=$journal.first_usn;next_usn=$journal.next_usn;lowest_valid_usn=$journal.lowest_valid_usn}
-  } catch { $usn=$null }
-  Write-VssReply @{id=$snapshot.ID;device=$snapshot.DeviceObject;volume=$root;consistency='crash-consistent-no-writers';usn=$usn}
+  } catch { $usn=$null;$usnError=$_.Exception.GetBaseException().Message }
+  Write-VssReply @{id=$snapshot.ID;device=$snapshot.DeviceObject;volume=$root;consistency='crash-consistent-no-writers';usn=$usn;usn_error=$usnError}
  }elseif($request.action -eq 'delete'){
   $id=[string]$request.id
   if($id -notmatch '^\{[a-fA-F0-9-]{36}\}$'){throw 'Identificador VSS inválido.'}

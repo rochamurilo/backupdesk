@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import {mkdtemp,mkdir,writeFile,readFile,rm,stat,utimes,rename,link,unlink} from 'node:fs/promises';
 import path from 'node:path';
 import {randomBytes} from 'node:crypto';
-import {execFileSync} from 'node:child_process';
 import {backupToDisk,restoreFromDisk} from './disk-backup.mjs';
 import {masterVault,deviceVault} from './crypto-vault.mjs';
 const root=await mkdtemp(path.join(process.env.BACKUPDESK_TEST_ROOT,'usn-'));

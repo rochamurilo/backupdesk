@@ -54,7 +54,7 @@ export async function createUsnCache({files,snapshots=[],scopeKey,device,encrypt
  if(platform!=='win32'||!encryption?.dataKey||!snapshots.length)return noop;
  const volumes=new Map(),requests=[],candidates=[];
  for(const snapshot of snapshots){if(validJournal(snapshot.usn))volumes.set(snapshot.usn.volume_id,snapshot.usn)}
- if(!volumes.size){stats.reason='journal-unavailable';return noop}
+ if(!volumes.size){stats.reason='journal-unavailable';stats.detail=snapshots.map(s=>s.usn_error).filter(Boolean).join('; ').slice(0,500);return noop}
  for(const file of files){
   const snapshot=snapshots.find(s=>validJournal(s.usn)&&file.absolute.toLowerCase().startsWith((s.device+'\\').toLowerCase()));
   if(!snapshot)continue;
@@ -81,9 +81,11 @@ export async function createUsnCache({files,snapshots=[],scopeKey,device,encrypt
   get(file){const proof=proofs.get(file.path),old=previous?.entries?.[file.path];if(!proof||!old||!hash(old.hash)||old.proof!==proof.value||!continuousJournal(previous.volumes[proof.volume],volumes.get(proof.volume)))return null;stats.reused_files++;stats.reused_bytes+=Number(file.size);return old.hash},
   remember(file,digest){const proof=proofs.get(file.path);if(!hash(digest))throw Error('Hash USN inválido.');if(proof)entries[file.path]={hash:digest,proof:proof.value}},
   async save(){
-   signal?.throwIfAborted();const temporary=cacheFile+'.'+randomUUID()+'.tmp';
-   try{const encoded=JSON.stringify(sealJSON({format:'backupdesk-usn-cache-v1',scope:scopeKey,device,volumes:Object.fromEntries(volumes),entries},encryption.dataKey));if(Buffer.byteLength(encoded)>LIMIT)throw Error();await writeFile(temporary,encoded,{flag:'wx',mode:0o600,flush:true});signal?.throwIfAborted();await rename(temporary,cacheFile)}
-   catch{signal?.throwIfAborted();stats.reason='cache-write-failed'}finally{await unlink(temporary).catch(()=>{})}
+   // Backup publication has already succeeded. An optional cache must not turn
+   // that committed result into a failure if cancellation arrives afterwards.
+   if(signal?.aborted)return;const temporary=cacheFile+'.'+randomUUID()+'.tmp';
+   try{const encoded=JSON.stringify(sealJSON({format:'backupdesk-usn-cache-v1',scope:scopeKey,device,volumes:Object.fromEntries(volumes),entries},encryption.dataKey));if(Buffer.byteLength(encoded)>LIMIT)throw Error();await writeFile(temporary,encoded,{flag:'wx',mode:0o600,flush:true});if(signal?.aborted)return;await rename(temporary,cacheFile)}
+   catch{stats.reason='cache-write-failed'}finally{await unlink(temporary).catch(()=>{})}
   }
  };
 }

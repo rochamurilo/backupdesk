@@ -21,15 +21,13 @@ public static class BackupDeskUsn {
  }
  static SafeFileHandle Open(string name,uint access,uint share) {
   SafeFileHandle h=CreateFile(name,access,share,IntPtr.Zero,3,0x02200000,IntPtr.Zero);
-  if(h.IsInvalid){h.Dispose();throw new IOException("USN handle unavailable");} return h;
+  if(h.IsInvalid){int error=Marshal.GetLastWin32Error();h.Dispose();throw new IOException("USN handle unavailable (Windows "+error+")");} return h;
  }
- public static Journal Query(string device) {
+ public static Journal Query(string device,uint serial) {
   // Called by the SYSTEM worker only for the snapshot it has just created.
   using(SafeFileHandle h=Open(device,0x80000000,7)) {
-   uint serial,max,flags;StringBuilder fs=new StringBuilder(32),name=new StringBuilder(256);
-   if(!GetVolumeInformationByHandleW(h,name,name.Capacity,out serial,out max,out flags,fs,fs.Capacity)||fs.ToString()!="NTFS")throw new IOException("USN requires NTFS");
    byte[] b=new byte[80];int n;
-   if(!DeviceIoControl(h,0x000900f4,null,0,b,b.Length,out n,IntPtr.Zero)||n<56)throw new IOException("USN journal unavailable");
+   if(!DeviceIoControl(h,0x000900f4,null,0,b,b.Length,out n,IntPtr.Zero)||n<56)throw new IOException("USN journal unavailable (Windows "+Marshal.GetLastWin32Error()+")");
    return new Journal {journal_id=BitConverter.ToUInt64(b,0).ToString(),first_usn=BitConverter.ToInt64(b,8).ToString(),next_usn=BitConverter.ToInt64(b,16).ToString(),lowest_valid_usn=BitConverter.ToInt64(b,24).ToString(),serial=serial.ToString()};
   }
  }

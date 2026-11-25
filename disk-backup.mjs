@@ -99,6 +99,7 @@ async function copyLegacy({source,destination,device,routine,run,onFile=()=>{},o
    if(!safeRelative(file.path))throw Error('Nome de arquivo inválido.');currentFile=file.path;let digest;
    let object=changedNames.has(file.path)?(encryption?randomUUID().replaceAll('-','')+randomUUID().replaceAll('-','')+'.bde':null):baseFiles.get(file.path)?.object;
    if(changedNames.has(file.path)){
+    if(!sourceHashes.has(file.path))usn.stats.hashed_files++;
     if(encryption){stage='copying';report();digest=await encryptFile(file.absolute,path.join(partial,'files',object),encryption.dataKey,fileAAD(manifest,object),{onBytes:n=>{processedBytes+=n;report()},throttle:n=>throttle(n,'upload')});stage='verifying';report();const {decryptHash}=await import('./encrypted-files.mjs');if(await decryptHash(path.join(partial,'files',object),encryption.dataKey,fileAAD(manifest,object),{onBytes:n=>{processedBytes+=n;report()},throttle:n=>throttle(n,'download')})!==digest)throw Error('Falha de integridade ao verificar a cópia criptografada.');}
     else digest=await copyVerified(file.absolute,path.join(partial,'files',...file.path.split('/')),file,n=>{processedBytes+=n;report()},phase=>{stage=phase;report()},n=>throttle(n,'upload'),n=>throttle(n,'download'));
     if(sourceHashes.has(file.path)&&sourceHashes.get(file.path)!==digest)throw Error('Origem alterada após comparação: '+file.path);
