@@ -1,3 +1,4 @@
+import {createUsnCache} from './usn-cache.mjs';
 import {createBandwidthLimiter} from './bandwidth.mjs';
 import {copyToRestic,restoreResticFiles,RESTIC_FORMAT} from './restic-backup.mjs';
 import {encryptFile,decryptFile,encryptedSize} from './encrypted-files.mjs';
@@ -74,7 +75,7 @@ export async function backupToDisk(options){
  const canonical=[...new Set(sources)].sort((a,b)=>identityPath(a).localeCompare(identityPath(b)));return copyToDisk({...options,source:JSON.stringify(canonical),originalSources:canonical,useVss:false});
 }
 async function copyToDisk(options){if(options.engine==='restic')return copyToRestic({...options,validate:validateDestination});return copyLegacy(options)}
-async function copyLegacy({source,destination,device,routine,run,onFile=()=>{},onPlan=()=>{},useVss=false,originalSources,snapshots=[],onProgress=()=>{},knownRuns,deviceName,signal,throttle=async()=>{},clock=()=>new Date(),encryption,sourceMode:mode='local'}){
+async function copyLegacy({source,destination,device,routine,run,onFile=()=>{},onPlan=()=>{},useVss=false,originalSources,snapshots=[],onProgress=()=>{},knownRuns,deviceName,signal,throttle=async()=>{},clock=()=>new Date(),encryption,releaseSourceSnapshot,sourceMode:mode='local'}){
  const captured=clock();const checked=await validateDestination(source,destination,{useVss,onProgress,deferCapacity:true,allowEmpty:true,sourceMode:mode});
  if(!/^[a-zA-Z0-9_-]+$/.test(device)||!/^\d+$/.test(String(routine))||!/^[a-zA-Z0-9_-]+$/.test(run))throw Error('Identificação de backup inválida.');
  const parent=path.join(checked.target,'BackupDesk',device,String(routine));await mkdir(parent,{recursive:true});const canonicalParent=await realpath(parent);if(!contained(checked.target,canonicalParent))throw Error('O repositório aponta para fora do destino.');
@@ -83,8 +84,9 @@ async function copyLegacy({source,destination,device,routine,run,onFile=()=>{},o
  let processedBytes=0,filesDone=0,totalBytes=null,currentFile='',stage='checking_base';
  const report=()=>onProgress({stage,currentFile,processedBytes,totalBytes,filesDone,totalFiles:checked.files.length});
  if(baseline){totalBytes=baseline.manifest.files.reduce((n,f)=>n+f.size,0);report();try{await verifyFullBaseline(baseline,repository,n=>{processedBytes+=n;report()},n=>throttle(n,'download'))}catch(e){signal?.throwIfAborted();baseRejected=e.message;baseline=null}}
+ const usn=await createUsnCache({files:checked.files,snapshots:useVss?snapshots:[],scopeKey,device,encryption,cacheFile:path.join(repository,'.usn-'+scopeKey+'.bde'),signal,onProgress});
  const type=baseline?'differential':'full',baseFiles=new Map((baseline?.manifest.files||[]).map(f=>[f.path,f])),sourceHashes=new Map(),changed=[];
- if(baseline){stage='comparing';processedBytes=0;totalBytes=checked.files.reduce((n,f)=>n+Number(f.size),0);report();for(const file of checked.files){currentFile=file.path;report();const digest=await fileHash(file.absolute,n=>{processedBytes+=n;report()},n=>throttle(n,'upload'));sourceHashes.set(file.path,digest);if(baseFiles.get(file.path)?.hash!==digest||baseFiles.get(file.path)?.size!==Number(file.size))changed.push(file)}}else changed.push(...checked.files);
+ if(baseline){stage='comparing';processedBytes=0;totalBytes=checked.files.reduce((n,f)=>n+Number(f.size),0);report();for(const file of checked.files){currentFile=file.path;report();let digest=usn.get(file);if(digest){processedBytes+=Number(file.size);report()}else{digest=await fileHash(file.absolute,n=>{processedBytes+=n;report()},n=>throttle(n,'upload'));usn.stats.hashed_files++}sourceHashes.set(file.path,digest);if(baseFiles.get(file.path)?.hash!==digest||baseFiles.get(file.path)?.size!==Number(file.size))changed.push(file)}}else changed.push(...checked.files);
  const required=changed.reduce((n,f)=>n+(encryption?BigInt(encryptedSize(Number(f.size))):f.size),0n)+BigInt(checked.files.length*3+checked.directories.length+10)*4096n+1048576n;
  if(BigInt(checked.availableBytes)<required)throw Error('Espaço insuficiente no destino para os arquivos desta versão.');
  const partial=path.join(parent,'.partial-'+run),snapshot=path.join(parent,run),changedNames=new Set(changed.map(f=>f.path)),currentNames=new Set(checked.files.map(f=>f.path));await mkdir(partial,{recursive:false});
@@ -101,15 +103,18 @@ async function copyLegacy({source,destination,device,routine,run,onFile=()=>{},o
     else digest=await copyVerified(file.absolute,path.join(partial,'files',...file.path.split('/')),file,n=>{processedBytes+=n;report()},phase=>{stage=phase;report()},n=>throttle(n,'upload'),n=>throttle(n,'download'));
     if(sourceHashes.has(file.path)&&sourceHashes.get(file.path)!==digest)throw Error('Origem alterada após comparação: '+file.path);
    }else digest=sourceHashes.get(file.path);
+   usn.remember(file,digest);
    const record={path:file.path,hash:digest,size:Number(file.size),mtime_ns:String(file.mtime),modified_at:modifiedDate(String(file.mtime)),source_run:changedNames.has(file.path)?run:baseline.manifest.run,...(object?{object}:{})};if(changedNames.has(file.path)&&!encryption){const modified=Number(file.mtime)/1e9;await utimes(path.join(partial,'files',...file.path.split('/')),modified,modified)}manifest.files.push(record);filesDone++;report();await onFile(record);
   }
   stage='finalizing';currentFile='';report();
   for(const file of checked.files){const current=await lstat(file.absolute,{bigint:true});if(current.isSymbolicLink()||current.size!==file.size||current.mtimeNs!==file.mtime)throw Error('Origem alterada antes de concluir: '+file.absolute)}
   for(const folder of checked.directories){const current=await lstat(folder.absolute,{bigint:true});if(current.isSymbolicLink()||current.mtimeNs!==folder.mtime)throw Error('A pasta de origem mudou durante o backup: '+folder.absolute)}
   if(!useVss&&mode!=='network')await outlookCheck(checked.files);
+  await releaseSourceSnapshot?.();
+  manifest.comparison={...usn.stats};
   manifest.changed_files=changed.length;manifest.logical_bytes=checked.files.reduce((n,f)=>n+Number(f.size),0);manifest.stored_bytes=changed.reduce((n,f)=>n+Number(f.size),0);manifest.status='success';manifest.finished=clock().toISOString();
-  if(encryption)await writeEncryptedManifest(partial,manifest,encryption);else await writeFile(path.join(partial,'manifest.json'),JSON.stringify(manifest,null,2),{flag:'wx',flush:true});signal?.throwIfAborted();await rename(partial,snapshot);
-  return {excluded_links:manifest.excluded_links,snapshot,encryption_id:manifest.encryption_id,files:manifest.files,consistency:manifest.consistency,warning:manifest.warning,pst_validation:manifest.pst_validation,backup_type:type,base_run:manifest.base_run,scope_key:scopeKey,scope_sources:manifest.sources,scope_destination:checked.target,captured_at:manifest.captured_at,logical_bytes:manifest.logical_bytes,stored_bytes:manifest.stored_bytes,changed_files:changed.length};
+  if(encryption)await writeEncryptedManifest(partial,manifest,encryption);else await writeFile(path.join(partial,'manifest.json'),JSON.stringify(manifest,null,2),{flag:'wx',flush:true});signal?.throwIfAborted();await rename(partial,snapshot);await usn.save();
+  return {comparison:manifest.comparison,excluded_links:manifest.excluded_links,snapshot,encryption_id:manifest.encryption_id,files:manifest.files,consistency:manifest.consistency,warning:manifest.warning,pst_validation:manifest.pst_validation,backup_type:type,base_run:manifest.base_run,scope_key:scopeKey,scope_sources:manifest.sources,scope_destination:checked.target,captured_at:manifest.captured_at,logical_bytes:manifest.logical_bytes,stored_bytes:manifest.stored_bytes,changed_files:changed.length};
  }catch(e){manifest.status='failed';manifest.error=e.message;if(!encryption)await writeFile(path.join(partial,'manifest.failed.json'),JSON.stringify(manifest,null,2)).catch(()=>{});throw e}
 }
 export async function restoreFromDisk({snapshot,files,target,job,onProgress=()=>{},throttle=async()=>{},getKey,policy}){onProgress({stage:'preparing',processedBytes:0,totalBytes:null});

@@ -135,7 +135,7 @@ async function restoreFile(runId,file){const run=restorableRuns().find(r=>r.id==
 
 
 
-const stages={cataloging:'Localizando versões no repositório',checking_base:'Verificando backup completo',comparing:'Comparando arquivos com o completo',preparing:'Preparando',scanning:'Localizando arquivos',checking_destination:'Verificando destino e espaço',restic_check:'Verificação Integral do repositório (5 dias)',vss_prepare:'Preparando VSS',vss_snapshot:'Criando snapshot VSS',vss_cleanup:'Limpando snapshots VSS',copying:'Copiando arquivos',verifying:'Verificando integridade',finalizing:'Finalizando'};
+const stages={usn_scanning:'Consultando alterações NTFS (USN)',cataloging:'Localizando versões no repositório',checking_base:'Verificando backup completo',comparing:'Comparando arquivos com o completo',preparing:'Preparando',scanning:'Localizando arquivos',checking_destination:'Verificando destino e espaço',restic_check:'Verificação Integral do repositório (5 dias)',vss_prepare:'Preparando VSS',vss_snapshot:'Criando snapshot VSS',vss_cleanup:'Limpando snapshots VSS',copying:'Copiando arquivos',verifying:'Verificando integridade',finalizing:'Finalizando'};
 let activityBusy=false,lastActivity=null;
 let renderedActivityKey=null,measurementId=null,activityMeasurement;
 function activityKey(item){return [item.id||item.created||'request',item.status,item.finished||''].join('|')}
