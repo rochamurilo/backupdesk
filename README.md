@@ -563,6 +563,10 @@ A enumeração das pastas, verificação da base do motor nativo, leitura/cópia
 pelo Restic, verificações de integridade e hashes de restauração continuam existindo.
 A otimização reduz a leitura preliminar dos arquivos inalterados; não elimina todas
 as leituras do backup nem dispensa validação de PST/OST no Outlook.
+Cada hash é relido no máximo após cinco dias, mesmo com USN inalterado. Reaproveitar
+um hash não renova esse prazo; relógio atrasado também exige nova leitura. O diário
+indica alterações pelo sistema de arquivos e não substitui uma auditoria periódica
+do conteúdo, inclusive para detectar problemas que não gerem registros USN.
 
 Testes: `node --test test/usn-cache.test.mjs`. A integração Windows como usuário
 comum está em `windows/usn-check.mjs`, chamada pelo workflow Windows VSS. Ela exige

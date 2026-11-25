@@ -11,6 +11,7 @@ const decimal=s=>typeof s==='string'&&/^(0|[1-9]\d{0,19})$/.test(s);
 const hash=s=>typeof s==='string'&&/^[a-f0-9]{64}$/.test(s);
 const LIMIT=128*1024*1024;
 const epoch=116444736000000000n;
+export const USN_HASH_MAX_AGE_MS=5*86400000;
 export function validJournal(j){
  try{return !!j&&typeof j.volume_id==='string'&&/^\\\\\?\\Volume\{[a-f0-9-]{36}\}\\$/i.test(j.volume_id)&&['journal_id','first_usn','next_usn','lowest_valid_usn','serial'].every(k=>decimal(j[k]))&&BigInt(j.journal_id)>0n&&BigInt(j.first_usn)<=BigInt(j.next_usn)&&BigInt(j.lowest_valid_usn)<=BigInt(j.next_usn)}catch{return false}
 }
@@ -49,7 +50,7 @@ export async function readWindowsUsn(requests,{signal}={}){
  });
 }
 
-export async function createUsnCache({files,snapshots=[],scopeKey,device,encryption,cacheFile,signal,onProgress=()=>{},platform=process.platform,readStamps=readWindowsUsn,confirmJournals=currentUsnJournals}){
+export async function createUsnCache({files,snapshots=[],scopeKey,device,encryption,cacheFile,signal,onProgress=()=>{},platform=process.platform,readStamps=readWindowsUsn,confirmJournals=currentUsnJournals,now=()=>Date.now()}){
  const stats={method:'sha256',reused_files:0,reused_bytes:0,hashed_files:0,reason:'unsupported-source'};
  const noop={stats,get:()=>null,remember:()=>{},async save(){}};
  if(platform!=='win32'||!encryption?.dataKey||!snapshots.length)return noop;
@@ -82,10 +83,10 @@ export async function createUsnCache({files,snapshots=[],scopeKey,device,encrypt
   proofs.set(file.path,{volume:journal.volume_id,value:[journal.volume_id,journal.journal_id,...parts].join('|')});
  }
  rows.clear();
- const entries=Object.create(null);stats.method='ntfs-usn';stats.eligible_files=proofs.size;stats.reason=proofs.size?(previous?'validated':'first-scan'):'file-metadata-unavailable';
+ const entries=Object.create(null),reused=new Set(),checkedAt=now();stats.method='ntfs-usn';stats.eligible_files=proofs.size;stats.reason=proofs.size?(previous?'validated':'first-scan'):'file-metadata-unavailable';
  return {stats,
-  get(file){const proof=proofs.get(file.path),old=previous?.entries?.[file.path];if(!proof||!old||!hash(old.hash)||old.proof!==proof.value||!continuousJournal(previous.volumes[proof.volume],volumes.get(proof.volume)))return null;stats.reused_files++;stats.reused_bytes+=Number(file.size);return old.hash},
-  remember(file,digest){const proof=proofs.get(file.path);if(!hash(digest))throw Error('Hash USN inválido.');if(proof)entries[file.path]={hash:digest,proof:proof.value}},
+  get(file){const proof=proofs.get(file.path),old=previous?.entries?.[file.path];if(!proof||!old||!hash(old.hash)||old.proof!==proof.value||!Number.isSafeInteger(old.verified_at)||!Number.isSafeInteger(checkedAt)||old.verified_at>checkedAt||checkedAt-old.verified_at>=USN_HASH_MAX_AGE_MS||!continuousJournal(previous.volumes[proof.volume],volumes.get(proof.volume)))return null;stats.reused_files++;stats.reused_bytes+=Number(file.size);reused.add(file.path);return old.hash},
+  remember(file,digest){const proof=proofs.get(file.path);if(!hash(digest))throw Error('Hash USN inválido.');if(proof)entries[file.path]={hash:digest,proof:proof.value,verified_at:reused.has(file.path)&&previous.entries[file.path].hash===digest?previous.entries[file.path].verified_at:checkedAt}},
   async save(){
    // Backup publication has already succeeded. An optional cache must not turn
    // that committed result into a failure if cancellation arrives afterwards.

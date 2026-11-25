@@ -4,7 +4,7 @@ import {mkdtemp,mkdir,readFile,writeFile,rm,readdir} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
-import {createUsnCache,continuousJournal,validJournal} from '../usn-cache.mjs';
+import {createUsnCache,continuousJournal,validJournal,USN_HASH_MAX_AGE_MS} from '../usn-cache.mjs';
 
 const digest=s=>createHash('sha256').update(s).digest('hex');
 const journal={volume_id:'\\\\?\\Volume{12345678-1234-1234-1234-123456789abc}\\',serial:'123',journal_id:'456',first_usn:'0',lowest_valid_usn:'0',next_usn:'1000'};
@@ -74,4 +74,11 @@ test('reinício, perda de continuidade ou indisponibilidade do diário DURANTE a
  for(const confirmJournals of [async()=>new Map(),async()=>{throw Error('indisponível')},async()=>new Map([[journal.volume_id,{...journal,journal_id:'999'}]]),async()=>new Map([[journal.volume_id,{...journal,first_usn:'1001',next_usn:'2000'}]])]){
   assert.equal((await createUsnCache({...opts,confirmJournals})).get(file),null);
  }
+}));
+
+test('reuso não adia a releitura periódica de cinco dias; relógio atrasado também exige SHA',()=>fixture(async opts=>{
+ const start=1700000000000;opts={...opts,now:()=>start};await seed(opts);
+ const reused=await createUsnCache({...opts,now:()=>start+USN_HASH_MAX_AGE_MS-1});assert.equal(reused.get(file),digest('old'));reused.remember(file,digest('old'));await reused.save();
+ assert.equal((await createUsnCache({...opts,now:()=>start+USN_HASH_MAX_AGE_MS})).get(file),null);
+ assert.equal((await createUsnCache({...opts,now:()=>start-1})).get(file),null);
 }));
