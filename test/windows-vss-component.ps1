@@ -75,7 +75,9 @@ try{
  $child=New-Object System.Diagnostics.Process;$child.StartInfo=$info
  try{
   [void]$child.Start();$output=$child.StandardOutput.ReadToEndAsync();$errors=$child.StandardError.ReadToEndAsync()
-  if(-not $child.WaitForExit(360000)){$child.Kill();throw 'O teste do usuário comum excedeu o prazo.'}
+  # The suite now exercises ten additional real VSS backups for USN reuse.
+  # Keep production worker deadlines unchanged; allow the expanded CI suite time.
+  if(-not $child.WaitForExit(720000)){$child.Kill();throw 'O teste do usuário comum excedeu o prazo.'}
   $clientOutput=$output.GetAwaiter().GetResult();$clientErrors=$errors.GetAwaiter().GetResult()
   $resultFile=Join-Path $testRoot 'result.json'
   if(-not (Test-Path -LiteralPath $resultFile)){throw ('O cliente de teste não iniciou: '+$errors.GetAwaiter().GetResult()+' '+$output.GetAwaiter().GetResult())}

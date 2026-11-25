@@ -86,7 +86,7 @@ permissions:
 jobs:
   native-vss:
     runs-on: windows-2022
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
