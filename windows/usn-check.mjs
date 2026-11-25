@@ -13,7 +13,7 @@ try {
  const master=await masterVault(path.join(root,'master')),encryption=await deviceVault(path.join(root,'agent'),'usn-test',master.publicKey);
  for(const engine of ['native','restic']){
   const a=path.join(source,'a.txt'),b=path.join(source,'b.txt');
-  await writeFile(a,'old');await writeFile(b,randomBytes(1024*1024));
+  await writeFile(a,'old');const exactTime=new Date('2026-01-01T12:00:00Z');await utimes(a,exactTime,exactTime);await writeFile(b,randomBytes(1024*1024));
   const opts={source,destination,device:'usn-test',routine:engine==='native'?101:102,engine:engine==='native'?undefined:engine,encryption,useVss:true};
   const first=await backupToDisk({...opts,run:engine+'-1'});
   assert.equal(first.comparison.reused_files,0);
@@ -21,19 +21,20 @@ try {
   assert.equal(second.comparison.method,'ntfs-usn',JSON.stringify(second.comparison));
   assert.equal(second.comparison.reused_files,2,JSON.stringify(second.comparison));
   assert.equal(second.comparison.reused_bytes,1024*1024+3);
-  // An open write handle with permissive sharing must still force full hashing.
-  const writer=await open(a,'r+');
-  try{
-   const busy=await backupToDisk({...opts,run:engine+'-busy'});
-   assert.equal(busy.comparison.reused_files,1,JSON.stringify(busy.comparison));
-   assert.equal(busy.files.find(f=>f.path==='a.txt').hash,second.files.find(f=>f.path==='a.txt').hash);
-  }finally{await writer.close()}
-  const before=await stat(a);await writeFile(a,'new');await utimes(a,before.atime,before.mtime);
+  const before=await stat(a,{bigint:true});await writeFile(a,'new');await utimes(a,before.atime,before.mtime);
+  const after=await stat(a,{bigint:true});assert.equal(after.size,before.size);assert.equal(after.mtimeNs,before.mtimeNs);
   const third=await backupToDisk({...opts,run:engine+'-3'});
   assert.equal(third.comparison.reused_files,1);
   assert.notEqual(third.files.find(f=>f.path==='a.txt').hash,second.files.find(f=>f.path==='a.txt').hash);
   const restored=await restoreFromDisk({snapshot:third.snapshot,files:third.files.filter(f=>f.path==='a.txt'),target,job:engine,getKey:h=>master.getKey(h)});
   assert.equal(await readFile(path.join(restored.destination,'a.txt'),'utf8'),'new');
+  // An open write handle with permissive sharing must still force full hashing.
+  const writer=await open(a,'r+');
+  try{
+   const busy=await backupToDisk({...opts,run:engine+'-busy'});
+   assert.equal(busy.comparison.reused_files,1,JSON.stringify(busy.comparison));
+   assert.equal(busy.files.find(f=>f.path==='a.txt').hash,third.files.find(f=>f.path==='a.txt').hash);
+  }finally{await writer.close()}
   // Rename, new file, hardlink and deletion must follow the current enumeration.
   await rename(b,path.join(source,'renamed.txt'));await link(a,path.join(source,'hardlink.txt'));
   const fourth=await backupToDisk({...opts,run:engine+'-4'});
