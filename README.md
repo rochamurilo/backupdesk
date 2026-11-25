@@ -536,3 +536,39 @@ Os quatro instaladores foram extraídos e comparados com as fontes validadas: 47
 Validação final Windows: os quatro jobs da [execução 43959217373](https://github.com/rochamurilo/backupdesk/actions/runs/43959217373) passaram. Foram confirmados o início lento, a confirmação atual de processo ativo, a rejeição de registro antigo/PID inválido, falha de inicialização seguida de reparo, VSS, SMB e instalação/atualização real de Client e Master. As chaves foram preservadas e os backups anteriores foram restaurados.
 
 Os três downloads públicos da 0.37.0 foram baixados após a publicação e conferidos com os hashes de `dist/SHA256SUMS.txt`.
+
+## Comparação acelerada por USN — em desenvolvimento
+
+Em origens locais NTFS com VSS e criptografia, os motores nativo e Restic podem
+reaproveitar SHA-256 calculados em uma execução anterior. O componente protegido
+consulta o identificador e os limites do diário no snapshot que acabou de criar.
+O agente comum consulta os metadados USN por arquivo, em um único processo auxiliar.
+O protocolo SYSTEM confirma o diário somente a partir de um identificador de
+snapshot pertencente à instalação; não aceita caminhos, scripts ou comandos do usuário.
+
+O reaproveitamento exige a mesma identidade de volume, diário e arquivo, o mesmo
+USN, tamanho e timestamps, continuidade do diário e correspondência entre o arquivo
+no snapshot e o arquivo local. O diário do volume original é confirmado novamente
+após a consulta, para invalidar reinícios ou descontinuidade durante a leitura.
+A abertura temporária do arquivo local recusa escrita
+e exclusão; se houver escritor aberto, divergência ou erro, o conteúdo do snapshot
+é lido normalmente para calcular SHA-256. O cache é autenticado e criptografado pela
+chave existente do computador, separado por conjunto de origens/destino. É promovido
+somente após a conclusão e a limpeza VSS; falha ao gravá-lo não invalida o backup.
+
+Primeira execução, cache ausente/corrompido, diário ausente/recriado/truncado,
+permissões insuficientes, NTFS não suportado, origem SMB e plataformas sem VSS
+continuam com leitura completa. Não cria nem altera o diário USN de produção.
+A enumeração das pastas, verificação da base do motor nativo, leitura/cópia exigida
+pelo Restic, verificações de integridade e hashes de restauração continuam existindo.
+A otimização reduz a leitura preliminar dos arquivos inalterados; não elimina todas
+as leituras do backup nem dispensa validação de PST/OST no Outlook.
+Cada hash é relido no máximo após cinco dias, mesmo com USN inalterado. Reaproveitar
+um hash não renova esse prazo; relógio atrasado também exige nova leitura. O diário
+indica alterações pelo sistema de arquivos e não substitui uma auditoria periódica
+do conteúdo, inclusive para detectar problemas que não gerem registros USN.
+
+Testes: `node --test test/usn-cache.test.mjs`. A integração Windows como usuário
+comum está em `windows/usn-check.mjs`, chamada pelo workflow Windows VSS. Ela exige
+reaproveitamento real nos dois motores e restauração do conteúdo alterado; não basta
+que a alternativa de leitura completa funcione.

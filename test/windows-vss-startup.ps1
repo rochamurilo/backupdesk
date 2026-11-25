@@ -44,7 +44,7 @@ try{
  }finally{$state=$savedState;Remove-Item -LiteralPath $publisherRoot -Recurse -Force}
  'VSS installer: atomic startup state replacement under Windows PowerShell: OK.'
  New-Item -ItemType Directory -Path $component -Force | Out-Null
- foreach($file in @('install-vss-component.ps1','vss-broker.ps1','vss-protocol.ps1','vss.ps1','update-application.ps1')){Copy-Item -LiteralPath (Join-Path $repo ('windows\'+$file)) -Destination $component -Force}
+ foreach($file in @('install-vss-component.ps1','vss-broker.ps1','vss-protocol.ps1','usn-native.ps1','vss.ps1','update-application.ps1')){Copy-Item -LiteralPath (Join-Path $repo ('windows\'+$file)) -Destination $component -Force}
  # A cold/loaded computer can take more than the previous 15-second deadline.
  $delayed=$broker.Replace('$ErrorActionPreference=''Stop''',('Start-Sleep -Seconds 20'+"`r`n"+'$ErrorActionPreference=''Stop'''))
  [IO.File]::WriteAllText((Join-Path $component 'vss-broker.ps1'),$delayed,(New-Object Text.UTF8Encoding($true)))

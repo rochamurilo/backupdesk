@@ -45,7 +45,7 @@ function Invoke-OwnedVss($Command,$Key){
  $source=[IO.File]::ReadAllText((Join-Path $PSScriptRoot 'vss.ps1'),[Text.Encoding]::UTF8).TrimStart([char]0xFEFF)
  # Both the script and reply location are fixed by this protected broker. The
  # unprivileged protocol never supplies script text, commands or output paths.
- $script='$BackupDeskVssResultFile = '+"'"+$reply.Replace("'","''")+"';"+"`r`n"+$source
+ $script='$BackupDeskVssResultFile = '+"'"+$reply.Replace("'","''")+"';"+"`r`n"+'$BackupDeskVssComponentRoot = '+"'"+$PSScriptRoot.Replace("'","''")+"';"+"`r`n"+$source
  $info=New-Object System.Diagnostics.ProcessStartInfo
  $info.FileName=Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
  $info.Arguments='-NoLogo -NoProfile -NonInteractive -EncodedCommand '+[Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($script))

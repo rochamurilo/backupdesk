@@ -9,6 +9,9 @@ on:
   push:
     branches: [main]
     paths:
+      - 'usn-cache.mjs'
+      - 'test/usn-cache.test.mjs'
+      - 'windows/usn*'
       - 'disk-backup.mjs'
       - 'progress.mjs'
       - 'test/progress.test.mjs'
@@ -83,7 +86,7 @@ permissions:
 jobs:
   native-vss:
     runs-on: windows-2022
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:

@@ -31,20 +31,27 @@ $testTask='BackupDesk-StandardUser-Test-'+$userName
 $env:BACKUPDESK_VSS_PRODUCT='master';$env:BACKUPDESK_VSS_OWNER_SID=$sid;$env:BACKUPDESK_VSS_REMOVE='0'
 $powerShell=Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
 try{
+ # This is an ephemeral CI runner. Ensure the test volume has an existing journal;
+ # production code only queries it and never creates, deletes or resizes it.
+ $testVolume=[IO.Path]::GetPathRoot($testRoot).Substring(0,2)
+ & fsutil.exe usn queryjournal $testVolume *> $null
+ if($LASTEXITCODE -ne 0){& fsutil.exe usn createjournal m=33554432 a=8388608 $testVolume | Out-Null;if($LASTEXITCODE -ne 0){throw 'Não foi possível preparar o diário USN do volume de teste.'}}
  if(-not (Get-LocalGroupMember -SID 'S-1-5-32-545' | Where-Object {$_.SID.Value -eq $sid})){Add-LocalGroupMember -SID 'S-1-5-32-545' -Member $userName}
  New-Item -ItemType Directory -Path $component -Force | Out-Null
- foreach($file in @('install-vss-component.ps1','vss-broker.ps1','vss-protocol.ps1','vss.ps1')){Copy-Item -LiteralPath (Join-Path $repo ('windows\'+$file)) -Destination $component -Force}
+ foreach($file in @('install-vss-component.ps1','vss-broker.ps1','vss-protocol.ps1','usn-native.ps1','vss.ps1')){Copy-Item -LiteralPath (Join-Path $repo ('windows\'+$file)) -Destination $component -Force}
  $env:BACKUPDESK_TEST_STAGE='install-component'
  & $powerShell -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File (Join-Path $component 'install-vss-component.ps1')
  if($LASTEXITCODE -ne 0){throw 'Instalação do componente falhou.'}
  $task=Get-ScheduledTask -TaskName ('BackupDeskVSS-master-'+$sid)
  if($task.Principal.UserId -notin @('SYSTEM','S-1-5-18')){throw 'A conta do componente não é SYSTEM.'}
  New-Item -ItemType Directory -Path (Join-Path $testRoot 'agent\windows') -Force | Out-Null
- foreach($file in @('background.mjs','disk-backup.mjs','restic-backup.mjs','restic-runner.mjs','restic-local-transport.mjs','backup-control.mjs','restic-policy.mjs','restic-release.mjs','crypto-vault.mjs','encrypted-files.mjs','backup-repository.mjs','repository-catalog.mjs','bandwidth.mjs','filesystem.mjs','vss.mjs')){Copy-Item -LiteralPath (Join-Path $repo $file) -Destination (Join-Path $testRoot 'agent')}
+ foreach($file in @('background.mjs','usn-cache.mjs','disk-backup.mjs','restic-backup.mjs','restic-runner.mjs','restic-local-transport.mjs','backup-control.mjs','restic-policy.mjs','restic-release.mjs','crypto-vault.mjs','encrypted-files.mjs','backup-repository.mjs','repository-catalog.mjs','bandwidth.mjs','filesystem.mjs','vss.mjs')){Copy-Item -LiteralPath (Join-Path $repo $file) -Destination (Join-Path $testRoot 'agent')}
  Copy-Item -LiteralPath (Join-Path $repo 'windows\encrypted-backup-check.mjs') -Destination (Join-Path $testRoot 'agent\windows-encrypted-backup.mjs')
+ Copy-Item -LiteralPath (Join-Path $repo 'windows\usn-check.mjs') -Destination (Join-Path $testRoot 'agent\usn-check.mjs')
  Copy-Item -LiteralPath (Join-Path $repo 'windows\restic.exe') -Destination (Join-Path $testRoot 'agent\windows')
  Copy-Item -LiteralPath (Join-Path $repo 'windows\protect-key.ps1') -Destination (Join-Path $testRoot 'agent\windows')
  Copy-Item -LiteralPath (Join-Path $repo 'windows\vss-client.ps1') -Destination (Join-Path $testRoot 'agent\windows')
+ foreach($file in @('usn-native.ps1','usn-files.ps1')){Copy-Item -LiteralPath (Join-Path $repo ('windows\'+$file)) -Destination (Join-Path $testRoot 'agent\windows')}
  Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'windows-vss-user.ps1') -Destination (Join-Path $testRoot 'run.ps1')
  Copy-Item -LiteralPath (Get-Command node.exe).Source -Destination (Join-Path $testRoot 'node.exe')
  $acl=Get-Acl -LiteralPath $testRoot
@@ -68,7 +75,9 @@ try{
  $child=New-Object System.Diagnostics.Process;$child.StartInfo=$info
  try{
   [void]$child.Start();$output=$child.StandardOutput.ReadToEndAsync();$errors=$child.StandardError.ReadToEndAsync()
-  if(-not $child.WaitForExit(360000)){$child.Kill();throw 'O teste do usuário comum excedeu o prazo.'}
+  # The suite now exercises ten additional real VSS backups for USN reuse.
+  # Keep production worker deadlines unchanged; allow the expanded CI suite time.
+  if(-not $child.WaitForExit(720000)){$child.Kill();throw 'O teste do usuário comum excedeu o prazo.'}
   $clientOutput=$output.GetAwaiter().GetResult();$clientErrors=$errors.GetAwaiter().GetResult()
   $resultFile=Join-Path $testRoot 'result.json'
   if(-not (Test-Path -LiteralPath $resultFile)){throw ('O cliente de teste não iniciou: '+$errors.GetAwaiter().GetResult()+' '+$output.GetAwaiter().GetResult())}

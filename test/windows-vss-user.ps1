@@ -31,6 +31,9 @@ try{
   $stalled.Connect(2000);Start-Sleep -Seconds 11
   if(-not (Invoke-Client @{action='probe'}).automatic){throw 'Cliente sem solicitação bloqueou o componente.'}
  }finally{$stalled.Dispose()}
+ $env:BACKUPDESK_TEST_ROOT=$PSScriptRoot
+ & (Join-Path $PSScriptRoot 'node.exe') (Join-Path $PSScriptRoot 'agent\usn-check.mjs')
+ if($LASTEXITCODE -ne 0){throw 'A integração nativa USN não passou.'}
  $payload=[Text.Encoding]::UTF8.GetBytes('Arquivo de teste bloqueado; não é um PST real do Outlook.')
  [IO.File]::WriteAllBytes($fixture,$payload)
  [IO.File]::SetLastWriteTimeUtc($fixture,[datetime]'2025-06-15T11:12:13Z')
@@ -44,6 +47,8 @@ try{
  if($LASTEXITCODE -ne 0){throw 'Não foi possível ler o snapshot real.'}
  $refused=$false;try{$null=Invoke-Client @{action='delete';id=$snapshot.id;client=('c'*64)}}catch{$refused=$true}
  if(-not $refused){throw 'Outra instalação conseguiu remover o snapshot.'}
+ $refused=$false;try{$null=Invoke-Client @{action='usn';id=$snapshot.id;client=('c'*64)}}catch{$refused=$true}
+ if(-not $refused){throw 'Outra instalação conseguiu consultar o diário do snapshot.'}
  $removedId=$snapshot.id;$null=Invoke-Client @{action='delete';id=$snapshot.id};$snapshot=$null
  $env:BACKUPDESK_TEST_SOURCE=$fixture
  $env:BACKUPDESK_TEST_DEST=Join-Path $PSScriptRoot ('backupdesk-destination-'+[guid]::NewGuid().ToString('N'))

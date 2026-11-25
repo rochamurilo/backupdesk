@@ -21,6 +21,12 @@ try {
  $ledger=$env:BACKUPDESK_VSS_LEDGER
  function Read-Owned {if(Test-Path -LiteralPath $ledger){$data=Get-Content -Raw -LiteralPath $ledger | ConvertFrom-Json;if($data.format -ne 'backupdesk-vss-owned-v1'){throw 'Registro VSS do aplicativo inválido.'};return @($data.ids | Where-Object {$_})};return @()}
  function Write-Owned($ids){@{format='backupdesk-vss-owned-v1';ids=@($ids | Where-Object {$_})} | ConvertTo-Json -Compress | Set-Content -LiteralPath $ledger -Encoding UTF8}
+ function Read-UsnCheckpoint([string]$Device,[string]$VolumeId,[uint32]$Serial){
+  $componentRoot=$PSScriptRoot;if($BackupDeskVssComponentRoot){$componentRoot=$BackupDeskVssComponentRoot}
+  . (Join-Path $componentRoot 'usn-native.ps1')
+  $journal=[BackupDeskUsn]::Query($Device,$Serial)
+  return @{volume_id=$VolumeId.ToLowerInvariant();serial=$journal.serial;journal_id=$journal.journal_id;first_usn=$journal.first_usn;next_usn=$journal.next_usn;lowest_valid_usn=$journal.lowest_valid_usn}
+ }
  function Delete-Owned($id){
   if($id -notmatch '^\{[a-fA-F0-9-]{36}\}$'){throw 'Identificador VSS inválido.'}
   $owned=@(Read-Owned);if($owned -notcontains $id){throw 'O snapshot não pertence ao registro desta instalação.'}
@@ -30,6 +36,22 @@ try {
   Write-Owned @($owned | Where-Object {$_ -ne $id})
  }
  if($request.action -eq 'cleanup') {foreach($id in @(Read-Owned)){Delete-Owned $id};Write-VssReply @{cleaned=$true};exit 0}
+
+ if($request.action -eq 'usn'){
+  # Only metadata of the LIVE volume backing an already-owned snapshot. The
+  # caller supplies no path, drive, script, or journal cursor to SYSTEM.
+  $id=[string]$request.id
+  if($id -notmatch '^\{[a-fA-F0-9-]{36}\}$' -or @(Read-Owned) -notcontains $id){throw 'O snapshot não pertence ao registro desta instalação.'}
+  $copy=Get-CimInstance Win32_ShadowCopy -Filter ("ID = '"+$id+"'")
+  if($null -eq $copy){throw 'Snapshot USN indisponível.'}
+  $volumeId=[string]$copy.VolumeName
+  if($volumeId -notmatch '^\\\\\?\\Volume\{[a-fA-F0-9-]{36}\}\\$'){throw 'Volume USN inválido.'}
+  $volume=Get-CimInstance Win32_Volume | Where-Object { $_.DeviceID -ieq $volumeId }
+  if($null -eq $volume -or $volume.FileSystem -ne 'NTFS'){throw 'Volume USN indisponível.'}
+  $phase='query-owned-journal'
+  Write-VssReply (Read-UsnCheckpoint ($volumeId.TrimEnd('\')) $volumeId ([uint32]$volume.SerialNumber))
+  exit 0
+ }
 
  if($request.action -eq 'create'){
   $root=[string]$request.volume
@@ -43,7 +65,13 @@ try {
   try{Write-Owned @(@(Read-Owned)+[string]$created.ShadowID)}catch{Get-CimInstance Win32_ShadowCopy -Filter ("ID = '"+$created.ShadowID+"'") | Remove-CimInstance;throw}
   $snapshot=Get-CimInstance Win32_ShadowCopy -Filter ("ID = '"+$created.ShadowID+"'")
   if($null -eq $snapshot){throw 'Snapshot VSS criado mas não localizado.'}
-  Write-VssReply @{id=$snapshot.ID;device=$snapshot.DeviceObject;volume=$root;consistency='crash-consistent-no-writers'}
+  # Optional read-only journal checkpoint from this exact owned snapshot. A
+  # failure disables USN reuse, never snapshot creation or verified hashing.
+  $usn=$null;$usnError=$null
+  try {
+   $usn=Read-UsnCheckpoint ([string]$snapshot.DeviceObject) ([string]$volume.DeviceID) ([uint32]$volume.SerialNumber)
+  } catch { $usn=$null;$usnError=$_.Exception.GetBaseException().Message }
+  Write-VssReply @{id=$snapshot.ID;device=$snapshot.DeviceObject;volume=$root;consistency='crash-consistent-no-writers';usn=$usn;usn_error=$usnError}
  }elseif($request.action -eq 'delete'){
   $id=[string]$request.id
   if($id -notmatch '^\{[a-fA-F0-9-]{36}\}$'){throw 'Identificador VSS inválido.'}
