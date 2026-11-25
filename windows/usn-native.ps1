@@ -66,7 +66,7 @@ public static class BackupDeskUsn {
     string live=Encoding.UTF8.GetString(Convert.FromBase64String(parts[2]));
     if(!System.Text.RegularExpressions.Regex.IsMatch(snapshot,@"^\\\\\?\\GLOBALROOT\\Device\\HarddiskVolumeShadowCopy\d+\\",System.Text.RegularExpressions.RegexOptions.IgnoreCase)||!System.Text.RegularExpressions.Regex.IsMatch(live,@"^[A-Za-z]:\\"))throw new IOException("Local VSS paths required");
     string volumeId=Encoding.UTF8.GetString(Convert.FromBase64String(parts[3]));
-    if(!System.Text.RegularExpressions.Regex.IsMatch(volumeId,@"^\\\\\?\\Volume\{[a-fA-F0-9-]{36}\}\\$"))throw new IOException("Volume identity required");
+    if(!System.Text.RegularExpressions.Regex.IsMatch(volumeId,@"^\\\\\?\\Volume\{[a-fA-F0-9-]{36}\}\\$",System.Text.RegularExpressions.RegexOptions.IgnoreCase))throw new IOException("Volume identity required");
     result=Pair(snapshot,live,volumeId);
    } catch(Exception error) {
     // CI diagnostics only. Never log file names or credentials.
