@@ -5,6 +5,7 @@ import {lstat,readFile,writeFile,rename,unlink} from 'node:fs/promises';
 import {randomUUID} from 'node:crypto';
 import path from 'node:path';
 import {openJSON,sealJSON} from './crypto-vault.mjs';
+import {currentUsnJournals} from './vss.mjs';
 
 const decimal=s=>typeof s==='string'&&/^(0|[1-9]\d{0,19})$/.test(s);
 const hash=s=>typeof s==='string'&&/^[a-f0-9]{64}$/.test(s);
@@ -48,7 +49,7 @@ export async function readWindowsUsn(requests,{signal}={}){
  });
 }
 
-export async function createUsnCache({files,snapshots=[],scopeKey,device,encryption,cacheFile,signal,onProgress=()=>{},platform=process.platform,readStamps=readWindowsUsn}){
+export async function createUsnCache({files,snapshots=[],scopeKey,device,encryption,cacheFile,signal,onProgress=()=>{},platform=process.platform,readStamps=readWindowsUsn,confirmJournals=currentUsnJournals}){
  const stats={method:'sha256',reused_files:0,reused_bytes:0,hashed_files:0,reason:'unsupported-source'};
  const noop={stats,get:()=>null,remember:()=>{},async save(){}};
  if(platform!=='win32'||!encryption?.dataKey||!snapshots.length)return noop;
@@ -66,10 +67,13 @@ export async function createUsnCache({files,snapshots=[],scopeKey,device,encrypt
  signal?.throwIfAborted();onProgress({stage:'usn_scanning',currentFile:'',processedBytes:0,totalBytes:null,totalFiles:requests.length});
  let rows;
  try{rows=await readStamps(requests,{signal})}catch{signal?.throwIfAborted();stats.reason='metadata-unavailable';return noop}
+ let confirmed;
+ try{confirmed=await confirmJournals(snapshots,{signal})}catch{signal?.throwIfAborted();stats.reason='journal-confirmation-unavailable';return noop}
  const proofs=new Map();
  if(process.env.BACKUPDESK_USN_TEST_DIAGNOSTICS==='1')console.log('USN test metadata',JSON.stringify({journals:[...volumes.values()],rows:[...rows.values()].slice(0,2),planned:files.slice(0,2).map(f=>({size:String(f.size),mtime:String(f.mtime)}))}));
  for(let i=0;i<candidates.length;i++){
   const parts=rows.get(i),{file,journal}=candidates[i];
+  if(!continuousJournal(journal,confirmed.get(journal.volume_id)))continue;
   // The native helper has compared the snapshot against a live handle that
   // denies writes/deletes. Recheck the scan metadata and journal bounds here.
   if(!Array.isArray(parts)||parts.length!==6||!parts.every(decimal))continue;

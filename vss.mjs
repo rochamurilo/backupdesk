@@ -21,6 +21,15 @@ async function requestVss(request){
  try{const {stdout}=await execute('powershell.exe',['-NoLogo','-NoProfile','-NonInteractive','-EncodedCommand',Buffer.from(script,'utf16le').toString('base64')],{windowsHide:true,env:{...process.env,BACKUPDESK_VSS_REQUEST:JSON.stringify({...request,protocol:1,client}),BACKUPDESK_VSS_PRODUCT:product},encoding:'utf8',timeout:240000,maxBuffer:1048576});return JSON.parse(stdout.replace(/^\uFEFF/,'').trim())}catch(e){throw Error(powershellErrorText(e.stderr)||(e.killed?'O componente VSS excedeu o tempo de resposta. Repare o componente pelo atualizador do BackupDesk.':'Não foi possível comunicar com o componente VSS. Execute o atualizador do BackupDesk nesta conta e autorize o reparo.'))}
 }
 let cachedStatus=null,statusAt=0,statusPending=null;
+export async function currentUsnJournals(snapshots,{signal}={}){
+ const journals=new Map();
+ if(process.platform!=='win32')return journals;
+ for(const snapshot of snapshots){
+  signal?.throwIfAborted();if(!snapshot.usn)continue;
+  try{const journal=await requestVss({action:'usn',id:snapshot.id});journals.set(snapshot.usn.volume_id,journal)}catch{signal?.throwIfAborted()}
+ }
+ return journals;
+}
 export async function automaticVssStatus(){
  if(cachedStatus&&Date.now()-statusAt<15000)return cachedStatus;
  if(statusPending)return statusPending;

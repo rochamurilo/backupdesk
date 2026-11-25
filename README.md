@@ -543,11 +543,14 @@ Em origens locais NTFS com VSS e criptografia, os motores nativo e Restic podem
 reaproveitar SHA-256 calculados em uma execução anterior. O componente protegido
 consulta o identificador e os limites do diário no snapshot que acabou de criar.
 O agente comum consulta os metadados USN por arquivo, em um único processo auxiliar.
-Não há novo comando ou caminho aceito pelo protocolo SYSTEM.
+O protocolo SYSTEM confirma o diário somente a partir de um identificador de
+snapshot pertencente à instalação; não aceita caminhos, scripts ou comandos do usuário.
 
 O reaproveitamento exige a mesma identidade de volume, diário e arquivo, o mesmo
 USN, tamanho e timestamps, continuidade do diário e correspondência entre o arquivo
-no snapshot e o arquivo local. A abertura temporária do arquivo local recusa escrita
+no snapshot e o arquivo local. O diário do volume original é confirmado novamente
+após a consulta, para invalidar reinícios ou descontinuidade durante a leitura.
+A abertura temporária do arquivo local recusa escrita
 e exclusão; se houver escritor aberto, divergência ou erro, o conteúdo do snapshot
 é lido normalmente para calcular SHA-256. O cache é autenticado e criptografado pela
 chave existente do computador, separado por conjunto de origens/destino. É promovido

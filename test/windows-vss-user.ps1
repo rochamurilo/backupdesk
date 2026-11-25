@@ -47,6 +47,8 @@ try{
  if($LASTEXITCODE -ne 0){throw 'Não foi possível ler o snapshot real.'}
  $refused=$false;try{$null=Invoke-Client @{action='delete';id=$snapshot.id;client=('c'*64)}}catch{$refused=$true}
  if(-not $refused){throw 'Outra instalação conseguiu remover o snapshot.'}
+ $refused=$false;try{$null=Invoke-Client @{action='usn';id=$snapshot.id;client=('c'*64)}}catch{$refused=$true}
+ if(-not $refused){throw 'Outra instalação conseguiu consultar o diário do snapshot.'}
  $removedId=$snapshot.id;$null=Invoke-Client @{action='delete';id=$snapshot.id};$snapshot=$null
  $env:BACKUPDESK_TEST_SOURCE=$fixture
  $env:BACKUPDESK_TEST_DEST=Join-Path $PSScriptRoot ('backupdesk-destination-'+[guid]::NewGuid().ToString('N'))

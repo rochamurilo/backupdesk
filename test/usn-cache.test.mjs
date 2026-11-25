@@ -11,7 +11,7 @@ const journal={volume_id:'\\\\?\\Volume{12345678-1234-1234-1234-123456789abc}\\'
 const file={absolute:'\\\\?\\GLOBALROOT\\Device\\HarddiskVolumeShadowCopy1\\source\\a.txt',path:'a.txt',size:3n,mtime:1700000000000000000n};
 const stamp=['123','789','100','3','133444736000000000','132000000000000000'];
 const snapshot={device:'\\\\?\\GLOBALROOT\\Device\\HarddiskVolumeShadowCopy1',volume:'C:\\',usn:journal};
-async function fixture(operation){const dir=await mkdtemp(path.join(tmpdir(),'bkd-usn-'));try{await operation({files:[file],snapshots:[snapshot],scopeKey:'scope',device:'pc',encryption:{dataKey:Buffer.alloc(32,7)},cacheFile:path.join(dir,'cache.bde'),platform:'win32',readStamps:async requests=>{assert.equal(requests[0].live,'C:\\source\\a.txt');return new Map([[0,stamp]])}},dir)}finally{await rm(dir,{recursive:true,force:true})}}
+async function fixture(operation){const dir=await mkdtemp(path.join(tmpdir(),'bkd-usn-'));try{await operation({files:[file],snapshots:[snapshot],scopeKey:'scope',device:'pc',encryption:{dataKey:Buffer.alloc(32,7)},cacheFile:path.join(dir,'cache.bde'),platform:'win32',confirmJournals:async snapshots=>new Map(snapshots.map(s=>[s.usn.volume_id,s.usn])),readStamps:async requests=>{assert.equal(requests[0].live,'C:\\source\\a.txt');return new Map([[0,stamp]])}},dir)}finally{await rm(dir,{recursive:true,force:true})}}
 async function seed(opts){const cache=await createUsnCache(opts);assert.equal(cache.get(file),null);cache.remember(file,digest('old'));await cache.save()}
 
 test('USN reutiliza SHA-256 sem reler conteúdo, com cache cifrado e snapshot diferente',()=>fixture(async opts=>{
@@ -67,4 +67,11 @@ test('cache opcional não reprova backup já publicado se a gravação falha ou 
  const cache=await createUsnCache({...opts,cacheFile:blocked});cache.remember(file,digest('old'));await cache.save();assert.equal(cache.stats.reason,'cache-write-failed');
  const controller=new AbortController(),cancelled=await createUsnCache({...opts,signal:controller.signal});cancelled.remember(file,digest('old'));controller.abort();await cancelled.save();
  assert.ok((await readdir(dir)).every(n=>!n.endsWith('.tmp')));
+}));
+
+test('reinício, perda de continuidade ou indisponibilidade do diário DURANTE a consulta descarta todos os hashes',()=>fixture(async opts=>{
+ await seed(opts);
+ for(const confirmJournals of [async()=>new Map(),async()=>{throw Error('indisponível')},async()=>new Map([[journal.volume_id,{...journal,journal_id:'999'}]]),async()=>new Map([[journal.volume_id,{...journal,first_usn:'1001',next_usn:'2000'}]])]){
+  assert.equal((await createUsnCache({...opts,confirmJournals})).get(file),null);
+ }
 }));
