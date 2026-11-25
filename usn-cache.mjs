@@ -26,7 +26,7 @@ export async function readWindowsUsn(requests,{signal}={}){
   const rows=new Map();let buffer='',invalid=false;
   const fail=()=>{invalid=true;child.kill()};
   const timer=setTimeout(fail,600000);timer.unref();
-  child.stderr.resume();child.stdout.setEncoding('utf8');child.stdin.on('error',()=>{invalid=true});
+  if(process.env.BACKUPDESK_USN_TEST_DIAGNOSTICS==='1')child.stderr.on('data',chunk=>process.stderr.write(chunk));else child.stderr.resume();child.stdout.setEncoding('utf8');child.stdin.on('error',()=>{invalid=true});
   child.stdout.on('data',chunk=>{
    buffer+=chunk;let end;
    while((end=buffer.indexOf('\n'))>=0){
@@ -67,6 +67,7 @@ export async function createUsnCache({files,snapshots=[],scopeKey,device,encrypt
  let rows;
  try{rows=await readStamps(requests,{signal})}catch{signal?.throwIfAborted();stats.reason='metadata-unavailable';return noop}
  const proofs=new Map();
+ if(process.env.BACKUPDESK_USN_TEST_DIAGNOSTICS==='1')console.log('USN test metadata',JSON.stringify({journals:[...volumes.values()],rows:[...rows.values()].slice(0,2),planned:files.slice(0,2).map(f=>({size:String(f.size),mtime:String(f.mtime)}))}));
  for(let i=0;i<candidates.length;i++){
   const parts=rows.get(i),{file,journal}=candidates[i];
   // The native helper has compared the snapshot against a live handle that

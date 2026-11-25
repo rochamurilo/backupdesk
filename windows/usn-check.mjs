@@ -6,6 +6,7 @@ import {randomBytes} from 'node:crypto';
 import {backupToDisk,restoreFromDisk} from './disk-backup.mjs';
 import {masterVault,deviceVault} from './crypto-vault.mjs';
 const root=await mkdtemp(path.join(process.env.BACKUPDESK_TEST_ROOT,'usn-'));
+process.env.BACKUPDESK_USN_TEST_DIAGNOSTICS='1';
 try {
  const source=path.join(root,'source'),destination=path.join(root,'destination'),target=path.join(root,'restore');
  for(const folder of [source,destination,target])await mkdir(folder);

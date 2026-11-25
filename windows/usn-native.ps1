@@ -33,9 +33,11 @@ public static class BackupDeskUsn {
  }
  static string Time(System.Runtime.InteropServices.ComTypes.FILETIME t){return (((ulong)(uint)t.dwHighDateTime<<32)|(uint)t.dwLowDateTime).ToString();}
  static string Stamp(SafeFileHandle h) {
-  Info info;if(!GetFileInformationByHandle(h,out info)||(info.Attributes&0x410)!=0)throw new IOException("USN requires regular non-reparse file");
+  Info info;if(!GetFileInformationByHandle(h,out info)||(info.Attributes&0x410)!=0)throw new IOException("USN requires regular non-reparse file (Windows "+Marshal.GetLastWin32Error()+")");
   byte[] b=new byte[4096];int n;
-  if(!DeviceIoControl(h,0x000900eb,null,0,b,b.Length,out n,IntPtr.Zero)||n<60||BitConverter.ToUInt16(b,4)!=2||BitConverter.ToUInt32(b,0)>n)throw new IOException("Unsupported USN record");
+  byte[] versions=new byte[]{2,0,2,0};
+  if(!DeviceIoControl(h,0x000900eb,versions,versions.Length,b,b.Length,out n,IntPtr.Zero))throw new IOException("USN file record unavailable (Windows "+Marshal.GetLastWin32Error()+")");
+  if(n<60||BitConverter.ToUInt16(b,4)!=2||BitConverter.ToUInt32(b,0)<60||BitConverter.ToUInt32(b,0)>n)throw new IOException("Unsupported USN record");
   ulong id=((ulong)info.IndexHigh<<32)|info.IndexLow;
   long usn=BitConverter.ToInt64(b,24);
   if(id!=BitConverter.ToUInt64(b,8)||usn<=0)throw new IOException("USN identity unavailable");
@@ -54,7 +56,7 @@ public static class BackupDeskUsn {
   }
  }
  public static void Stream() {
-  string line;
+  string line;int errors=0;
   while((line=Console.ReadLine())!=null) {
    string[] parts=line.Split('\t');int index;
    if(line.Length>65536||parts.Length!=4||!Int32.TryParse(parts[0],out index)||index<0)throw new IOException("Invalid USN input");
@@ -66,7 +68,10 @@ public static class BackupDeskUsn {
     string volumeId=Encoding.UTF8.GetString(Convert.FromBase64String(parts[3]));
     if(!System.Text.RegularExpressions.Regex.IsMatch(volumeId,@"^\\\\\?\\Volume\{[a-fA-F0-9-]{36}\}\\$"))throw new IOException("Volume identity required");
     result=Pair(snapshot,live,volumeId);
-   } catch { /* Per-file failure always falls back to hashing snapshot data. */ }
+   } catch(Exception error) {
+    // CI diagnostics only. Never log file names or credentials.
+    if(Environment.GetEnvironmentVariable("BACKUPDESK_USN_TEST_DIAGNOSTICS")=="1"&&errors++<4)Console.Error.WriteLine("USN test: "+error.Message);
+   }
    Console.WriteLine(index+"\t"+result);
   }
  }
