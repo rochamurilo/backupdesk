@@ -13,7 +13,7 @@ test('modo de origem exige escolha explícita e distingue SMB de discos e dispos
 test('origem de rede persiste separada do VSS local, aplica preferências e bloqueia clients antigos',{timeout:25000},async()=>{
  const dir=await mkdtemp(join(tmpdir(),'backupdesk-network-source-'));let child,db,token;
  async function start(){child=spawn(process.execPath,['server.mjs'],{env:{...process.env,PORT:'3188',DATA_DIR:dir,ADMIN_PASSWORD:'network-source-test'},stdio:['ignore','pipe','pipe']});await once(child.stdout,'data')}
- const api=async(p,b,t=token,method,version='0.37.0')=>{const r=await fetch('http://127.0.0.1:3188/api/'+p,{method:method||(b?'POST':'GET'),headers:{Authorization:'Bearer '+t,'Content-Type':'application/json','X-BackupDesk-Version':version,'X-BackupDesk-Platform':'win32'},body:b?JSON.stringify(b):undefined});return {status:r.status,body:await r.json()}};
+ const api=async(p,b,t=token,method,version='0.37.1')=>{const r=await fetch('http://127.0.0.1:3188/api/'+p,{method:method||(b?'POST':'GET'),headers:{Authorization:'Bearer '+t,'Content-Type':'application/json','X-BackupDesk-Version':version,'X-BackupDesk-Platform':'win32'},body:b?JSON.stringify(b):undefined});return {status:r.status,body:await r.json()}};
  try{
   await start();token=(await api('login',{name:'admin',password:'network-source-test'})).body.token;
   const device=(await api('devices',{name:'Network PC'})).body;await api('agent/config',null,device.token);

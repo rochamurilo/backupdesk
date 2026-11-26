@@ -33,7 +33,7 @@ $powerShell=Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershel
 try{
  if(-not (Get-LocalGroupMember -SID 'S-1-5-32-545' | Where-Object {$_.SID.Value -eq $sid})){Add-LocalGroupMember -SID 'S-1-5-32-545' -Member $userName}
  New-Item -ItemType Directory -Path $component -Force | Out-Null
- foreach($file in @('install-vss-component.ps1','vss-broker.ps1','vss-protocol.ps1','vss.ps1')){Copy-Item -LiteralPath (Join-Path $repo ('windows\'+$file)) -Destination $component -Force}
+ foreach($file in @('install-vss-component.ps1','vss-broker.ps1','vss-protocol.ps1','vss-io.ps1','vss.ps1')){Copy-Item -LiteralPath (Join-Path $repo ('windows\'+$file)) -Destination $component -Force}
  $env:BACKUPDESK_TEST_STAGE='install-component'
  & $powerShell -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File (Join-Path $component 'install-vss-component.ps1')
  if($LASTEXITCODE -ne 0){throw 'Instalação do componente falhou.'}
@@ -45,11 +45,16 @@ try{
  Copy-Item -LiteralPath (Join-Path $repo 'windows\restic.exe') -Destination (Join-Path $testRoot 'agent\windows')
  Copy-Item -LiteralPath (Join-Path $repo 'windows\protect-key.ps1') -Destination (Join-Path $testRoot 'agent\windows')
  Copy-Item -LiteralPath (Join-Path $repo 'windows\vss-client.ps1') -Destination (Join-Path $testRoot 'agent\windows')
+ Copy-Item -LiteralPath (Join-Path $repo 'windows\vss-io.ps1') -Destination (Join-Path $testRoot 'agent\windows')
  Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'windows-vss-user.ps1') -Destination (Join-Path $testRoot 'run.ps1')
  Copy-Item -LiteralPath (Get-Command node.exe).Source -Destination (Join-Path $testRoot 'node.exe')
  $acl=Get-Acl -LiteralPath $testRoot
  $acl.AddAccessRule((New-Object Security.AccessControl.FileSystemAccessRule($user.SID,'Modify','ContainerInherit,ObjectInherit','None','Allow')))
  Set-Acl -LiteralPath $testRoot -AclObject $acl
+ # Exercise a real cold restart longer than the old 20-second connect window.
+ $brokerFile=Join-Path $component 'vss-broker.ps1'
+ $delayed=[IO.File]::ReadAllText($brokerFile,[Text.Encoding]::UTF8).Replace('$ErrorActionPreference=''Stop''',('Start-Sleep -Seconds 25'+"`r`n"+'$ErrorActionPreference=''Stop'''))
+ [IO.File]::WriteAllText($brokerFile,$delayed,(New-Object Text.UTF8Encoding($true)))
  # Reproduce a component stopped after installation; the standard user must recover it on demand.
  Stop-ScheduledTask -TaskName ('BackupDeskVSS-master-'+$sid)
  for($i=0;$i -lt 40;$i++){if((Get-ScheduledTask -TaskName ('BackupDeskVSS-master-'+$sid)).State -ne 'Running'){break};Start-Sleep -Milliseconds 250}
