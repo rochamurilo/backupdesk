@@ -44,7 +44,7 @@ function New-TestConnection([string]$Mode){
  $child=Start-Process -FilePath (Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe') -ArgumentList $arguments -WindowStyle Hidden -PassThru
  [void]$children.Add($child)
  if(-not $waiting.Wait(15000)){throw 'Fixture did not connect.'}
- $waiting.GetAwaiter().GetResult()
+ [void]$waiting.GetAwaiter().GetResult()
  return @{pipe=$pipe;process=$child;result=$result}
 }
 function Assert-NextConnection {

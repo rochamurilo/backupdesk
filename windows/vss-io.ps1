@@ -44,6 +44,6 @@ function Write-BackupDeskPipeLine($Pipe,[string]$Text,[int]$TimeoutMs=5000,[int]
   if($bytes.Length -gt $MaxBytes){throw [IO.InvalidDataException]::new('Resposta do canal VSS excede o limite.')}
   $writing=$Pipe.WriteAsync($bytes,0,$bytes.Length)
   if(-not $writing.Wait($TimeoutMs)){throw [TimeoutException]::new('Tempo de escrita do canal VSS excedido.')}
-  $writing.GetAwaiter().GetResult()
+  [void]$writing.GetAwaiter().GetResult()
  }catch{Close-BackupDeskPipe $Pipe;throw}
 }
