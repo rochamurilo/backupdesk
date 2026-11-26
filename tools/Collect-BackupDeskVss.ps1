@@ -36,12 +36,24 @@ Add-Section 'Tarefas BackupDesk VSS' {
   [pscustomobject]@{Nome=$task.TaskName;Estado=$task.State;ContaExecutora=$task.Principal.UserId;Executavel=($task.Actions.Execute -join ', ');UltimoInicio=$info.LastRunTime;UltimoResultado=('0x{0:X}' -f $info.LastTaskResult);ProximaExecucao=$info.NextRunTime;Reinicios=$task.Settings.RestartCount;MultiplasInstancias=$task.Settings.MultipleInstances} | Format-List
  }
 }
-Add-Section 'Processos do componente e desta instalação' {
+Add-Section 'Processos PowerShell e desta instalação' {
  $all=@(Get-CimInstance Win32_Process -Filter "Name='powershell.exe' OR Name='node.exe' OR Name='restic.exe'" -OperationTimeoutSec 10)
  $brokers=@($all | Where-Object {$_.Name -eq 'powershell.exe' -and $_.CommandLine -like '*vss-broker.ps1*'})
  $brokerIds=@($brokers | ForEach-Object {$_.ProcessId})
  # CommandLine is used only for identification and is never included in output.
- $all | Where-Object {($_.ProcessId -in $brokerIds) -or ($_.ParentProcessId -in $brokerIds) -or ($_.ExecutablePath -and $_.ExecutablePath.StartsWith($ClientRoot.TrimEnd('\')+'\',[StringComparison]::OrdinalIgnoreCase))} | Select-Object ProcessId,ParentProcessId,Name,ExecutablePath,CreationDate | Format-List
+ # Include metadata of other PowerShell processes so an orphaned worker whose
+ # parent already exited remains visible. No raw arguments or script text.
+ foreach($process in @($all | Where-Object {($_.Name -eq 'powershell.exe') -or ($_.ParentProcessId -in $brokerIds) -or ($_.ExecutablePath -and $_.ExecutablePath.StartsWith($ClientRoot.TrimEnd('\')+'\',[StringComparison]::OrdinalIgnoreCase))})){
+  $ownerSid=$null;$product=$null
+  if($process.ProcessId -in $brokerIds){
+   if($process.CommandLine -match '-UserSid\s+(S-1-(?:\d+-)+\d+)'){$ownerSid=$Matches[1]}
+   if($process.CommandLine -match '-Product\s+(master|client)'){$product=$Matches[1]}
+  }
+  [pscustomobject]@{ProcessId=$process.ProcessId;ParentProcessId=$process.ParentProcessId;Name=$process.Name;ExecutablePath=$process.ExecutablePath;CreationDate=$process.CreationDate;BrokerSID=$ownerSid;Produto=$product} | Format-List
+ }
+}
+Add-Section 'Pipes BackupDesk presentes (sem conexão)' {
+ Get-ChildItem -LiteralPath '\\.\pipe\' | Where-Object {$_.Name -like 'BackupDeskVSS-*'} | Select-Object Name | Format-List
 }
 Add-Section 'Versões dos arquivos (SHA-256; conteúdo não incluído)' {
  foreach($file in @('vss.mjs','restic-runner.mjs','restic-backup.mjs','windows\vss-client.ps1')){
