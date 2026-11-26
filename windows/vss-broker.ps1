@@ -8,17 +8,33 @@ function Write-VssStartupRecord([string]$Status,[string]$Phase,[string]$ErrorTex
  $file=Join-Path $state $name;$temporary=Join-Path $state ('startup-'+[guid]::NewGuid().ToString('N')+'.tmp')
  try{
   [IO.File]::WriteAllText($temporary,($record | ConvertTo-Json -Compress),(New-Object Text.UTF8Encoding($false)))
-  if(Test-Path -LiteralPath $file){[IO.File]::Replace($temporary,$file,[System.Management.Automation.Language.NullString]::Value)}else{[IO.File]::Move($temporary,$file)}
+  # No check-then-move race: another generation may publish between those calls.
+  for($attempt=0;$attempt -lt 10;$attempt++){
+   try{[IO.File]::Move($temporary,$file);return}
+   catch [IO.IOException]{
+    try{[IO.File]::Replace($temporary,$file,[System.Management.Automation.Language.NullString]::Value);return}
+    catch [IO.IOException]{if($attempt -eq 9){throw};Start-Sleep -Milliseconds 20}
+   }
+  }
  }finally{if(Test-Path -LiteralPath $temporary){Remove-Item -LiteralPath $temporary -Force}}
 }
 if(-not $StartupId){$StartupId=[guid]::NewGuid().ToString('N')}
-$startupPhase='identity'
+$startupPhase='identity';$instanceLock=$null
 try{
 if($UserSid -notmatch '^S-1-(?:\d+-)+\d+$'){throw 'SID inválido.'}
 if([Security.Principal.WindowsIdentity]::GetCurrent().User.Value -ne 'S-1-5-18'){throw 'O componente VSS deve executar como SYSTEM.'}
 $state=Join-Path $PSScriptRoot ('state\'+$UserSid)
 New-Item -ItemType Directory -Path $state -Force | Out-Null
+$startupPhase='instance-lock'
+# Protected directory, SYSTEM-only writer. The handle dies with its process; a
+# leftover file is not treated as a lock and cannot block the next generation.
+for($attempt=0;$attempt -lt 20;$attempt++){
+ try{$instanceLock=[IO.File]::Open((Join-Path $state 'broker.lock'),[IO.FileMode]::OpenOrCreate,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None);break}
+ catch [IO.IOException]{if($attempt -eq 19){throw};Start-Sleep -Milliseconds 250}
+}
+$startupPhase='publish-startup'
 Write-VssStartupRecord 'starting' 'load-protocol'
+$startupPhase='load-transport';. (Join-Path $PSScriptRoot 'vss-io.ps1')
 $startupPhase='load-protocol';. (Join-Path $PSScriptRoot 'vss-protocol.ps1')
 $startupPhase='pipe-security'
 $pipeName='BackupDeskVSS-v1-'+$Product+'-'+$UserSid
@@ -30,7 +46,9 @@ $security.SetAccessRuleProtection($true,$false)
 $security.AddAccessRule((New-Object System.IO.Pipes.PipeAccessRule($systemSid,[System.IO.Pipes.PipeAccessRights]::FullControl,[System.Security.AccessControl.AccessControlType]::Allow)))
 $security.AddAccessRule((New-Object System.IO.Pipes.PipeAccessRule($ownerSid,[System.IO.Pipes.PipeAccessRights]::ReadWrite,[System.Security.AccessControl.AccessControlType]::Allow)))
 }catch{
- try{Write-VssStartupRecord 'failed' $startupPhase $_.Exception.Message}catch{}
+ # A losing duplicate must not overwrite the active process's status.
+ if($instanceLock){try{Write-VssStartupRecord 'failed' $startupPhase $_.Exception.Message}catch{};$instanceLock.Dispose()}
+ elseif($startupPhase -eq 'instance-lock'){try{Add-Content -LiteralPath (Join-Path $state 'broker.log') -Value ((Get-Date -Format o)+' Inicialização duplicada recusada; PID '+$PID+'. A instância ativa foi preservada.')}catch{}}
  throw
 }
 function Invoke-OwnedVss($Command,$Key){
@@ -84,32 +102,29 @@ function Write-BrokerLog([string]$Message){
  }catch{} # Diagnostic writes must not stop the component.
 }
 while($true){
- $pipe=$null;$reader=$null;$writer=$null
+ $pipe=$null;$request=$null;$connectionPhase='listen'
  try{
   $pipe=New-Object System.IO.Pipes.NamedPipeServerStream($pipeName,[System.IO.Pipes.PipeDirection]::InOut,1,[System.IO.Pipes.PipeTransmissionMode]::Byte,[System.IO.Pipes.PipeOptions]::Asynchronous,8192,8192,$security)
   if(-not $readyWritten){Write-VssStartupRecord 'ready' 'listen';$readyWritten=$true}
   $pipe.WaitForConnection()
-  $reader=New-Object System.IO.StreamReader($pipe,(New-Object System.Text.UTF8Encoding($false)),$false,1024,$true)
-  $writer=New-Object System.IO.StreamWriter($pipe,(New-Object System.Text.UTF8Encoding($false)),1024,$true);$writer.AutoFlush=$true
   try{
-   $buffer=New-Object char[] 512;$inputText='';$deadline=[DateTime]::UtcNow.AddSeconds(10)
-   do{
-    $remaining=[int]($deadline-[DateTime]::UtcNow).TotalMilliseconds;if($remaining -le 0){throw 'Tempo de leitura VSS excedido.'}
-    $reading=$reader.ReadAsync($buffer,0,$buffer.Length)
-    if(-not $reading.Wait($remaining)){throw 'Tempo de leitura VSS excedido.'}
-    $count=$reading.Result;if($count -le 0){throw 'Conexão VSS encerrada.'}
-    $inputText+=(-join $buffer[0..($count-1)])
-    if($inputText.Length -gt 8192){throw 'Solicitação VSS excede o limite.'}
-   }while(-not $inputText.Contains("`n"))
-   $request=ConvertTo-VssCommand ($inputText.Substring(0,$inputText.IndexOf("`n")) | ConvertFrom-Json)
+   $connectionPhase='read-request'
+   $inputText=Read-BackupDeskPipeLine $pipe 10000 8192
+   $request=ConvertTo-VssCommand ($inputText | ConvertFrom-Json)
    if($request.command.action -eq 'probe'){$result=@{protocol=1;automatic=$true;busy=($null -ne $script:pendingVssWorker -and -not $script:pendingVssWorker.process.HasExited)}}
    else{
+    $connectionPhase='operation'
     $clock=[Diagnostics.Stopwatch]::StartNew();Write-BrokerLog ('Início '+$request.command.action+'; instalação '+$request.client.Substring(0,12)+'.')
     try{$result=Invoke-OwnedVss $request.command $request.client;Write-BrokerLog ('Concluído '+$request.command.action+'; '+$clock.ElapsedMilliseconds+' ms.')}
     catch{Write-BrokerLog ('Falhou '+$request.command.action+'; '+$clock.ElapsedMilliseconds+' ms; '+$_.Exception.Message);throw}
    }
-   $writer.WriteLine((@{ok=$true;result=$result} | ConvertTo-Json -Depth 8 -Compress))
-  }catch{$writer.WriteLine((@{ok=$false;error=$_.Exception.Message} | ConvertTo-Json -Compress))}
+   $connectionPhase='write-response'
+   Write-BackupDeskPipeLine $pipe (@{ok=$true;result=$result} | ConvertTo-Json -Depth 8 -Compress)
+  }catch{
+   $failure=$_.Exception.GetBaseException().Message
+   Write-BrokerLog ('Comunicação VSS ['+$connectionPhase+']: '+$failure)
+   try{Write-BackupDeskPipeLine $pipe (@{ok=$false;error=$failure} | ConvertTo-Json -Compress)}catch{}
+  }
  }catch{
   if(-not $readyWritten -and $script:lastStartupError -ne $_.Exception.Message){
    try{Write-VssStartupRecord 'waiting' 'pipe-listen' $_.Exception.Message}catch{}
@@ -117,5 +132,5 @@ while($true){
   }
   Write-BrokerLog $_.Exception.Message
   Start-Sleep -Seconds 1
- }finally{if($reader){$reader.Dispose()};if($writer){$writer.Dispose()};if($pipe){$pipe.Dispose()}}
+ }finally{Close-BackupDeskPipe $pipe}
 }

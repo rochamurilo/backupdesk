@@ -1,11 +1,13 @@
 ﻿# Real Task Scheduler startup, isolated from application data and VSS snapshots.
 $ErrorActionPreference='Stop';$ProgressPreference='SilentlyContinue'
+& (Join-Path $PSScriptRoot 'windows-vss-publisher.ps1')
 $repo=Split-Path $PSScriptRoot -Parent
 $userName='bkstart'+[guid]::NewGuid().ToString('N').Substring(0,10)
 $user=New-LocalUser -Name $userName -Password (ConvertTo-SecureString ('A7!'+[guid]::NewGuid().ToString('N')) -AsPlainText -Force) -PasswordNeverExpires
 $sid=$user.SID.Value;$product='client';$taskName='BackupDeskVSS-'+$product+'-'+$sid
 $component=Join-Path ([Environment]::GetFolderPath('ProgramFiles')) 'BackupDesk VSS\client'
 $state=Join-Path $component ('state\'+$sid)
+$duplicateTask='BackupDesk-VSS-Duplicate-'+[guid]::NewGuid().ToString('N')
 $powerShell=Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
 $broker=[IO.File]::ReadAllText((Join-Path $repo 'windows\vss-broker.ps1'),[Text.Encoding]::UTF8)
 $env:BACKUPDESK_VSS_OWNER_SID=$sid;$env:BACKUPDESK_VSS_PRODUCT=$product;$env:BACKUPDESK_VSS_REMOVE='0'
@@ -44,7 +46,7 @@ try{
  }finally{$state=$savedState;Remove-Item -LiteralPath $publisherRoot -Recurse -Force}
  'VSS installer: atomic startup state replacement under Windows PowerShell: OK.'
  New-Item -ItemType Directory -Path $component -Force | Out-Null
- foreach($file in @('install-vss-component.ps1','vss-broker.ps1','vss-protocol.ps1','vss.ps1','update-application.ps1')){Copy-Item -LiteralPath (Join-Path $repo ('windows\'+$file)) -Destination $component -Force}
+ foreach($file in @('install-vss-component.ps1','vss-broker.ps1','vss-protocol.ps1','vss-io.ps1','vss.ps1','update-application.ps1')){Copy-Item -LiteralPath (Join-Path $repo ('windows\'+$file)) -Destination $component -Force}
  # A cold/loaded computer can take more than the previous 15-second deadline.
  $delayed=$broker.Replace('$ErrorActionPreference=''Stop''',('Start-Sleep -Seconds 20'+"`r`n"+'$ErrorActionPreference=''Stop'''))
  [IO.File]::WriteAllText((Join-Path $component 'vss-broker.ps1'),$delayed,(New-Object Text.UTF8Encoding($true)))
@@ -79,7 +81,40 @@ Start-Sleep -Seconds 15
  $ready=Get-Content -Raw -LiteralPath (Join-Path $state 'ready.json') | ConvertFrom-Json
  if($ready.status -ne 'ready' -or $ready.startup_id -notmatch '^[a-f0-9]{32}$' -or (Get-ScheduledTask -TaskName $taskName).State -ne 'Running'){throw 'A live component did not confirm the repaired installation.'}
  'VSS installer: current initialization error, bounded failure and repair: OK.'
+ # A second SYSTEM task bypasses Task Scheduler's per-task IgnoreNew policy.
+ # It must lose the protected file lock without replacing the active markers.
+ $beforeReady=[IO.File]::ReadAllText((Join-Path $state 'ready.json'))
+ $beforeStartup=[IO.File]::ReadAllText((Join-Path $state 'startup.json'))
+ $active=Get-Process -Id ([int]$ready.pid)
+ $arguments='-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "'+(Join-Path $component 'vss-broker.ps1')+'" -UserSid '+$sid+' -Product '+$product+' -StartupId '+('d'*32)
+ $action=New-ScheduledTaskAction -Execute $powerShell -Argument $arguments
+ $principal=New-ScheduledTaskPrincipal -UserId 'S-1-5-18' -LogonType ServiceAccount -RunLevel Highest
+ Register-ScheduledTask -TaskName $duplicateTask -Action $action -Principal $principal -Force | Out-Null
+ $previous=(Get-ScheduledTaskInfo -TaskName $duplicateTask).LastRunTime
+ Start-ScheduledTask -TaskName $duplicateTask
+ $done=$false
+ for($attempt=0;$attempt -lt 100;$attempt++){
+  $task=Get-ScheduledTask -TaskName $duplicateTask;$info=Get-ScheduledTaskInfo -TaskName $duplicateTask
+  if($info.LastRunTime -gt $previous -and $task.State -ne 'Running'){$done=$true;break}
+  Start-Sleep -Milliseconds 200
+ }
+ if(-not $done -or $info.LastTaskResult -eq 0 -or $active.HasExited){throw 'Duplicate SYSTEM broker was not rejected.'}
+ if([IO.File]::ReadAllText((Join-Path $state 'ready.json')) -ne $beforeReady -or [IO.File]::ReadAllText((Join-Path $state 'startup.json')) -ne $beforeStartup){throw 'A rejected duplicate overwrote the active startup state.'}
+ if((Get-Content -Raw -LiteralPath (Join-Path $state 'broker.log')) -notlike '*duplicada recusada*'){throw 'The duplicate was not rejected by the instance lock.'}
+ Stop-ScheduledTask -TaskName $taskName
+ if(-not $active.WaitForExit(10000)){throw 'Original broker did not stop.'}
+ $active.Dispose();Start-ScheduledTask -TaskName $taskName
+ $restarted=$false
+ for($attempt=0;$attempt -lt 100;$attempt++){
+  try{$current=Get-Content -Raw -LiteralPath (Join-Path $state 'ready.json') | ConvertFrom-Json;if($current.pid -ne $ready.pid -and $current.status -eq 'ready'){$restarted=$true;break}}catch{}
+  Start-Sleep -Milliseconds 200
+ }
+ if(-not $restarted){throw 'A leftover lock file prevented restart after the owner exited.'}
+ Assert-TestReady
+ 'VSS instance: duplicate SYSTEM task rejected, active state preserved, handle released on process exit: OK.'
+
 }finally{
+ if(Get-ScheduledTask -TaskName $duplicateTask -ErrorAction SilentlyContinue){Stop-ScheduledTask -TaskName $duplicateTask;Unregister-ScheduledTask -TaskName $duplicateTask -Confirm:$false}
  $env:BACKUPDESK_VSS_REMOVE='1'
  if(Test-Path -LiteralPath (Join-Path $component 'vss-protocol.ps1')){$null=Invoke-TestInstall}
  if(Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue){Stop-ScheduledTask -TaskName $taskName;Unregister-ScheduledTask -TaskName $taskName -Confirm:$false}

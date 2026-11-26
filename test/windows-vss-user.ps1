@@ -17,7 +17,9 @@ function Invoke-Client($Request){
 }
 try{
  $principal=New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent());if($principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)){throw 'O cliente de teste não pode executar como administrador.'}
- $probe=Invoke-Client @{action='probe'};if(-not $probe.automatic){throw 'Componente não responde.'};if(-not $probe.component_restarted){throw 'O usuário comum não comprovou recuperação do componente parado.'}
+ $cold=[Diagnostics.Stopwatch]::StartNew();$started=Invoke-Client @{action='cleanup'};$cold.Stop()
+ if(-not $started.cleaned -or -not $started.component_restarted -or $cold.ElapsedMilliseconds -lt 24000){throw 'O usuário comum não aguardou a inicialização lenta do componente.'}
+ $probe=Invoke-Client @{action='probe'};if(-not $probe.automatic){throw 'Componente não responde após inicialização lenta.'}
  $scheduler=New-Object -ComObject 'Schedule.Service';$scheduler.Connect();$registered=$scheduler.GetFolder('\').GetTask('BackupDeskVSS-master-'+$sid)
  $refused=$false;try{$registered.SetSecurityDescriptor($registered.GetSecurityDescriptor(4),0)}catch{$refused=$true}
  if(-not $refused){throw 'Usuário comum conseguiu alterar a permissão da tarefa SYSTEM.'}

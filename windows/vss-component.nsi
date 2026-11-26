@@ -32,6 +32,7 @@ Section
  File "install-vss-component.ps1"
  File "vss-broker.ps1"
  File "vss-protocol.ps1"
+ File "vss-io.ps1"
  File "vss.ps1"
  File "update-application.ps1"
  nsExec::ExecToStack '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$OUTDIR\install-vss-component.ps1"'

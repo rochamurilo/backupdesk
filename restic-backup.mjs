@@ -3,6 +3,15 @@ import {performance} from 'node:perf_hooks';
 import {mkdir,readFile,writeFile,rename,unlink,realpath,lstat,utimes,open,mkdtemp,symlink,rmdir,readdir} from 'node:fs/promises';import {tmpdir} from 'node:os';import {randomUUID} from 'node:crypto';import path from 'node:path';import {runRestic} from './restic-runner.mjs';import {createBandwidthLimiter} from './bandwidth.mjs';import {needsFullCheck} from './restic-policy.mjs';import {openJSON,sealJSON} from './crypto-vault.mjs';import {contained,hashFile,writeEncryptedManifest,readManifest,manifestKey,scopeIdentity,modifiedDate} from './backup-repository.mjs';
 export const RESTIC_FORMAT='backupdesk-restic-v1';
 const pathKey=p=>{let s=p.replaceAll('\\','/').replace(/^\/\/\?\//,'/').replace(/^([A-Za-z]):\//,'/$1/').replace(/\/+/g,'/');return process.platform==='win32'?s.toLowerCase():s};
+// Consume the listing incrementally: large snapshots must not accumulate the
+// complete JSON output (including metadata unused by the backup catalog).
+export async function readResticCatalog(execute,snapshot){
+ const catalog=new Map();
+ await execute(['ls','--json',snapshot],{captureOutput:false,onJSON:node=>{
+  if(node.type==='file')catalog.set(pathKey(node.path),{path:node.path,size:node.size});
+ }});
+ return catalog;
+}
 // Restic cannot archive GLOBALROOT device paths directly. A temporary junction
 // gives it a DOS path without another elevation or a second copy of the data.
 // Never recursively remove these junctions: their targets are VSS snapshots.
@@ -38,7 +47,7 @@ export async function copyToRestic({source,destination,device,routine,run,origin
  const plannedFiles=new Map(checked.files.map(file=>{const mapped=map(file.absolute);return [pathKey(mapped),mapped]})),resticRoots=[...plannedFiles.values()];let emptyRoot;if(!resticRoots.length){emptyRoot=await mkdtemp(path.join(tmpdir(),'backupdesk-restic-empty-'));resticRoots.push(emptyRoot)}try{
  await runRestic({input:Buffer.from(resticRoots.join('\0')+'\0'),repository:repo,key:encryption.dataKey,device,policy,signal,throttle,onTransfer:(direction,n)=>{if(direction==='upload'){transferredBytes+=n;onProgress({...copyProgress,transferredBytes})}},args:['backup','--json','--host',device,'--tag','backupdesk-run='+run,'--tag','backupdesk-scope='+scope,'--files-from-raw','-'],onJSON:e=>{if(e.message_type==='summary')summary=e;if(e.message_type==='status'){copyProgress={stage:'copying',processedBytes:e.bytes_done||0,totalBytes:e.total_bytes||null,filesDone:e.files_done||0,totalFiles:e.total_files||null};onProgress({...copyProgress,transferredBytes})}}})
  const snapshots=JSON.parse(await execute(['snapshots','--json','--tag','backupdesk-run='+run]));if(snapshots.length!==1)throw Error('Snapshot Restic não confirmado.');resticSnapshot=snapshots[0].id;if(!summary||!/^[a-f0-9]{64}$/.test(resticSnapshot))throw Error('Restic não confirmou o catálogo completo.');
- const listing=await execute(['ls','--json',resticSnapshot]);const catalog=new Map();for(const line of listing.split(/\r?\n/)){if(!line.trim())continue;const node=JSON.parse(line);if(node.type==='file')catalog.set(pathKey(node.path),node)}for(let i=0;i<records.length;i++){const node=catalog.get(pathKey(map(checked.files[i].absolute)));if(!node||node.size!==records[i].size)throw Error('O catálogo Restic não corresponde à origem selecionada.');records[i].restic_path=node.path;const current=await lstat(checked.files[i].absolute,{bigint:true});if(current.isSymbolicLink()||current.size!==checked.files[i].size||current.mtimeNs!==checked.files[i].mtime)throw Error('A origem mudou durante o backup.');}
+ const catalog=await readResticCatalog(execute,resticSnapshot);for(let i=0;i<records.length;i++){const node=catalog.get(pathKey(map(checked.files[i].absolute)));if(!node||node.size!==records[i].size)throw Error('O catálogo Restic não corresponde à origem selecionada.');records[i].restic_path=node.path;const current=await lstat(checked.files[i].absolute,{bigint:true});if(current.isSymbolicLink()||current.size!==checked.files[i].size||current.mtimeNs!==checked.files[i].mtime)throw Error('A origem mudou durante o backup.');}
  if(catalog.size!==plannedFiles.size)throw Error('O Restic arquivou arquivos fora do plano aprovado.');
  }finally{if(emptyRoot)await rmdir(emptyRoot)}
  });
