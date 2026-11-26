@@ -1,0 +1,4 @@
+6d01e624a0f5dec485d9fcf4894113a7490f30be84ff88e3d0b0ee8b600b5f12  BackupDesk-Atualizacao-Client-0.37.1-x64.exe
+38357b83a4bed6d37f64f95f4bc33b867f343f4753e511898afd4b371d931856  BackupDesk-Client-0.37.1-x64.exe
+3cc5174de7b0b589ab7de606fde02e4a648a9e08f2997d6a0a19a40dd0fbfe34  BackupDesk-Atualizacao-Master-0.37.1-x64.exe
+d5b82e0b21357a024606dd3a9c817ffc79b21c322919534a6b7176f318f736e1  BackupDesk-Master-0.37.1-x64.exe
