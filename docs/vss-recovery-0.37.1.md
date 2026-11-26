@@ -15,3 +15,9 @@ As permissões SYSTEM/usuário e o registro de propriedade dos snapshots continu
 A instalação do atualizador é necessária para substituir tanto os scripts do aplicativo quanto o componente protegido. Não é necessário reinstalar nem apagar dados ou chaves. Esta correção não inclui o trabalho de USN da outra branch.
 
 A versão não pode garantir que um provedor VSS do Windows nunca ficará lento ou falhará. Se persistir uma falha na fase `operation`, o novo registro permite investigar separadamente a operação do Windows.
+
+## Validação do código
+
+- `npm test`: 159 testes aprovados, nenhuma falha.
+- `TZ=UTC npm run test:browser`: fluxos Chromium aprovados.
+- Windows nativo: [execução 45825886272](https://github.com/rochamurilo/backupdesk/actions/runs/45825886272), três jobs aprovados. Inclui quatro publicadores concorrentes (160 gravações), segunda tarefa SYSTEM recusada sem alterar marcadores, reinício após liberação do handle, canal com UTF-8 fragmentado, clientes que abandonam leitura/escrita, reconexão e backup/restauração com arquivo bloqueado sob usuário comum.
