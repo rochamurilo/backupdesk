@@ -32,6 +32,6 @@ jobs:
             & ./tools/Collect-BackupDeskVss.ps1 -ClientRoot $client -ComponentRoot $component -OutputFile $output
             $report=Get-Content -LiteralPath $output -Raw
             if($report.Contains($sentinel)){throw 'Credential sentinel entered diagnostic report.'}
-            foreach($expected in @('diagnostic-agent-fixture','diagnostic-broker-fixture','Coleta','PowerShell','Processos','Serviços VSS','Snapshots presentes')){if(-not $report.Contains($expected)){throw ('Missing diagnostic: '+$expected)}}
+            foreach($expected in @('diagnostic-agent-fixture','diagnostic-broker-fixture','Coleta','PowerShell','Processos','VSS do Windows','Snapshots presentes')){if(-not $report.Contains($expected)){throw ('Missing diagnostic: '+$expected)}}
             'Collector: Windows execution, app/component logs and credential exclusion passed.'
           } finally {Remove-Item -LiteralPath $root -Recurse -Force}

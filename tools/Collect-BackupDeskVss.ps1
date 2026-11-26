@@ -1,4 +1,4 @@
-# Read-only support collection. Does not run app scripts, connect to the pipe,
+﻿# Read-only support collection. Does not run app scripts, connect to the pipe,
 # restart services/tasks, read credentials, or create/delete VSS snapshots.
 [CmdletBinding()]
 param(
