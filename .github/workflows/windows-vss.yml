@@ -2,6 +2,10 @@ name: Windows VSS component
 on:
   workflow_dispatch:
     inputs:
+      diagnostics_only:
+        description: Validar apenas o coletor de diagnóstico de leitura
+        type: boolean
+        default: false
       source_only:
         description: Testar componente VSS e rede sem executar instaladores
         type: boolean
@@ -81,7 +85,11 @@ on:
 permissions:
   contents: read
 jobs:
+  diagnostic-collector:
+    if: ${{ inputs.diagnostics_only }}
+    uses: ./.github/workflows/vss-diagnostics-check.yml
   native-vss:
+    if: ${{ !inputs.diagnostics_only }}
     runs-on: windows-2022
     timeout-minutes: 10
     steps:
@@ -116,6 +124,7 @@ jobs:
             throw
           }
   native-update:
+    if: ${{ !inputs.diagnostics_only }}
     runs-on: windows-2025
     timeout-minutes: 5
     steps:
@@ -161,7 +170,7 @@ jobs:
           }
 
   native-client-install:
-    if: ${{ !inputs.source_only }}
+    if: ${{ !inputs.source_only && !inputs.diagnostics_only }}
     runs-on: windows-2025
     timeout-minutes: 10
     steps:
@@ -210,6 +219,7 @@ jobs:
           }
 
   native-network:
+    if: ${{ !inputs.diagnostics_only }}
     runs-on: windows-2025
     timeout-minutes: 5
     steps:

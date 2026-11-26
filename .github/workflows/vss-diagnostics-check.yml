@@ -1,0 +1,37 @@
+name: VSS diagnostic collector
+on: workflow_call
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-2022
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: tools
+      - name: Validate read-only collection and excluded credentials
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          $root=Join-Path $env:RUNNER_TEMP ('diagnostic-'+[guid]::NewGuid().ToString('N'))
+          $client=Join-Path $root 'client';$component=Join-Path $root 'component'
+          $data=Join-Path $client 'data';$keys=Join-Path $data 'keys'
+          $sid=[Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+          $state=Join-Path $component ('state\'+$sid)
+          New-Item -ItemType Directory -Path $keys,$state -Force | Out-Null
+          $sentinel='SECRET-MUST-NOT-ENTER-REPORT-'+[guid]::NewGuid().ToString('N')
+          Set-Content -LiteralPath (Join-Path $keys 'device.json') -Value $sentinel
+          Set-Content -LiteralPath (Join-Path $client 'agent-config.json') -Value $sentinel
+          Set-Content -LiteralPath (Join-Path $data 'initial-admin.txt') -Value $sentinel
+          Set-Content -LiteralPath (Join-Path $data 'agent.log') -Value 'diagnostic-agent-fixture'
+          Set-Content -LiteralPath (Join-Path $state 'broker.log') -Value 'diagnostic-broker-fixture'
+          @{format='backupdesk-vss-startup-v1';pid=123;status='ready';token=$sentinel} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $state 'ready.json')
+          $output=Join-Path $root 'report.txt'
+          try {
+            & ./tools/Collect-BackupDeskVss.ps1 -ClientRoot $client -ComponentRoot $component -OutputFile $output
+            $report=Get-Content -LiteralPath $output -Raw
+            if($report.Contains($sentinel)){throw 'Credential sentinel entered diagnostic report.'}
+            foreach($expected in @('diagnostic-agent-fixture','diagnostic-broker-fixture','Coleta','PowerShell','Processos','Serviços VSS','Snapshots presentes')){if(-not $report.Contains($expected)){throw ('Missing diagnostic: '+$expected)}}
+            'Collector: Windows execution, app/component logs and credential exclusion passed.'
+          } finally {Remove-Item -LiteralPath $root -Recurse -Force}
